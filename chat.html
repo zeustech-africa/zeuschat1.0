@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZeusChat — Secure Messaging</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    body {
+      color: #f0f0f0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    /* Fullscreen 4K Video Background */
+    .video-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: -1;
+    }
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.55);
+      z-index: 0;
+    }
+    .app {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+      z-index: 1;
+    }
+    .sidebar {
+      width: 280px;
+      background: rgba(10, 10, 10, 0.85);
+      backdrop-filter: blur(10px);
+      border-right: 1px solid rgba(212, 175, 55, 0.1);
+      display: flex;
+      flex-direction: column;
+    }
+    .sidebar-header {
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+    }
+    .logo {
+      background: #d4af37;
+      color: #000;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 18px;
+      box-shadow: 0 0 8px rgba(212, 175, 55, 0.3);
+    }
+    .branding {
+      font-size: 15px;
+      color: #e0d090;
+      letter-spacing: 0.5px;
+    }
+    .search {
+      margin: 12px 16px;
+      padding: 10px 16px;
+      border-radius: 24px;
+      border: none;
+      background: rgba(30, 30, 30, 0.7);
+      color: #f0f0f0;
+      outline: none;
+    }
+    .search::placeholder {
+      color: #777;
+    }
+    .chat-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 8px;
+    }
+    .chat-item {
+      padding: 14px 12px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+      border-radius: 10px;
+      transition: all 0.2s ease;
+    }
+    .chat-item:hover {
+      background: rgba(30, 30, 30, 0.5);
+    }
+    .chat-item.active {
+      background: rgba(212, 175, 55, 0.15);
+    }
+    .avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: rgba(40, 40, 40, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 16px;
+      color: #d4af37;
+    }
+    .chat-info {
+      flex: 1;
+    }
+    .chat-name {
+      font-weight: 600;
+      font-size: 15px;
+      color: #fff;
+      margin-bottom: 3px;
+    }
+    .chat-preview {
+      font-size: 13px;
+      color: #aaa;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .chat-time {
+      font-size: 12px;
+      color: #777;
+      flex-shrink: 0;
+    }
+    .new-chat {
+      margin: 16px;
+      padding: 12px 20px;
+      background: #d4af37;
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .new-chat:hover {
+      background: #c9a02a;
+    }
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .chat-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(212, 175, 55, 0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .chat-user {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .status {
+      font-size: 13px;
+      color: #777;
+    }
+    .header-icons {
+      display: flex;
+      gap: 14px;
+    }
+    .icon {
+      font-size: 20px;
+      color: #aaa;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    .icon:hover {
+      color: #d4af37;
+    }
+    .messages {
+      flex: 1;
+      padding: 24px;
+      overflow-y: auto;
+    }
+    .msg {
+      max-width: 70%;
+      padding: 12px 16px;
+      border-radius: 16px;
+      margin-bottom: 14px;
+      position: relative;
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .in {
+      background: rgba(30, 30, 30, 0.7);
+      align-self: flex-start;
+    }
+    .out {
+      background: #d4af37;
+      color: #000;
+      align-self: flex-end;
+    }
+    .locked {
+      background: rgba(30, 30, 30, 0.8);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      color: #aaa;
+    }
+    .locked:hover {
+      color: #d4af37;
+    }
+    .input-bar {
+      padding: 14px 20px;
+      border-top: 1px solid rgba(212, 175, 55, 0.08);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .input-bar input {
+      flex: 1;
+      padding: 12px 18px;
+      border-radius: 24px;
+      border: none;
+      background: rgba(30, 30, 30, 0.7);
+      color: #fff;
+      font-size: 15px;
+    }
+    .file-input {
+      display: none;
+    }
+    .send {
+      background: #d4af37;
+      border: none;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    }
+    .footer {
+      height: 64px;
+      background: rgba(10, 10, 10, 0.9);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid rgba(212, 175, 55, 0.1);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      font-size: 11px;
+    }
+    .footer div {
+      text-align: center;
+      color: #888;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      padding: 6px 0;
+    }
+    .footer div:hover {
+      color: #d4af37;
+    }
+    .footer .active {
+      color: #d4af37;
+    }
+    .footer-icon {
+      font-size: 20px;
+    }
+    /* Emoji Picker */
+    .emoji-picker {
+      position: absolute;
+      bottom: 64px;
+      right: 20px;
+      background: rgba(20, 20, 20, 0.95);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(212, 175, 55, 0.2);
+      border-radius: 12px;
+      padding: 14px;
+      display: none;
+      z-index: 100;
+      max-width: 320px;
+      max-height: 360px;
+      overflow-y: auto;
+    }
+    .emoji-category {
+      margin-bottom: 12px;
+    }
+    .emoji-category-title {
+      font-size: 14px;
+      color: #d4af37;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    .emoji {
+      font-size: 20px;
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 6px;
+      display: inline-block;
+      transition: background 0.2s;
+    }
+    .emoji:hover {
+      background: rgba(212, 175, 55, 0.1);
+    }
+    .ttl {
+      background: rgba(30, 30, 30, 0.7);
+      color: #d4af37;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <!-- ✅ 4K Video Background -->
+  <video class="video-bg" autoplay muted loop playsinline>
+    <source src="zeuschat-chatpage.mp4" type="video/mp4">
+  </video>
+  <div class="overlay"></div>
+
+  <div class="app">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <!-- ✅ ZeusTech Logo + Branding (Top-Left, Fixed) -->
+        <img src="zeustech-logo-zeushchat.png" class="logo" alt="ZeusTech" style="width:36px;height:36px;border-radius:50%;">
+        <div class="branding">ZeusChat by ZeusTech</div>
+      </div>
+      <input class="search" placeholder="Search or start new chat"/>
+      <div class="chat-list" id="chat-list">
+        <!-- Chats loaded from localStorage -->
+      </div>
+      <button class="new-chat" onclick="window.location.href='add-contact.html'">+ New Chat</button>
+    </aside>
+    <main class="main">
+      <div class="chat-header">
+        <div class="chat-user">
+          <div class="avatar">?</div>
+          <div>
+            <div>Select a chat</div>
+            <div class="status">—</div>
+          </div>
+        </div>
+        <div class="header-icons">
+          <div class="icon" onclick="alert('📹 Coming Soon')">📹</div>
+          <div class="icon" onclick="alert('📞 Coming Soon')">📞</div>
+          <div class="icon" onclick="alert('⋯ Coming Soon')">⋯</div>
+        </div>
+      </div>
+      <div class="messages" id="messages">
+        <div style="text-align:center;margin-top:60px;color:#f0f0f0;line-height:1.5;text-shadow:0 1px 3px rgba(0,0,0,0.6);">
+          <div style="font-size:48px;margin-bottom:16px;">🔒</div>
+          <div style="font-size:18px;font-weight:600;">Your messages vanish after viewing</div>
+          <div style="margin-top:8px;color:#ccc;">Add a contact to begin secure communication</div>
+        </div>
+      </div>
+      <div class="input-bar">
+        <label for="file-upload" style="cursor:pointer;font-size:20px;">📎</label>
+        <input type="file" id="file-upload" class="file-input" onchange="handleFileUpload(event)">
+        <span style="font-size:20px;cursor:pointer;" onclick="toggleEmojiPicker()">😊</span>
+        <span style="font-size:20px;cursor:pointer;" onclick="recordVoiceNote()">🎤</span>
+        <input id="message-input" placeholder="Message (self-destructs after TTL)" onkeydown="if(event.key==='Enter') sendMessage()"/>
+        <select class="ttl" id="ttl-selector">
+          <option value="5">5s</option>
+          <option value="15">15s</option>
+          <option value="30" selected>30s</option>
+          <option value="45">45s</option>
+        </select>
+        <button class="send" onclick="sendMessage()">➤</button>
+      </div>
+      <div class="emoji-picker" id="emoji-picker">
+        <div class="emoji-category">
+          <div class="emoji-category-title">Smileys & Emotion</div>
+          <div class="emoji" onclick="insertEmoji('😀')">😀</div><div class="emoji" onclick="insertEmoji('😂')">😂</div>
+          <div class="emoji" onclick="insertEmoji('😍')">😍</div><div class="emoji" onclick="insertEmoji('😎')">😎</div>
+          <div class="emoji" onclick="insertEmoji('🤩')">🤩</div><div class="emoji" onclick="insertEmoji('🥹')">🥹</div>
+        </div>
+        <div class="emoji-category">
+          <div class="emoji-category-title">Objects</div>
+          <div class="emoji" onclick="insertEmoji('📱')">📱</div><div class="emoji" onclick="insertEmoji('💻')">💻</div>
+          <div class="emoji" onclick="insertEmoji('📷')">📷</div><div class="emoji" onclick="insertEmoji('🎥')">🎥</div>
+          <div class="emoji" onclick="insertEmoji('🔑')">🔑</div><div class="emoji" onclick="insertEmoji('💣')">💣</div>
+        </div>
+        <div class="emoji-category">
+          <div class="emoji-category-title">Symbols</div>
+          <div class="emoji" onclick="insertEmoji('✅')">✅</div><div class="emoji" onclick="insertEmoji('❌')">❌</div>
+          <div class="emoji" onclick="insertEmoji('⚠️')">⚠️</div><div class="emoji" onclick="insertEmoji('🔒')">🔒</div>
+          <div class="emoji" onclick="insertEmoji('👁️')">👁️</div><div class="emoji" onclick="insertEmoji('🕵️')">🕵️</div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <div class="footer">
+    <div onclick="window.location.href='updates.html'">
+      <div class="footer-icon">📡</div>
+      Updates
+    </div>
+    <div onclick="alert('📞 Calls — Coming Soon')">
+      <div class="footer-icon">📞</div>
+      Calls
+    </div>
+    <div onclick="window.location.href='profile.html'">
+      <div class="footer-icon">👤</div>
+      Profile
+    </div>
+    <div class="active" onclick="window.location.href='chat.html'">
+      <div class="footer-icon">💬</div>
+      Chats
+    </div>
+    <div onclick="window.location.href='settings.html'">
+      <div class="footer-icon">⚙️</div>
+      Settings
+    </div>
+  </div>
+
+  <script>
+    function loadChats() {
+      const contacts = JSON.parse(localStorage.getItem('contacts')) || [];
+      const chatList = document.getElementById('chat-list');
+      chatList.innerHTML = '';
+      if (contacts.length === 0) {
+        chatList.innerHTML = '<div style="padding:24px 16px;text-align:center;color:#aaa;">No chats yet</div>';
+        return;
+      }
+      contacts.forEach(contact => {
+        const div = document.createElement('div');
+        div.className = 'chat-item';
+        div.innerHTML = `
+          <div class="avatar">${contact.name.charAt(0).toUpperCase()}</div>
+          <div class="chat-info">
+            <div class="chat-name">${contact.name}</div>
+            <div class="chat-preview">${contact.lastMessage || 'No messages yet'}</div>
+          </div>
+          <div class="chat-time">${contact.time || '—'}</div>
+        `;
+        div.onclick = () => loadChat(contact);
+        chatList.appendChild(div);
+      });
+    }
+
+    function loadChat(contact) {
+      document.querySelector('.chat-user .avatar').textContent = contact.name.charAt(0).toUpperCase();
+      document.querySelector('.chat-user div:nth-child(2) div:first-child').textContent = contact.name;
+      document.querySelector('.chat-user .status').textContent = contact.status || 'online';
+      document.getElementById('messages').innerHTML = `
+        <div class="msg in">🔐 Secure channel established.</div>
+        <div class="msg out">Hello! Ready to chat — CIA-style.</div>
+        <div class="msg locked" onclick="enterPin(this)">🔒 Tap to enter PIN</div>
+      `;
+    }
+
+    function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (file) {
+        alert(`📎 File selected: ${file.name}\nSize: ${Math.round(file.size / 1024)} KB\n\n⚠️ PIN-to-View is REQUIRED for all files.`);
+      }
+    }
+
+    function toggleEmojiPicker() {
+      const picker = document.getElementById('emoji-picker');
+      picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function insertEmoji(emoji) {
+      const input = document.getElementById('message-input');
+      input.value += emoji;
+      toggleEmojiPicker();
+    }
+
+    function recordVoiceNote() {
+      alert("🎤 Voice Note Recording\n\n• Press and hold to record\n• Slide up to cancel\n• PIN-to-View enforced\n• Auto-delete after TTL\n\nComing in final release.");
+    }
+
+    function enterPin(element) {
+      const pin = prompt("🔒 Enter PIN to view message (e.g. 1234)");
+      if (pin && pin.length === 4 && !isNaN(pin)) {
+        element.innerHTML = "✅ Message unlocked — expires in 5 seconds";
+        element.classList.remove('locked');
+        element.classList.add('in');
+        setTimeout(() => {
+          if (element.parentNode) element.parentNode.removeChild(element);
+        }, 5000);
+      } else {
+        alert("❌ Wrong PIN — message destroyed.");
+        element.parentNode.removeChild(element);
+      }
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('message-input');
+      const message = input.value.trim();
+      if (!message) return;
+      
+      const ttl = parseInt(document.getElementById('ttl-selector').value);
+      const now = new Date();
+      
+      const messagesDiv = document.getElementById('messages');
+      const newMessage = document.createElement('div');
+      newMessage.className = 'msg out';
+      newMessage.textContent = message;
+      messagesDiv.appendChild(newMessage);
+      input.value = '';
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+      const contacts = JSON.parse(localStorage.getItem('contacts')) || [];
+      if (contacts.length > 0) {
+        contacts[0].lastMessage = message;
+        contacts[0].time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        localStorage.setItem('contacts', JSON.stringify(contacts));
+        loadChats();
+      }
+
+      setTimeout(() => {
+        if (newMessage.parentNode) {
+          newMessage.parentNode.removeChild(newMessage);
+        }
+      }, ttl * 1000);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      loadChats();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add Contact — ZeusChat</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    body {
+      background: #0b0b0b;
+      color: #fff;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .container {
+      padding: 20px;
+      flex: 1;
+    }
+    .section {
+      background: #121212;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .section-title {
+      color: #d4af37;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .input-group {
+      margin-bottom: 16px;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      background: #222;
+      border: 1px solid #444;
+      color: #fff;
+      border-radius: 6px;
+    }
+    .btn {
+      background: #d4af37;
+      color: #000;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 16px;
+      width: 100%;
+    }
+    .back-btn {
+      background: #222;
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <button class="back-btn" onclick="window.location.href='chat.html'">Back</button>
+    <div class="section">
+      <div class="section-title">Add Contact</div>
+      <div class="input-group">
+        <input type="text" id="zeus-pin-input" placeholder="Enter Zeus-PIN" />
+      </div>
+      <button class="btn" onclick="addContact()">Send Request</button>
+    </div>
+  </div>
+
+  <script>
+    async function addContact() {
+      const zeusPin = document.getElementById('zeus-pin-input').value;
+      if (!zeusPin) {
+        alert("Please enter Zeus-PIN.");
+        return;
+      }
+
+      try {
+        const response = await fetch('https://rackle-lenard-hypercatalectic.ngrok-free.dev/add-contact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ zeus_pin: zeusPin })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.message) {
+          alert(result.message);
+          window.location.href = 'chat.html';
+        } else {
+          alert(result.error || 'Failed to send request.');
+        }
+      } catch (error) {
+        alert(`Network error: ${error.message}`);
+      }
+    }
+  </script>
+</body>
+</html>

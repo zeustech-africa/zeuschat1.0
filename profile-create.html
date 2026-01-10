@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Profile — ZeusChat</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    body {
+      background: #000;
+      overflow: hidden;
+      height: 100vh;
+      color: #fff;
+    }
+    .video-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: -1;
+    }
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      z-index: 0;
+    }
+    .header {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .logo {
+      height: 32px;
+      margin-bottom: 4px;
+    }
+    .byline {
+      font-size: 12px;
+      color: #FFD700;
+      font-weight: 500;
+    }
+    .container {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 20px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    .box {
+      background: #222;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 16px 0;
+      width: 100%;
+      max-width: 600px;
+      text-align: left;
+    }
+    .box-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #fff;
+    }
+    .zeus-pin-display {
+      background: #333;
+      padding: 12px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 16px;
+      margin-bottom: 16px;
+      word-spacing: 4px;
+      text-align: center;
+    }
+    .input-group {
+      margin-bottom: 16px;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      background: #333;
+      border: 1px solid #444;
+      color: #fff;
+      border-radius: 6px;
+    }
+    .btn {
+      background: #FFD700;
+      color: #000;
+      border: none;
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 16px;
+      width: 100%;
+      max-width: 400px;
+    }
+    .note {
+      background: #1a1a1a;
+      border-left: 4px solid #d4af37;
+      padding: 12px;
+      margin-top: 16px;
+      font-size: 13px;
+      text-align: left;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <video class="video-bg" autoplay muted loop>
+    <source src="zeuschat-profile.mp4" type="video/mp4">
+  </video>
+  <div class="overlay"></div>
+
+  <!-- Top-left: Logo + Byline -->
+  <div class="header">
+    <img src="zeustech-logo-zeushchat.png" class="logo" alt="ZeusTech">
+    <div class="byline">ZeusChat by ZeusTech</div>
+  </div>
+
+  <div class="container">
+    <div class="box">
+      <div class="box-title">Create Your Profile</div>
+      
+      <div class="zeus-pin-display" id="zeus-pin-display">
+        ZT-XXXX-XXXX
+      </div>
+
+      <div class="note">
+        Please copy and save your Zeus-PIN. You will need it to log in and connect with others.
+      </div>
+
+      <div class="input-group">
+        <input type="text" id="name" placeholder="Your full name" value="O . B . OBEBEDUO MOSES" />
+      </div>
+      <div class="input-group">
+        <input type="text" id="about" placeholder="About you" value="Founder & CEO — ZEUSTECH | Architect of the Future" />
+      </div>
+
+      <button class="btn" onclick="location.href='password-create.html'">Save <button class="btn" onclick="saveProfile()">Save & Continue</button> Continue</button>
+    </div>
+  </div>
+
+  <script>
+    // Generate Zeus-PIN on load
+    window.addEventListener('DOMContentLoaded', () => {
+      const part1 = Math.floor(Math.random() * 9000) + 1000;
+      const part2 = Math.floor(Math.random() * 9000) + 1000;
+      const zeusPin = `ZT-${part1}-${part2}`;
+      document.getElementById('zeus-pin-display').textContent = zeusPin;
+      localStorage.setItem('zeus_pin', zeusPin);
+    });
+
+    function saveProfile() {
+      const name = document.getElementById('name').value;
+      const about = document.getElementById('about').value;
+
+      if (!name) {
+        alert("Please enter your name.");
+        return;
+      }
+
+      localStorage.setItem('profile', JSON.stringify({ name, about }));
+      alert("✅ Profile saved!\nYour Zeus-PIN: " + localStorage.getItem('zeus_pin'));
+      window.location.href = 'password-create.html';
+    }
+  </script>
+</body>
+</html>

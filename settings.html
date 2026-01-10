@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings — ZeusChat</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    body {
+      background: #0b0b0b;
+      color: #fff;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .container {
+      padding: 20px;
+      flex: 1;
+    }
+    .section {
+      background: #121212;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .section-title {
+      color: #d4af37;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .setting {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      border-bottom: 1px solid #222;
+    }
+    .setting:last-child {
+      border-bottom: none;
+    }
+    .setting-label {
+      font-size: 14px;
+    }
+    select {
+      background: #222;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 14px;
+    }
+    .btn {
+      background: #d4af37;
+      color: #000;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 16px;
+      width: 100%;
+    }
+    .back-btn {
+      background: #222;
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-bottom: 16px;
+    }
+    .logout-btn {
+      background: #2a2a2a;
+    }
+    .delete-btn {
+      background: #ff3b30;
+      margin-top: 8px;
+    }
+    .warning {
+      color: #ffcc00;
+      font-size: 13px;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <button class="back-btn" onclick="window.location.href='chat.html'">Back</button>
+    <div class="section">
+      <div class="section-title">Privacy</div>
+      <div class="setting">
+        <div class="setting-label">Last seen & online</div>
+        <select class="setting-value" onchange="saveSetting('lastSeen', this.value)">
+          <option value="myContacts">My contacts</option>
+          <option value="everyone">Everyone</option>
+          <option value="nobody">Nobody</option>
+        </select>
+      </div>
+      <div class="setting">
+        <div class="setting-label">Profile photo</div>
+        <select class="setting-value" onchange="saveSetting('profilePhoto', this.value)">
+          <option value="myContacts">My contacts</option>
+          <option value="everyone">Everyone</option>
+          <option value="nobody">Nobody</option>
+        </select>
+      </div>
+      <div class="setting">
+        <div class="setting-label">About</div>
+        <select class="setting-value" onchange="saveSetting('about', this.value)">
+          <option value="myContacts">My contacts</option>
+          <option value="everyone">Everyone</option>
+          <option value="nobody">Nobody</option>
+        </select>
+      </div>
+      <div class="setting">
+        <div class="setting-label">Status</div>
+        <select class="setting-value" onchange="saveSetting('status', this.value)">
+          <option value="myContacts">My contacts</option>
+          <option value="everyone">Everyone</option>
+          <option value="nobody">Nobody</option>
+        </select>
+      </div>
+      <div class="setting">
+        <div class="setting-label">Groups</div>
+        <select class="setting-value" onchange="saveSetting('groups', this.value)">
+          <option value="myContacts">My contacts</option>
+          <option value="everyone">Everyone</option>
+          <option value="nobody">Nobody</option>
+        </select>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">Security</div>
+      <div class="setting">
+        <div class="setting-label">PIN-to-View (for files & voice notes)</div>
+        <select class="setting-value" onchange="saveSetting('pinToView', this.value)">
+          <option value="enabled">Enabled</option>
+          <option value="disabled">Disabled</option>
+        </select>
+      </div>
+      <div class="setting">
+        <div class="setting-label">Two-step verification</div>
+        <select class="setting-value" onchange="saveSetting('twoStep', this.value)">
+          <option value="enabled">Enabled</option>
+          <option value="disabled">Disabled</option>
+        </select>
+      </div>
+      <div class="setting">
+        <div class="setting-label">Auto-delete messages</div>
+        <select class="setting-value" onchange="saveSetting('autoDelete', this.value)">
+          <option value="off">Off</option>
+          <option value="5s">5 seconds</option>
+          <option value="30s">30 seconds</option>
+          <option value="5min">5 minutes</option>
+        </select>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">Blocked Contacts</div>
+      <div class="setting">
+        <div class="setting-label">Manage blocked Zeus-PINs</div>
+        <div class="setting-value">0 blocked</div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">Help & Feedback</div>
+      <div class="setting">
+        <div class="setting-label">Email</div>
+        <div class="setting-value">info@zeustechafrica.com</div>
+      </div>
+      <div class="setting">
+        <div class="setting-label">Call</div>
+        <div class="setting-value">+27 79 628 8382</div>
+      </div>
+      <div class="setting">
+        <div class="setting-label">Website</div>
+        <div class="setting-value">zeustechafrica.com</div>
+      </div>
+    </div>
+
+    <!-- ✅ ONLY NEW SECTION — Log Out & Delete Account -->
+    <div class="section">
+      <div class="section-title">Account</div>
+      <button class="btn logout-btn" onclick="logout()">Log Out</button>
+      <button class="btn delete-btn" onclick="deleteAccount()">Delete Account</button>
+      <div class="warning">
+        🔒 Log out: Ends session, keeps all data.<br>
+        🗑️ Delete: Permanently removes everything — irreversible.
+      </div>
+    </div>
+
+    <button class="btn" onclick="saveAllSettings()">Save and Continue</button>
+  </div>
+
+  <script>
+    // Load saved settings on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      const settings = JSON.parse(localStorage.getItem('settings')) || {};
+      document.querySelector('select[onchange*="lastSeen"]').value = settings.lastSeen || 'myContacts';
+      document.querySelector('select[onchange*="profilePhoto"]').value = settings.profilePhoto || 'myContacts';
+      document.querySelector('select[onchange*="about"]').value = settings.about || 'myContacts';
+      document.querySelector('select[onchange*="status"]').value = settings.status || 'myContacts';
+      document.querySelector('select[onchange*="groups"]').value = settings.groups || 'everyone';
+      document.querySelector('select[onchange*="pinToView"]').value = settings.pinToView || 'enabled';
+      document.querySelector('select[onchange*="twoStep"]').value = settings.twoStep || 'disabled';
+      document.querySelector('select[onchange*="autoDelete"]').value = settings.autoDelete || 'off';
+    });
+
+    function saveSetting(key, value) {
+      let settings = JSON.parse(localStorage.getItem('settings')) || {};
+      settings[key] = value;
+      localStorage.setItem('settings', JSON.stringify(settings));
+    }
+
+    function saveAllSettings() {
+      alert('✅ Settings saved!');
+      window.location.href = 'chat.html';
+    }
+
+    function logout() {
+      if (confirm("🔐 Log Out\n\n• Session ends\n• Status set to offline\n• All data (profile, contacts, chats, settings) is preserved\n\nLog back in anytime with Zeus-PIN + password.")) {
+        localStorage.removeItem('currentSession');
+        alert("✅ Logged out.\nYour data is safe.");
+        window.location.href = 'login.html';
+      }
+    }
+
+    function deleteAccount() {
+      if (confirm("⚠️ Delete Account Permanently?\n\nALL data will be erased:\n• Profile & Zeus-PIN\n• Messages & contacts\n• Settings & preferences\n\nThis cannot be undone.")) {
+        if (prompt("Type DELETE to confirm") === "DELETE") {
+          localStorage.clear();
+          alert("🗑️ Account deleted.\nStart fresh at zeustechafrica.com");
+          window.location.href = 'index.html';
+        }
+      }
+    }
+  </script>
+</body>
+</html>

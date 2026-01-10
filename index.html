@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome — ZeusChat</title>
+  <style>
+    .top-nav {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #222;
+    }
+    .logo {
+      height: 32px;
+    }
+    .nav-links {
+      display: flex;
+      gap: 20px;
+    }
+    .nav-links a {
+      color: #aaa;
+      text-decoration: none;
+      font-size: 14px;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover {
+      color: #d4af37;
+    }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    body {
+      background: #000;
+      overflow: hidden;
+      height: 100vh;
+      color: #fff;
+    }
+    .video-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: -1;
+      filter: brightness(1.2); /* Brighten 4K video */
+    }
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      z-index: 0;
+    }
+    .header {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .logo {
+      height: 32px;
+      margin-bottom: 4px;
+    }
+    .byline {
+      font-size: 12px;
+      color: #FFD700;
+      font-weight: 500;
+    }
+    .top-menu {
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      z-index: 2;
+      display: flex;
+      gap: 24px;
+      font-size: 14px;
+      color: #fff;
+    }
+    .menu-item {
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+    .menu-item:hover {
+      color: #FFD700;
+    }
+    .iphone-mockup {
+      position: absolute;
+      top: 50%;
+      right: 24px;
+      transform: translateY(-50%);
+      width: 280px;
+      height: 780px;
+      background: transparent;
+      border-radius: 40px;
+      border: 1px solid rgba(255,215,0,0.2);
+      overflow: hidden;
+      z-index: 2;
+    }
+    .iphone-screen {
+      height: 100%;
+      background: transparent;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+    }
+    .chat-header {
+      font-size: 15px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 12px;
+      text-align: left;
+    }
+    .chat-bubble {
+      margin-bottom: 12px;
+      padding: 10px 14px;
+      border-radius: 18px;
+      font-size: 13px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+    .received {
+      background: rgba(34,34,34,0.85);
+      align-self: flex-start;
+      border-bottom-left-radius: 6px;
+    }
+    .sent {
+      background: rgba(255,215,0,0.85);
+      color: #000;
+      align-self: flex-end;
+      border-bottom-right-radius: 6px;
+      font-weight: 500;
+    }
+    .timestamp {
+      font-size: 11px;
+      color: #999;
+      margin-top: 6px;
+      text-align: right;
+    }
+    .main-content {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 0 24px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    .spin-icon {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -180%) rotateY(0deg) rotateX(20deg) scale(1.8);
+      width: 180px;
+      height: 180px;
+      background: url('zeuschaticon-transparent-3d-spin.png') center/contain no-repeat;
+      opacity: 0.9;
+      animation: spin3d 12s linear infinite;
+      z-index: 3;
+    }
+    @keyframes spin3d {
+      0% { transform: translate(-50%, -180%) rotateY(0deg) rotateX(20deg) scale(1.8); }
+      100% { transform: translate(-50%, -180%) rotateY(360deg) rotateX(20deg) scale(1.8); }
+    }
+    .ghost-mode {
+      font-size: 28px;
+      font-weight: 500;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+    .subtext {
+      font-size: 16px;
+      color: #aaa;
+      margin-bottom: 32px;
+    }
+    .tagline {
+      font-size: 18px;
+      color: #FFD700;
+      margin-bottom: 32px;
+      max-width: 700px;
+      line-height: 1.4;
+    }
+    .btn {
+      background: #FFD700;
+      color: #000;
+      border: none;
+      padding: 14px 48px;
+      font-size: 18px;
+      font-weight: 600;
+      border-radius: 28px;
+      cursor: pointer;
+      margin: 6px;
+      text-decoration: none;
+      transition: transform 0.15s, background 0.15s;
+    }
+    .btn:hover {
+      transform: scale(1.03);
+      background: #FFCC00;
+    }
+  </style>
+</head>
+<body>
+  <div class="top-nav">
+    <img src="zeustech-logo-zeushchat.png" class="logo" alt="ZeusTech">
+    <div class="nav-links">
+      <a href="features.html">Features</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="help.html">Help Center</a>
+      <a href="blog.html">Blog</a>
+      <a href="business.html">For Business</a>
+      <a href="apps.html">Apps</a>
+    </div>
+  </div>
+  <video class="video-bg" autoplay muted loop>
+    <source src="zeustech-background.mp4" type="video/mp4">
+  </video>
+  <div class="overlay"></div>
+
+  <!-- Top-left: Logo + Byline -->
+  <div class="header">
+    <img src="zeustech-logo-zeushchat.png" class="logo" alt="ZeusTech">
+    <div class="byline">ZeusChat by ZeusTech</div>
+  </div>
+
+  <!-- Top-right: Menu (now clickable) -->
+  <div class="top-menu">
+    <a href="features.html" class="menu-item">Features</a>
+    <a href="privacy.html" class="menu-item">Privacy</a>
+    <a href="help.html" class="menu-item">Help Center</a>
+    <a href="blog.html" class="menu-item">Blog</a>
+    <a href="business.html" class="menu-item">For Business</a>
+    <a href="apps.html" class="menu-item">Apps</a>
+  </div>
+
+  <!-- Middle-right: iPhone Mockup -->
+  <div class="iphone-mockup">
+    <div class="iphone-screen">
+      <div class="chat-header">Amina</div>
+      <div class="chat-bubble received">You using ZeusChat?</div>
+      <div class="timestamp">11:54</div>
+      <div class="chat-bubble sent">Yes, it's the best! My phone number is private - I only share it via ZEUS-PIN with people I want to chat with.</div>
+      <div class="timestamp">11:59</div>
+      <div class="chat-bubble received">Oh, I see - so I need to type in your PIN to view your messages?</div>
+      <div class="timestamp">12:01</div>
+      <div class="chat-bubble sent">Exactly! And they self-destruct after 5-30 seconds
+- no saving, no screenshots.</div>
+      <div class="timestamp">12:03</div>
+      <div class="chat-bubble received">Wow! That's secure!</div>
+      <div class="timestamp">12:05</div>
+      <div class="chat-bubble sent">And if I type the wrong PIN?</div>
+      <div class="timestamp">12:07</div>
+      <div class="chat-bubble received">Message, files or even voice notes deletes immediately receiver types I’m a wrong view pin and sender gets a notification of message failed and asked to send again or delete..</div>
+      <div class="timestamp">12:09</div>
+      <div class="chat-bubble sent">ZeusChat is the best in sending private messages and messages and files are projected to ensure only the right user have access to view messages </div>
+      <div class="timestamp">12:10</div>
+      <div class="chat-bubble received">I’m glad you like it..can’t wait to see you chiomi 😘...</div>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <div class="spin-icon"></div>
+    
+    <div class="ghost-mode">GHOST MODE MESSAGING</div>
+    <div class="subtext">Simple. Secure. Reliable.</div>
+
+    <div class="tagline">
+      ZeusChat helps you communicate and chat like the gods — built for Africa by an African.
+    </div>
+
+    <!-- ✅ FIXED: Get Started → registration.html -->
+    <a href="registration.html" class="btn">Get Started</a>
+    <!-- ✅ Correct: Log in → login.html -->
+    <a href="login.html" class="btn">Log in</a>
+  </div>
+</body>
+</html>

@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile — ZeusChat</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    body {
+      background: #0b0b0b;
+      color: #fff;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .container {
+      padding: 20px;
+      flex: 1;
+    }
+    .section {
+      background: #121212;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .section-title {
+      color: #d4af37;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .field {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      border-bottom: 1px solid #222;
+    }
+    .field:last-child {
+      border-bottom: none;
+    }
+    .field-label {
+      font-size: 14px;
+    }
+    .field-value {
+      font-size: 14px;
+      color: #aaa;
+    }
+    .btn {
+      background: #d4af37;
+      color: #000;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 16px;
+      width: 100%;
+    }
+    .back-btn {
+      background: #222;
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-bottom: 16px;
+    }
+    .profile-pic {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: #333;
+      margin: 0 auto 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      color: #FFD700;
+      cursor: pointer;
+      position: relative;
+    }
+    .profile-pic img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    .profile-pic input {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <button class="back-btn" onclick="window.location.href='chat.html'">Back</button>
+    <div class="section">
+      <div class="section-title">Profile</div>
+      <div class="profile-pic" onclick="document.getElementById('profile-pic-input').click()">
+        <img id="profile-pic-preview" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCIgdmlld0JveD0iMCAwIDgwIDgwIj48cmVjdCB3aWR0aD0iODAiIGhlaWdodD0iODAiIGZpbGw9IiMzMzMiLz48Y2lyY2xlIGN4PSI0MCIgY3k9IjQwIiByPSIyMCIgZmlsbD0iI0ZGRkZGRiIvPjxjaXJjbGUgY3g9IjQwIiBjeT0iNDUiIHJhZGl1cz0iNSIgZmlsbD0iIzAwMCIvPjwvc3ZnPg==" />
+        <input type="file" id="profile-pic-input" accept="image/*" onchange="previewImage(event)" style="display:none;">
+      </div>
+      <div class="field" onclick="editField('about')">
+        <div class="field-label">About</div>
+        <div class="field-value" id="about-value">Founder & CEO</div>
+      </div>
+      <div class="field" onclick="editField('name')">
+        <div class="field-label">Name</div>
+        <div class="field-value" id="name-value">O . B . OBEBEDUO MOSES</div>
+      </div>
+      <div class="field" onclick="copyZeusPin()">
+        <div class="field-label">Zeus-PIN</div>
+        <div class="field-value" id="zeus-pin-value">ZT-0000-0000</div>
+      </div>
+      <div class="field" onclick="editField('links')">
+        <div class="field-label">Links</div>
+        <div class="field-value" id="links-value">Add links</div>
+      </div>
+    </div>
+    <button class="btn" onclick="saveProfile()">Save and Continue</button>
+  </div>
+
+  <script>
+    // Load user profile from localStorage
+    window.addEventListener('DOMContentLoaded', () => {
+      const profile = JSON.parse(localStorage.getItem('profile')) || {};
+      const zeusPin = localStorage.getItem('zeus_pin') || 'ZT-0000-0000';
+      
+      if (profile.profilePic) {
+        document.getElementById('profile-pic-preview').src = profile.profilePic;
+      }
+      
+      if (profile.about) document.getElementById('about-value').textContent = profile.about;
+      if (profile.name) document.getElementById('name-value').textContent = profile.name;
+      if (profile.links) document.getElementById('links-value').textContent = profile.links;
+      document.getElementById('zeus-pin-value').textContent = zeusPin;
+    });
+
+    function previewImage(event) {
+      const reader = new FileReader();
+      reader.onload = function() {
+        const output = document.getElementById('profile-pic-preview');
+        output.src = reader.result;
+      };
+      reader.readAsDataURL(event.target.files[0]);
+    }
+
+    function editField(field) {
+      const currentValue = document.getElementById(`${field}-value`).textContent;
+      const newValue = prompt(`Edit ${field}`, currentValue);
+      if (newValue !== null) {
+        document.getElementById(`${field}-value`).textContent = newValue;
+      }
+    }
+
+    function copyZeusPin() {
+      const zeusPin = document.getElementById('zeus-pin-value').textContent;
+      navigator.clipboard.writeText(zeusPin).then(() => {
+        alert(`✅ Zeus-PIN copied: ${zeusPin}`);
+      });
+    }
+
+    function saveProfile() {
+      const name = document.getElementById('name-value').textContent;
+      const about = document.getElementById('about-value').textContent;
+      const links = document.getElementById('links-value').textContent;
+      const profilePic = document.getElementById('profile-pic-preview').src;
+      const profile = { name, about, links, profilePic };
+      localStorage.setItem('profile', JSON.stringify(profile));
+      alert(`✅ Profile saved!\nZeus-PIN: ${localStorage.getItem('zeus_pin')}`);
+      window.location.href = 'password-create.html';
+    }
+  </script>
+</body>
+</html>

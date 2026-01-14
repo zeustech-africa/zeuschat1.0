@@ -80,29 +80,39 @@
 
   <script>
     async function addContact() {
-      const zeusPin = document.getElementById('zeus-pin-input').value;
-      if (!zeusPin) {
-        alert("Please enter Zeus-PIN.");
+      const contactPin = document.getElementById('zeus-pin-input').value.trim();
+      const myPin = localStorage.getItem('my_zeus_pin'); // Set during login/registration
+
+      if (!myPin) {
+        alert("You must be logged in. Please register or log in first.");
+        return;
+      }
+      if (!contactPin) {
+        alert("Please enter a Zeus-PIN.");
         return;
       }
 
       try {
-        const response = await fetch('https://rackle-lenard-hypercatalectic.ngrok-free.dev/add-contact', {
+        const response = await fetch('/add-contact', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ zeus_pin: zeusPin })
+          body: JSON.stringify({
+            user_pin: myPin,
+            contact_pin: contactPin
+          })
         });
 
         const result = await response.json();
 
-        if (response.ok && result.message) {
-          alert(result.message);
+        if (response.ok) {
+          alert(result.message || 'Request sent successfully!');
           window.location.href = 'chat.html';
         } else {
-          alert(result.error || 'Failed to send request.');
+          alert('Error: ' + (result.error || 'Failed to send request.'));
         }
       } catch (error) {
-        alert(`Network error: ${error.message}`);
+        console.error('Fetch error:', error);
+        alert('Network error: Could not reach server. Make sure Flask is running.');
       }
     }
   </script>

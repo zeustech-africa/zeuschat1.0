@@ -8,3 +8,5 @@ zeuschat.db
 zeuschat.db
 *.mp4
 videos/
+backend/.env
+.env

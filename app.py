@@ -2,6 +2,7 @@ import os
 import uuid
 import time
 import sqlite3
+import random
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 
@@ -88,6 +89,7 @@ def register():
             conn.execute("INSERT INTO users (id, zeus_pin, username, public_key, created_at) VALUES (?, ?, ?, ?, ?)",
                         (str(uuid.uuid4()), zeus_pin, email.split('@')[0], "fake-public-key", int(time.time())))
             conn.commit()
+        # ✅ FIXED: Return Zeus-PIN like before
         return jsonify({'zeus_pin': zeus_pin})
     except sqlite3.IntegrityError:
         return jsonify({'error': 'Email already registered'}), 400

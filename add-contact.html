@@ -6,74 +6,119 @@
   <title>Add Contact — ZeusChat</title>
   <style>
     * {
-      box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
     body {
-      background: #0b0b0b;
+      background: #000;
+      overflow: hidden;
+      height: 100vh;
       color: #fff;
+    }
+    .video-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: -1;
+    }
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      z-index: 0;
+    }
+    .header {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .logo {
+      height: 32px;
+      margin-bottom: 4px;
+    }
+    .byline {
+      font-size: 12px;
+      color: #FFD700;
+      font-weight: 500;
+    }
+    .container {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 20px;
       height: 100vh;
       display: flex;
       flex-direction: column;
+      justify-content: center;
+      align-items: center;
     }
-    .container {
-      padding: 20px;
-      flex: 1;
+    .box {
+      background: #222;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 16px 0;
+      width: 100%;
+      max-width: 600px;
+      text-align: left;
     }
-    .section {
-      background: #121212;
-      border-radius: 8px;
-      padding: 16px;
-      margin-bottom: 16px;
-    }
-    .section-title {
-      color: #d4af37;
+    .box-title {
+      font-size: 20px;
       font-weight: 600;
-      margin-bottom: 12px;
-    }
-    .input-group {
       margin-bottom: 16px;
+      color: #fff;
     }
     input {
       width: 100%;
       padding: 12px;
       margin: 8px 0;
-      background: #222;
+      background: #333;
       border: 1px solid #444;
       color: #fff;
       border-radius: 6px;
     }
     .btn {
-      background: #d4af37;
+      background: #FFD700;
       color: #000;
       border: none;
       padding: 12px 24px;
+      font-size: 14px;
+      font-weight: 600;
       border-radius: 6px;
       cursor: pointer;
       margin-top: 16px;
       width: 100%;
-    }
-    .back-btn {
-      background: #222;
-      color: #fff;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      margin-bottom: 16px;
+      max-width: 400px;
     }
   </style>
 </head>
 <body>
+  <video class="video-bg" autoplay muted loop>
+    <source src="zeustech-register.mp4" type="video/mp4">
+  </video>
+  <div class="overlay"></div>
+
+  <!-- Top-left: Logo + Byline -->
+  <div class="header">
+    <img src="zeustech-logo-zeushchat.png" class="logo" alt="ZeusTech">
+    <div class="byline">ZeusChat by ZeusTech</div>
+  </div>
+
   <div class="container">
-    <button class="back-btn" onclick="window.location.href='chat.html'">Back</button>
-    <div class="section">
-      <div class="section-title">Add Contact</div>
-      <div class="input-group">
-        <input type="text" id="zeus-pin-input" placeholder="Enter Zeus-PIN" />
-      </div>
+    <div class="box">
+      <div class="box-title">Add Contact</div>
+      <input type="text" id="zeus-pin-input" placeholder="Enter Zeus-PIN" />
       <button class="btn" onclick="addContact()">Send Request</button>
     </div>
   </div>
@@ -81,7 +126,7 @@
   <script>
     async function addContact() {
       const contactPin = document.getElementById('zeus-pin-input').value.trim();
-      const myPin = localStorage.getItem('my_zeus_pin'); // Set during login/registration
+      const myPin = localStorage.getItem('my_zeus_pin');
 
       if (!myPin) {
         alert("You must be logged in. Please register or log in first.");
@@ -93,12 +138,12 @@
       }
 
       try {
-        const response = await fetch('/add-contact', {
+        const response = await fetch('/api/contact-request', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            user_pin: myPin,
-            contact_pin: contactPin
+            zeus_pin: contactPin,
+            requester_id: myPin
           })
         });
 

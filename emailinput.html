@@ -133,26 +133,47 @@
       <div class="input-group">
         <input type="email" id="email" placeholder="you@email.com" />
       </div>
-      <button class="btn" onclick="sendOTP()">Next</button>
+      <button class="btn" onclick="registerUser()">Next</button>
       <div class="note">
-        We'll send a one-time password (OTP) to your email.<br>
-        You'll need this to create your account.
+        We'll create your account and send a confirmation.<br>
+        You'll get a unique Zeus-PIN for secure messaging.
       </div>
     </div>
   </div>
 
   <script>
-    function sendOTP() {
+    async function registerUser() {
       const email = document.getElementById('email').value;
       if (!email) {
         alert("Please enter your email.");
         return;
       }
 
-      // Simulate OTP sent (for testing)
-      alert(`OTP sent to ${email}\n(For testing: OTP = 123456)`);
-      localStorage.setItem('email', email);
-      window.location.href = 'otp-verify.html';
+      // Set a temporary password (will be changed later)
+      const password = "temp123456";
+
+      try {
+        const response = await fetch('/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.zeus_pin) {
+          // Save real Zeus-PIN from backend
+          localStorage.setItem('my_zeus_pin', result.zeus_pin);
+          localStorage.setItem('email', email);
+          alert(`✅ Account created!\nYour Zeus-PIN: ${result.zeus_pin}\n(For testing: OTP = 123456)`);
+          window.location.href = 'otp-verify.html';
+        } else {
+          alert(result.error || 'Registration failed.');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert(`Network error: ${error.message}`);
+      }
     }
   </script>
 </body>

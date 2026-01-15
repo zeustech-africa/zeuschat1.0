@@ -131,7 +131,6 @@
   </video>
   <div class="overlay"></div>
 
-  <!-- Top-left: Logo + Byline -->
   <div class="header">
     <img src="zeustech-logo-zeushchat.png" class="logo" alt="ZeusTech">
     <div class="byline">ZeusChat by ZeusTech</div>
@@ -150,37 +149,34 @@
       </div>
 
       <div class="input-group">
-        <input type="text" id="name" placeholder="Your full name" value="O . B . OBEBEDUO MOSES" />
+        <input type="text" id="name" placeholder="Your full name" />
       </div>
       <div class="input-group">
-        <input type="text" id="about" placeholder="About you" value="Founder & CEO — ZEUSTECH | Architect of the Future" />
+        <input type="text" id="about" placeholder="About you" />
       </div>
 
-      <button class="btn" onclick="location.href='password-create.html'">Save <button class="btn" onclick="saveProfile()">Save & Continue</button> Continue</button>
+      <button class="btn" onclick="saveProfile()">Save & Continue</button>
     </div>
   </div>
 
   <script>
-    // Generate Zeus-PIN on load
     window.addEventListener('DOMContentLoaded', () => {
-      const part1 = Math.floor(Math.random() * 9000) + 1000;
-      const part2 = Math.floor(Math.random() * 9000) + 1000;
-      const zeusPin = `ZT-${part1}-${part2}`;
+      const zeusPin = localStorage.getItem('my_zeus_pin') || 'ZT-XXXX-XXXX';
       document.getElementById('zeus-pin-display').textContent = zeusPin;
-      localStorage.setItem('zeus_pin', zeusPin);
     });
 
     function saveProfile() {
       const name = document.getElementById('name').value;
       const about = document.getElementById('about').value;
+      const zeusPin = localStorage.getItem('my_zeus_pin');
 
       if (!name) {
         alert("Please enter your name.");
         return;
       }
 
-      localStorage.setItem('profile', JSON.stringify({ name, about }));
-      alert("✅ Profile saved!\nYour Zeus-PIN: " + localStorage.getItem('zeus_pin'));
+      // In real app, you'd POST to /update-profile
+      alert(`✅ Profile saved!\nYour Zeus-PIN: ${zeusPin}`);
       window.location.href = 'password-create.html';
     }
   </script>

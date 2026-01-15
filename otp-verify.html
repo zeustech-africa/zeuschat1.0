@@ -84,47 +84,6 @@
       color: #aaa;
       margin-bottom: 16px;
     }
-    .otp-input {
-      display: flex;
-      justify-content: center;
-      gap: 8px;
-      margin: 16px 0;
-    }
-    .otp-digit {
-      width: 40px;
-      height: 40px;
-      background: #333;
-      border: 1px solid #444;
-      color: #fff;
-      border-radius: 6px;
-      text-align: center;
-      font-size: 18px;
-      font-weight: 600;
-      outline: none;
-    }
-    .step {
-      display: flex;
-      margin-bottom: 12px;
-      align-items: flex-start;
-    }
-    .step-number {
-      width: 24px;
-      height: 24px;
-      background: #FFD700;
-      color: #000;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 14px;
-      font-weight: 600;
-      margin-right: 12px;
-    }
-    .step-text {
-      font-size: 14px;
-      line-height: 1.4;
-      color: #fff;
-    }
     .btn {
       background: #FFD700;
       color: #000;
@@ -138,18 +97,6 @@
       width: 100%;
       max-width: 400px;
     }
-    .link {
-      color: #FFD700;
-      text-decoration: underline;
-      margin-top: 16px;
-      font-size: 14px;
-    }
-    .footer {
-      margin-top: 32px;
-      font-size: 12px;
-      color: #aaa;
-      text-align: center;
-    }
   </style>
 </head>
 <body>
@@ -158,103 +105,30 @@
   </video>
   <div class="overlay"></div>
 
-  <!-- Top-left: Logo + Byline -->
   <div class="header">
     <img src="zeustech-logo-zeushchat.png" class="logo" alt="ZeusTech">
     <div class="byline">ZeusChat by ZeusTech</div>
   </div>
 
   <div class="container">
-    <!-- Box: Enter OTP Code -->
     <div class="box">
-      <div class="box-title">Enter code on phone</div>
-      <div class="subtext">Linking ZeusChat account <span id="account-phone">+27 75 023 6453</span> (<a href="otp.html" style="color:#FFD700;text-decoration:underline;">edit</a>)</div>
-      <div class="otp-input">
-        <input class="otp-digit" maxlength="1">
-        <input class="otp-digit" maxlength="1">
-        <input class="otp-digit" maxlength="1">
-        <input class="otp-digit" maxlength="1">
-        <input class="otp-digit" maxlength="1">
-        <input class="otp-digit" maxlength="1">
-      </div>
-      <div class="step">
-        <div class="step-number">1</div>
-        <div class="step-text">Open ZeusChat on your phone</div>
-      </div>
-      <div class="step">
-        <div class="step-number">2</div>
-        <div class="step-text">On Android tap Menu • On iPhone tap Settings</div>
-      </div>
-      <div class="step">
-        <div class="step-number">3</div>
-        <div class="step-text">Tap Linked devices, then Link device</div>
-      </div>
-      <div class="step">
-        <div class="step-number">4</div>
-        <div class="step-text">Enter this 6-digit code</div>
-      </div>
-      <button class="btn" onclick="location.href='profile-create.html'">Verify</button>
-      <a href="otp.html" class="link">← Back</a>
-    </div>
-
-    <!-- Footer -->
-    <div class="footer">
-      Don't have a ZeusChat account? <a href="index.html" class="link">Get started</a><br>
-      Your personal messages are end-to-end encrypted<br>
-      Terms & Privacy Policy
+      <div class="box-title">Enter OTP Code</div>
+      <div class="subtext">For testing, use OTP: <strong>123456</strong></div>
+      <input type="text" id="otp" placeholder="123456" style="width:100%;padding:12px;margin:8px 0;background:#333;border:1px solid #444;color:#fff;border-radius:6px;" />
+      <button class="btn" onclick="verifyOTP()">Verify</button>
     </div>
   </div>
 
   <script>
-    // Auto-focus & auto-advance OTP fields
-    document.querySelectorAll('.otp-digit').forEach((input, index) => {
-      input.addEventListener('input', () => {
-        if (input.value && index < 5) {
-          document.querySelectorAll('.otp-digit')[index + 1].focus();
-        }
-      });
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Backspace' && !input.value && index > 0) {
-          document.querySelectorAll('.otp-digit')[index - 1].focus();
-        }
-      });
-    });
-
     function verifyOTP() {
-      const emailOrPhone = localStorage.getItem('email_or_phone');
-      const otp = Array.from(document.querySelectorAll('.otp-digit')).map(el => el.value).join('');
-      if (!otp || otp.length !== 6) {
-        alert("Please enter 6-digit OTP.");
-        return;
+      const otp = document.getElementById('otp').value;
+      if (otp === '123456') {
+        alert('✅ OTP verified!');
+        window.location.href = 'profile-create.html';
+      } else {
+        alert('Invalid OTP. Use 123456 for testing.');
       }
-
-      fetch('https://rackle-lenard-hypercatalectic.ngrok-free.dev/verify-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email_or_phone: emailOrPhone, otp: otp })
-      })
-      .then(response => response.json())
-      .then(result => {
-        if (result.message) {
-          localStorage.setItem('zeus_pin', result.zeus_pin);
-          alert(`✅ Verified! Your Zeus-PIN: ${result.zeus_pin}`);
-          window.location.href = 'profile-create.html';
-        } else {
-          alert(result.error || 'Invalid OTP.');
-        }
-      })
-      .catch(error => {
-        alert(`Network error: ${error.message}`);
-      });
     }
-
-    // Update account phone from localStorage
-    window.addEventListener('DOMContentLoaded', () => {
-      const savedEmailOrPhone = localStorage.getItem('email_or_phone');
-      if (savedEmailOrPhone) {
-        document.getElementById('account-phone').textContent = savedEmailOrPhone;
-      }
-    });
   </script>
 </body>
 </html>

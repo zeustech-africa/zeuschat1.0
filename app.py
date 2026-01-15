@@ -1,5 +1,5 @@
 import os
-import random
+import uuid
 import time
 import sqlite3
 from flask import Flask, request, jsonify, send_from_directory
@@ -8,36 +8,58 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
 
+# Use persistent disk for database
+DATABASE_PATH = os.path.join('data', 'zeuschat.db')
+
+def get_db():
+    conn = sqlite3.connect(DATABASE_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
 def init_db():
-    conn = sqlite3.connect('zeuschat.db')
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        email TEXT UNIQUE NOT NULL,
-        zeus_pin TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        name TEXT,
-        about TEXT,
-        profile_pic TEXT
-    )''')
-    c.execute('''CREATE TABLE IF NOT EXISTS contacts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_pin TEXT NOT NULL,
-        contact_pin TEXT NOT NULL,
-        status TEXT DEFAULT 'pending',
-        created_at INTEGER NOT NULL
-    )''')
-    c.execute('''CREATE TABLE IF NOT EXISTS messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        from_pin TEXT NOT NULL,
-        to_pin TEXT NOT NULL,
-        content TEXT NOT NULL,
-        ttl_seconds INTEGER NOT NULL,
-        sent_at INTEGER NOT NULL,
-        viewed BOOLEAN DEFAULT 0
-    )''')
-    conn.commit()
-    conn.close()
+    with get_db() as conn:
+        conn.executescript("""
+        CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            zeus_pin TEXT UNIQUE NOT NULL,
+            username TEXT NOT NULL,
+            public_key TEXT NOT NULL,
+            created_at INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_zeus_pin ON users(zeus_pin);
+        
+        CREATE TABLE IF NOT EXISTS contact_requests (
+            id TEXT PRIMARY KEY,
+            sender_id TEXT NOT NULL,
+            receiver_id TEXT NOT NULL,
+            status TEXT CHECK(status IN ('pending', 'accepted', 'rejected')) DEFAULT 'pending',
+            created_at INTEGER NOT NULL,
+            FOREIGN KEY(sender_id) REFERENCES users(id),
+            FOREIGN KEY(receiver_id) REFERENCES users(id),
+            UNIQUE(sender_id, receiver_id)
+        );
+        
+        CREATE TABLE IF NOT EXISTS contacts (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            contact_user_id TEXT NOT NULL,
+            created_at INTEGER NOT NULL,
+            FOREIGN KEY(user_id) REFERENCES users(id),
+            FOREIGN KEY(contact_user_id) REFERENCES users(id),
+            UNIQUE(user_id, contact_user_id)
+        );
+        
+        CREATE TABLE IF NOT EXISTS messages (
+            id TEXT PRIMARY KEY,
+            sender_id TEXT NOT NULL,
+            receiver_id TEXT NOT NULL,
+            encrypted_payload TEXT NOT NULL,
+            created_at INTEGER NOT NULL,
+            FOREIGN KEY(sender_id) REFERENCES users(id),
+            FOREIGN KEY(receiver_id) REFERENCES users(id)
+        );
+        """)
+        conn.commit()
 
 init_db()
 
@@ -62,12 +84,10 @@ def register():
 
     zeus_pin = f"ZT-{random.randint(1000,9999)}-{random.randint(1000,9999)}"
     try:
-        conn = sqlite3.connect('zeuschat.db')
-        c = conn.cursor()
-        c.execute("INSERT INTO users (email, zeus_pin, password) VALUES (?, ?, ?)",
-                  (email, zeus_pin, password))
-        conn.commit()
-        conn.close()
+        with get_db() as conn:
+            conn.execute("INSERT INTO users (id, zeus_pin, username, public_key, created_at) VALUES (?, ?, ?, ?, ?)",
+                        (str(uuid.uuid4()), zeus_pin, email.split('@')[0], "fake-public-key", int(time.time())))
+            conn.commit()
         return jsonify({'zeus_pin': zeus_pin})
     except sqlite3.IntegrityError:
         return jsonify({'error': 'Email already registered'}), 400
@@ -80,176 +100,99 @@ def login():
     if not zeus_pin or not password:
         return jsonify({'error': 'Zeus-PIN and password required'}), 400
 
-    conn = sqlite3.connect('zeuschat.db')
-    c = conn.cursor()
-    c.execute("SELECT 1 FROM users WHERE zeus_pin = ? AND password = ?", (zeus_pin, password))
-    if c.fetchone():
-        conn.close()
-        return jsonify({'success': True})
+    with get_db() as conn:
+        user = conn.execute("SELECT id FROM users WHERE zeus_pin = ? AND username = ?", (zeus_pin, password)).fetchone()
+    if user:
+        return jsonify({'success': True, 'user_id': user['id']})
     else:
-        conn.close()
         return jsonify({'error': 'Invalid credentials'}), 401
 
-@app.route('/add-contact', methods=['POST'])
-def add_contact():
+@app.route('/api/contact-request', methods=['POST'])
+def create_contact_request():
     data = request.json
-    user_pin = data.get('user_pin')
-    contact_pin = data.get('contact_pin')
-    if not user_pin or not contact_pin:
-        return jsonify({'error': 'Your Zeus-PIN and contact Zeus-PIN required'}), 400
+    target_pin = data.get('zeus_pin')
+    requester_id = data.get('requester_id')
+    
+    if not requester_id or not target_pin:
+        return jsonify({'error': 'Missing fields'}), 400
 
-    conn = sqlite3.connect('zeuschat.db')
-    c = conn.cursor()
-    c.execute("SELECT 1 FROM users WHERE zeus_pin = ?", (contact_pin,))
-    if not c.fetchone():
-        conn.close()
-        return jsonify({'error': 'Contact not found'}), 404
+    with get_db() as conn:
+        target = conn.execute("SELECT id FROM users WHERE zeus_pin = ?", (target_pin,)).fetchone()
+        if not target:
+            return jsonify({'error': 'Contact not found'}), 404
 
-    c.execute("SELECT status FROM contacts WHERE (user_pin = ? AND contact_pin = ?) OR (user_pin = ? AND contact_pin = ?)",
-              (user_pin, contact_pin, contact_pin, user_pin))
-    result = c.fetchone()
-    if result:
-        conn.close()
-        return jsonify({'message': 'Request already sent or connected'})
+        target_id = target['id']
+        if requester_id == target_id:
+            return jsonify({'error': 'Cannot send request to yourself'}), 400
 
-    c.execute("INSERT INTO contacts (user_pin, contact_pin, status, created_at) VALUES (?, ?, 'pending', ?)",
-              (user_pin, contact_pin, int(time.time())))
-    conn.commit()
-    conn.close()
+        existing = conn.execute("""
+            SELECT status FROM contact_requests 
+            WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)
+        """, (requester_id, target_id, target_id, requester_id)).fetchone()
+
+        if existing:
+            if existing['status'] == 'accepted':
+                return jsonify({'message': 'Already connected'}), 200
+            elif existing['status'] == 'pending':
+                return jsonify({'message': 'Request already pending'}), 200
+
+        conn.execute("""
+            INSERT INTO contact_requests (id, sender_id, receiver_id, created_at)
+            VALUES (?, ?, ?, ?)
+        """, (str(uuid.uuid4()), requester_id, target_id, int(time.time())))
+        conn.commit()
+
     return jsonify({'message': 'Connection request sent'})
 
-@app.route('/get-requests', methods=['GET'])
-def get_requests():
-    user_pin = request.args.get('user_pin')
-    if not user_pin:
-        return jsonify({'error': 'Zeus-PIN required'}), 400
-
-    conn = sqlite3.connect('zeuschat.db')
-    c = conn.cursor()
-    c.execute("""
-        SELECT u.name, c.user_pin 
-        FROM contacts c
-        JOIN users u ON c.user_pin = u.zeus_pin
-        WHERE c.contact_pin = ? AND c.status = 'pending'
-    """, (user_pin,))
-    requests = [{'name': row[0] or 'User', 'zeus_pin': row[1]} for row in c.fetchall()]
-    conn.close()
-    return jsonify({'requests': requests})
-
-@app.route('/accept-contact', methods=['POST'])
-def accept_contact():
+@app.route('/api/contact-request/<req_id>/accept', methods=['POST'])
+def accept_contact_request(req_id):
     data = request.json
-    user_pin = data.get('user_pin')
-    contact_pin = data.get('contact_pin')
-    if not user_pin or not contact_pin:
-        return jsonify({'error': 'Zeus-PINs required'}), 400
+    acceptor_id = data.get('acceptor_id')
+    
+    with get_db() as conn:
+        req = conn.execute("""
+            SELECT sender_id, receiver_id, status 
+            FROM contact_requests 
+            WHERE id = ?
+        """, (req_id,)).fetchone()
+        
+        if not req or req['status'] != 'pending' or acceptor_id != req['receiver_id']:
+            return jsonify({'error': 'Invalid request'}), 400
 
-    conn = sqlite3.connect('zeuschat.db')
-    c = conn.cursor()
-    c.execute("""
-        UPDATE contacts 
-        SET status = 'accepted' 
-        WHERE (user_pin = ? AND contact_pin = ?) OR (user_pin = ? AND contact_pin = ?)
-    """, (user_pin, contact_pin, contact_pin, user_pin))
-    conn.commit()
-    conn.close()
+        conn.execute("UPDATE contact_requests SET status = 'accepted' WHERE id = ?", (req_id,))
+        conn.execute("""
+            INSERT INTO contacts (id, user_id, contact_user_id, created_at)
+            VALUES (?, ?, ?, ?)
+        """, (str(uuid.uuid4()), req['sender_id'], acceptor_id, int(time.time())))
+        conn.execute("""
+            INSERT INTO contacts (id, user_id, contact_user_id, created_at)
+            VALUES (?, ?, ?, ?)
+        """, (str(uuid.uuid4()), acceptor_id, req['sender_id'], int(time.time())))
+        conn.commit()
+
     return jsonify({'message': 'Contact accepted'})
 
-@app.route('/get-contacts', methods=['GET'])
-def get_contacts():
-    user_pin = request.args.get('user_pin')
-    if not user_pin:
-        return jsonify({'error': 'Zeus-PIN required'}), 400
-
-    conn = sqlite3.connect('zeuschat.db')
-    c = conn.cursor()
-    c.execute("""
-        SELECT u.name, u.zeus_pin
-        FROM contacts c
-        JOIN users u ON 
-            (c.user_pin = u.zeus_pin AND c.contact_pin = ?) OR 
-            (c.contact_pin = u.zeus_pin AND c.user_pin = ?)
-        WHERE c.status = 'accepted'
-    """, (user_pin, user_pin))
-    contacts = [{'name': row[0] or 'User', 'zeus_pin': row[1]} for row in c.fetchall()]
-    conn.close()
-    return jsonify({'contacts': contacts})
+def verify_contact(sender_id, receiver_id):
+    with get_db() as conn:
+        return conn.execute("""
+            SELECT 1 FROM contacts 
+            WHERE user_id = ? AND contact_user_id = ?
+        """, (sender_id, receiver_id)).fetchone() is not None
 
 @app.route('/send-message', methods=['POST'])
 def send_message():
     data = request.json
-    from_pin = data.get('from_pin')
-    to_pin = data.get('to_pin')
+    from_id = data.get('from_id')
+    to_id = data.get('to_id')
     content = data.get('content')
-    ttl = data.get('ttl_seconds', 30)
-    if not from_pin or not to_pin or not content:
-        return jsonify({'error': 'From, to, and content required'}), 400
+    
+    if not all([from_id, to_id, content]):
+        return jsonify({'error': 'Missing fields'}), 400
+        
+    if not verify_contact(from_id, to_id):
+        return jsonify({'error': 'You must accept the contact request before messaging.'}), 403
 
-    conn = sqlite3.connect('zeuschat.db')
-    c = conn.cursor()
-    c.execute("""
-        SELECT 1 FROM contacts 
-        WHERE ((user_pin = ? AND contact_pin = ?) OR (user_pin = ? AND contact_pin = ?)) 
-        AND status = 'accepted'
-    """, (from_pin, to_pin, to_pin, from_pin))
-    if not c.fetchone():
-        conn.close()
-        return jsonify({'error': 'Not connected — send request first'}), 403
-
-    c.execute("INSERT INTO messages (from_pin, to_pin, content, ttl_seconds, sent_at) VALUES (?, ?, ?, ?, ?)",
-              (from_pin, to_pin, content, ttl, int(time.time())))
-    conn.commit()
-    conn.close()
     return jsonify({'message': 'Sent'})
-
-@app.route('/get-messages', methods=['GET'])
-def get_messages():
-    user_pin = request.args.get('user_pin')
-    if not user_pin:
-        return jsonify({'error': 'Zeus-PIN required'}), 400
-
-    conn = sqlite3.connect('zeuschat.db')
-    c = conn.cursor()
-    now = int(time.time())
-    c.execute("""
-        SELECT m.id, m.from_pin, m.content, m.ttl_seconds, m.sent_at, u.name
-        FROM messages m
-        JOIN users u ON m.from_pin = u.zeus_pin
-        WHERE m.to_pin = ? AND m.viewed = 0
-        ORDER BY m.sent_at ASC
-    """, (user_pin,))
-    messages = []
-    for row in c.fetchall():
-        msg_id, from_pin, content, ttl, sent_at, name = row
-        expires_at = sent_at + ttl
-        if now > expires_at:
-            c.execute("DELETE FROM messages WHERE id = ?", (msg_id,))
-        else:
-            messages.append({
-                'id': msg_id,
-                'from_pin': from_pin,
-                'name': name or 'User',
-                'content': content,
-                'ttl_seconds': ttl,
-                'sent_at': sent_at
-            })
-    conn.commit()
-    conn.close()
-    return jsonify({'messages': messages})
-
-@app.route('/mark-viewed', methods=['POST'])
-def mark_viewed():
-    data = request.json
-    msg_id = data.get('id')
-    if not msg_id:
-        return jsonify({'error': 'Message ID required'}), 400
-
-    conn = sqlite3.connect('zeuschat.db')
-    c = conn.cursor()
-    c.execute("UPDATE messages SET viewed = 1 WHERE id = ?", (msg_id,))
-    conn.commit()
-    conn.close()
-    return jsonify({'message': 'Marked viewed'})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

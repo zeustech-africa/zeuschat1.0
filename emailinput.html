@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Enter Email — ZeusChat</title>
+
   <style>
     * {
       margin: 0;
@@ -11,12 +12,14 @@
       box-sizing: border-box;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
+
     body {
       background: #000;
       overflow: hidden;
       height: 100vh;
       color: #fff;
     }
+
     .video-bg {
       position: fixed;
       top: 0;
@@ -26,15 +29,17 @@
       object-fit: cover;
       z-index: -1;
     }
+
     .overlay {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0,0,0,0.6);
+      background: rgba(0, 0, 0, 0.6);
       z-index: 0;
     }
+
     .header {
       position: absolute;
       top: 24px;
@@ -44,15 +49,18 @@
       flex-direction: column;
       align-items: flex-start;
     }
+
     .logo {
       height: 32px;
       margin-bottom: 4px;
     }
+
     .byline {
       font-size: 12px;
       color: #FFD700;
       font-weight: 500;
     }
+
     .container {
       position: relative;
       z-index: 1;
@@ -60,37 +68,38 @@
       padding: 20px;
       height: 100vh;
       display: flex;
-      flex-direction: column;
       justify-content: center;
       align-items: center;
     }
+
     .box {
       background: #222;
       border-radius: 12px;
       padding: 24px;
-      margin: 16px 0;
       width: 100%;
       max-width: 600px;
       text-align: left;
     }
+
     .box-title {
       font-size: 20px;
       font-weight: 600;
       margin-bottom: 16px;
-      color: #fff;
     }
+
     .input-group {
       margin-bottom: 16px;
     }
+
     input {
       width: 100%;
       padding: 12px;
-      margin: 8px 0;
       background: #333;
       border: 1px solid #444;
       color: #fff;
       border-radius: 6px;
     }
+
     .btn {
       background: #FFD700;
       color: #000;
@@ -104,76 +113,84 @@
       width: 100%;
       max-width: 400px;
     }
+
     .note {
       background: #1a1a1a;
       border-left: 4px solid #d4af37;
       padding: 12px;
       margin-top: 16px;
       font-size: 13px;
-      text-align: left;
       line-height: 1.5;
     }
   </style>
 </head>
+
 <body>
   <video class="video-bg" autoplay muted loop>
-    <source src="zeustech-register.mp4" type="video/mp4">
+    <source src="zeustech-register.mp4" type="video/mp4" />
   </video>
+
   <div class="overlay"></div>
 
-  <!-- Top-left: Logo + Byline -->
   <div class="header">
-    <img src="zeustech-logo-zeushchat.png" class="logo" alt="ZeusTech">
+    <img src="zeustech-logo-zeushchat.png" class="logo" alt="ZeusTech" />
     <div class="byline">ZeusChat by ZeusTech</div>
   </div>
 
   <div class="container">
     <div class="box">
       <div class="box-title">Enter your email</div>
+
       <div class="input-group">
         <input type="email" id="email" placeholder="you@email.com" />
       </div>
-      <button class="btn" onclick="registerUser()">Next</button>
+
+      <button class="btn" id="nextBtn" onclick="saveEmail()">Next</button>
+
       <div class="note">
-        We'll create your account and send a confirmation.<br>
+        We'll create your account and send a confirmation.<br />
         You'll get a unique Zeus-PIN for secure messaging.
       </div>
     </div>
   </div>
 
   <script>
-    async function registerUser() {
-      const email = document.getElementById('email').value;
+    document.getElementById("email").addEventListener("keypress", function (e) {
+      if (e.key === "Enter") saveEmail();
+    });
+
+    function saveEmail() {
+      const emailInput = document.getElementById("email");
+      const nextBtn = document.getElementById("nextBtn");
+
+      if (nextBtn.disabled) return;
+
+      nextBtn.disabled = true;
+      nextBtn.textContent = "Processing...";
+
+      let email = emailInput.value.trim().toLowerCase();
+
       if (!email) {
         alert("Please enter your email.");
+        nextBtn.disabled = false;
+        nextBtn.textContent = "Next";
         return;
       }
 
-      // Set a temporary password (will be changed later)
-      const password = "temp123456";
+      const emailRegex =
+        /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
 
-      try {
-        const response = await fetch('/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
-        });
-
-        const result = await response.json();
-
-        if (response.ok && result.zeus_pin) {
-          // Save real Zeus-PIN from backend
-          localStorage.setItem('my_zeus_pin', result.zeus_pin);
-          localStorage.setItem('email', email);
-          alert(`✅ Account created!\nYour Zeus-PIN: ${result.zeus_pin}\n(For testing: OTP = 123456)`);
-          window.location.href = 'otp-verify.html';
-        } else {
-          alert(result.error || 'Registration failed.');
-        }
-      } catch (error) {
-        console.error('Error:', error);
-        alert(`Network error: ${error.message}`);
+      if (!emailRegex.test(email)) {
+        alert("Please enter a valid email address.");
+        nextBtn.disabled = false;
+        nextBtn.textContent = "Next";
+        return;
       }
+
+      localStorage.setItem("pending_email", email);
+
+      // otp-verify.html MUST validate pending_email exists to enforce step-locked flow
+      window.location.href = "otp-verify.html";
     }
   </script>
 </body>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OTP — ZeusChat</title>
+  <title>Verify OTP — ZeusChat</title>
   <style>
     * {
       margin: 0;
@@ -76,13 +76,20 @@
     .box-title {
       font-size: 20px;
       font-weight: 600;
-      margin-bottom: 8px;
+      margin-bottom: 16px;
       color: #fff;
     }
-    .subtext {
-      font-size: 14px;
-      color: #aaa;
+    .input-group {
       margin-bottom: 16px;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      background: #333;
+      border: 1px solid #444;
+      color: #fff;
+      border-radius: 6px;
     }
     .btn {
       background: #FFD700;
@@ -97,6 +104,15 @@
       width: 100%;
       max-width: 400px;
     }
+    .note {
+      background: #1a1a1a;
+      border-left: 4px solid #d4af37;
+      padding: 12px;
+      margin-top: 16px;
+      font-size: 13px;
+      text-align: left;
+      line-height: 1.5;
+    }
   </style>
 </head>
 <body>
@@ -105,6 +121,7 @@
   </video>
   <div class="overlay"></div>
 
+  <!-- Top-left: Logo + Byline -->
   <div class="header">
     <img src="zeustech-logo-zeushchat.png" class="logo" alt="ZeusTech">
     <div class="byline">ZeusChat by ZeusTech</div>
@@ -113,20 +130,54 @@
   <div class="container">
     <div class="box">
       <div class="box-title">Enter OTP Code</div>
-      <div class="subtext">For testing, use OTP: <strong>123456</strong></div>
-      <input type="text" id="otp" placeholder="123456" style="width:100%;padding:12px;margin:8px 0;background:#333;border:1px solid #444;color:#fff;border-radius:6px;" />
-      <button class="btn" onclick="verifyOTP()">Verify</button>
+      <div class="input-group">
+        <input type="text" id="otp" placeholder="Enter 6-digit code" maxlength="6" />
+      </div>
+      <button class="btn" id="verifyBtn" onclick="verifyOTP()">Verify</button>
+      <div class="note">
+        We sent a verification code to your email.<br>
+        Enter it here to continue.
+      </div>
     </div>
   </div>
 
   <script>
+    // Enforce step-locked flow
+    if (!localStorage.getItem('pending_email')) {
+      alert('Session expired. Please start over.');
+      window.location.href = 'emailinput.html';
+    }
+
+    document.getElementById('otp').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        verifyOTP();
+      }
+    });
+
     function verifyOTP() {
-      const otp = document.getElementById('otp').value;
+      const otpInput = document.getElementById('otp');
+      const verifyBtn = document.getElementById('verifyBtn');
+
+      if (verifyBtn.disabled) return;
+      verifyBtn.disabled = true;
+      verifyBtn.textContent = 'Verifying...';
+
+      const otp = otpInput.value.trim();
+
+      if (!otp || otp.length !== 6) {
+        alert('Please enter a 6-digit OTP code.');
+        verifyBtn.disabled = false;
+        verifyBtn.textContent = 'Verify';
+        return;
+      }
+
+      // For ZeusChat 1.0, OTP is always 123456 (as per spec)
       if (otp === '123456') {
-        alert('✅ OTP verified!');
-        window.location.href = 'profile-create.html';
+        window.location.href = 'password-create.html';
       } else {
-        alert('Invalid OTP. Use 123456 for testing.');
+        alert('Invalid OTP code. Please try again.');
+        verifyBtn.disabled = false;
+        verifyBtn.textContent = 'Verify';
       }
     }
   </script>

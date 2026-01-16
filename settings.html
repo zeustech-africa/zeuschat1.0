@@ -197,6 +197,11 @@
   </div>
 
   <script>
+    // Authentication guard - added per requirements
+    if (!localStorage.getItem('auth_token')) {
+      window.location.href = 'login.html';
+    }
+
     // Load saved settings on page load
     window.addEventListener('DOMContentLoaded', () => {
       const settings = JSON.parse(localStorage.getItem('settings')) || {};
@@ -223,18 +228,50 @@
 
     function logout() {
       if (confirm("🔐 Log Out\n\n• Session ends\n• Status set to offline\n• All data (profile, contacts, chats, settings) is preserved\n\nLog back in anytime with Zeus-PIN + password.")) {
+        // Clear session but keep account
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user_id');
         localStorage.removeItem('currentSession');
         alert("✅ Logged out.\nYour data is safe.");
         window.location.href = 'login.html';
       }
     }
 
-    function deleteAccount() {
+    async function deleteAccount() {
       if (confirm("⚠️ Delete Account Permanently?\n\nALL data will be erased:\n• Profile & Zeus-PIN\n• Messages & contacts\n• Settings & preferences\n\nThis cannot be undone.")) {
         if (prompt("Type DELETE to confirm") === "DELETE") {
-          localStorage.clear();
-          alert("🗑️ Account deleted.\nStart fresh at zeustechafrica.com");
-          window.location.href = 'index.html';
+          const authToken = localStorage.getItem('auth_token');
+          if (!authToken) {
+            alert('Authentication required.');
+            return;
+          }
+
+          try {
+            // Call backend delete endpoint (if exists)
+            const response = await fetch('/api/delete-account', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+              }
+            });
+
+            // Clear local data regardless of backend response
+            localStorage.clear();
+            
+            if (response.ok) {
+              alert("🗑️ Account deleted permanently.");
+            } else {
+              alert("⚠️ Local data cleared. Backend delete may require manual admin action.");
+            }
+            
+            window.location.href = 'index.html';
+          } catch (error) {
+            console.error('Delete error:', error);
+            localStorage.clear();
+            alert("🗑️ Local data cleared. Backend delete may require manual admin action.");
+            window.location.href = 'index.html';
+          }
         }
       }
     }

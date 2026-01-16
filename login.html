@@ -153,23 +153,40 @@
   </div>
 
   <script>
-    function login() {
-      const zeusPIN = document.getElementById('zeus-pin').value;
+    async function login() {
+      const zeusPIN = document.getElementById('zeus-pin').value.trim();
       const password = document.getElementById('password').value;
-      
+
       if (!zeusPIN || !password) {
         alert("Please enter Zeus-PIN and password.");
         return;
       }
 
-      // Simulate login (in real app: verify with backend)
-      const savedProfile = JSON.parse(localStorage.getItem('profile'));
-      if (savedProfile && localStorage.getItem('zeus_pin') === zeusPIN) {
-        localStorage.setItem('currentSession', 'active');
-        alert(`✅ Welcome back, ${savedProfile.name}!\nYour chats, contacts, and settings are restored.`);
-        window.location.href = 'chat.html';
-      } else {
-        alert("❌ Invalid Zeus-PIN or password.\nPlease try again or create a new account.");
+      try {
+        // Call real backend /login
+        const response = await fetch('/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ zeus_pin: zeusPIN, password: password })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.token && result.user_id) {
+          // Save real session data
+          localStorage.setItem('my_zeus_pin', zeusPIN);
+          localStorage.setItem('user_id', result.user_id);
+          localStorage.setItem('auth_token', result.token);
+          localStorage.setItem('currentSession', 'active');
+
+          alert(`✅ Welcome back!\nYour chats, contacts, and settings are restored.`);
+          window.location.href = 'chat.html';
+        } else {
+          alert("❌ Invalid Zeus-PIN or password.\nPlease try again or create a new account.");
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        alert("Network error. Please try again.");
       }
     }
   </script>

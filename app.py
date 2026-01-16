@@ -1,5 +1,5 @@
-import os
 import re
+import os
 import uuid
 import time
 import sqlite3
@@ -19,7 +19,7 @@ os.makedirs('data', exist_ok=True)
 
 # Use persistent disk for database
 DATABASE_PATH = os.path.join('data', 'zeuschat.db')
-JWT_SECRET = os.environ.get("JWT_SECRET", "zeuschat-dev-secret-2026")
+JWT_SECRET = os.environ["JWT_SECRET"]
 DEBUG_MODE = os.environ.get("DEBUG_MODE", "false").lower() == "true"
 
 def get_db():
@@ -96,6 +96,18 @@ def require_auth(f):
         return f(*args, **kwargs)
     wrapper.__name__ = f.__name__
     return wrapper
+
+@app.route('/')
+def index():
+    return send_from_directory(os.path.dirname(__file__), 'index.html')
+
+@app.route('/<path:path>')
+def static_files(path):
+    full_path = os.path.join(os.path.dirname(__file__), path)
+    if os.path.exists(full_path):
+        return send_from_directory(os.path.dirname(__file__), path)
+    else:
+        return "File not found", 404
 
 @app.route('/register', methods=['POST'])
 def register():

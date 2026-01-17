@@ -1,4 +1,3 @@
-import re
 import os
 import uuid
 import time
@@ -151,6 +150,41 @@ def login():
         return jsonify({'token': token, 'user_id': user['id'], 'zeus_pin': zeus_pin})
     else:
         return jsonify({'error': 'Invalid credentials'}), 401
+
+# NEW ENDPOINT: Create Profile (Generates Unique Zeus-PIN)
+@app.route('/api/create-profile', methods=['POST'])
+def create_profile():
+    data = request.json
+    email = data.get('email')
+    name = data.get('name')
+    about = data.get('about', '')
+
+    if not email or not name:
+        return jsonify({'error': 'Email and name required'}), 400
+
+    # Generate unique Zeus-PIN
+    max_attempts = 5
+    for _ in range(max_attempts):
+        zeus_pin = f"ZT-{random.randint(1000,9999)}-{random.randint(1000,9999)}"
+        try:
+            with get_db() as conn:
+                # Insert user with empty password/public_key (will be set later)
+                conn.execute(
+                    "INSERT INTO users (id, zeus_pin, username, password_hash, public_key, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                    (str(uuid.uuid4()), zeus_pin, name, "", "", int(time.time()))
+                )
+                conn.commit()
+            break
+        except sqlite3.IntegrityError:
+            continue
+    else:
+        return jsonify({'error': 'Failed to generate unique PIN'}), 500
+
+    return jsonify({
+        'zeus_pin': zeus_pin,
+        'name': name,
+        'about': about
+    })
 
 @app.route('/api/contact-request', methods=['POST'])
 @require_auth
@@ -357,6 +391,20 @@ def send_message():
         conn.commit()
 
     return jsonify({'message': 'Sent'})
+
+# NEW ENDPOINT: Delete Account
+@app.route('/api/delete-account', methods=['POST'])
+@require_auth
+def delete_account():
+    user_id = request.user_id
+    with get_db() as conn:
+        # Delete user and all related data
+        conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        conn.execute("DELETE FROM contacts WHERE user_id = ? OR contact_user_id = ?", (user_id, user_id))
+        conn.execute("DELETE FROM contact_requests WHERE sender_id = ? OR receiver_id = ?", (user_id, user_id))
+        conn.execute("DELETE FROM messages WHERE sender_id = ? OR receiver_id = ?", (user_id, user_id))
+        conn.commit()
+    return jsonify({'message': 'Account deleted'})
 
 if DEBUG_MODE:
     @app.route("/debug/users")

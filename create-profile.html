@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Verify OTP — ZeusChat</title>
+  <title>Create Profile — ZeusChat</title>
   <style>
     * {
       margin: 0;
@@ -82,7 +82,7 @@
     .input-group {
       margin-bottom: 16px;
     }
-    input {
+    input, textarea {
       width: 100%;
       padding: 12px;
       margin: 8px 0;
@@ -129,14 +129,17 @@
 
   <div class="container">
     <div class="box">
-      <div class="box-title">Enter OTP Code</div>
+      <div class="box-title">Create Your Profile</div>
       <div class="input-group">
-        <input type="text" id="otp" placeholder="Enter 6-digit code" maxlength="6" />
+        <input type="text" id="name" placeholder="Display Name (e.g. John Doe)" />
       </div>
-      <button class="btn" id="verifyBtn" onclick="verifyOTP()">Verify</button>
+      <div class="input-group">
+        <textarea id="about" placeholder="About you (optional)"></textarea>
+      </div>
+      <button class="btn" id="createBtn" onclick="createProfile()">Save and Continue</button>
       <div class="note">
-        We sent a verification code to your email.<br>
-        Enter it here to continue.
+        Your Zeus-PIN will be generated now.<br>
+        This PIN is permanent and cannot be changed.
       </div>
     </div>
   </div>
@@ -148,36 +151,58 @@
       window.location.href = 'emailinput.html';
     }
 
-    document.getElementById('otp').addEventListener('keypress', function(e) {
+    document.getElementById('name').addEventListener('keypress', function(e) {
       if (e.key === 'Enter') {
-        verifyOTP();
+        createProfile();
       }
     });
 
-    function verifyOTP() {
-      const otpInput = document.getElementById('otp');
-      const verifyBtn = document.getElementById('verifyBtn');
+    async function createProfile() {
+      const nameInput = document.getElementById('name');
+      const aboutInput = document.getElementById('about');
+      const createBtn = document.getElementById('createBtn');
 
-      if (verifyBtn.disabled) return;
-      verifyBtn.disabled = true;
-      verifyBtn.textContent = 'Verifying...';
+      if (createBtn.disabled) return;
+      createBtn.disabled = true;
+      createBtn.textContent = 'Creating...';
 
-      const otp = otpInput.value.trim();
+      const email = localStorage.getItem('pending_email');
+      const name = nameInput.value.trim();
+      const about = aboutInput.value.trim();
 
-      if (!otp || otp.length !== 6) {
-        alert('Please enter a 6-digit OTP code.');
-        verifyBtn.disabled = false;
-        verifyBtn.textContent = 'Verify';
+      if (!name) {
+        alert('Please enter your display name.');
+        createBtn.disabled = false;
+        createBtn.textContent = 'Save and Continue';
         return;
       }
 
-      // For ZeusChat 1.0, OTP is always 123456 (as per spec)
-      if (otp === '123456') {
-        window.location.href = 'create-profile.html';
-      } else {
-        alert('Invalid OTP code. Please try again.');
-        verifyBtn.disabled = false;
-        verifyBtn.textContent = 'Verify';
+      try {
+        // Generate profile + Zeus-PIN on backend
+        const response = await fetch('/api/create-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, name, about })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.zeus_pin) {
+          // Save profile data locally
+          localStorage.setItem('my_zeus_pin', result.zeus_pin);
+          localStorage.setItem('profile_name', name);
+          localStorage.setItem('profile_about', about);
+
+          // Redirect to password creation
+          window.location.href = 'password-create.html';
+        } else {
+          throw new Error(result.error || 'Failed to create profile');
+        }
+      } catch (error) {
+        console.error('Profile creation error:', error);
+        alert('Error: ' + (error.message || 'Failed to create profile. Please try again.'));
+        createBtn.disabled = false;
+        createBtn.textContent = 'Save and Continue';
       }
     }
   </script>

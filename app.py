@@ -28,16 +28,37 @@ def get_db():
 
 def init_db():
     with get_db() as conn:
+        # Users table: ONLY auth data
         conn.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id TEXT PRIMARY KEY,
-            zeus_pin TEXT UNIQUE NOT NULL,
-            username TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
             public_key TEXT NOT NULL,
             created_at INTEGER NOT NULL
         )""")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_zeus_pin ON users(zeus_pin)")
+        
+        # Profiles table: ONLY profile data + email for linking
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS profiles (
+            id TEXT PRIMARY KEY,
+            user_id TEXT,
+            zeus_pin TEXT UNIQUE NOT NULL,
+            display_name TEXT NOT NULL,
+            about TEXT,
+            avatar_url TEXT,
+            email TEXT UNIQUE NOT NULL,
+            created_at INTEGER NOT NULL,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )""")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_zeus_pin ON profiles(zeus_pin)")
+        
+        # Auto-cleanup orphaned profiles (user_id IS NULL and older than 30 minutes)
+        conn.execute("""
+        DELETE FROM profiles 
+        WHERE user_id IS NULL 
+        AND created_at < ?
+        """, (int(time.time()) - 1800,))  # 30 minutes = 1800 seconds
         
         conn.execute("""
         CREATE TABLE IF NOT EXISTS contact_requests (
@@ -46,8 +67,8 @@ def init_db():
             receiver_id TEXT NOT NULL,
             status TEXT CHECK(status IN ('pending', 'accepted', 'rejected')) DEFAULT 'pending',
             created_at INTEGER NOT NULL,
-            FOREIGN KEY(sender_id) REFERENCES users(id),
-            FOREIGN KEY(receiver_id) REFERENCES users(id),
+            FOREIGN KEY(sender_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(receiver_id) REFERENCES users(id) ON DELETE CASCADE,
             UNIQUE(sender_id, receiver_id)
         )""")
         
@@ -63,8 +84,8 @@ def init_db():
             nonce TEXT NOT NULL,
             nonce_hash TEXT,
             created_at INTEGER NOT NULL,
-            FOREIGN KEY(user_id) REFERENCES users(id),
-            FOREIGN KEY(contact_user_id) REFERENCES users(id),
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(contact_user_id) REFERENCES users(id) ON DELETE CASCADE,
             UNIQUE(user_id, contact_user_id)
         )""")
         
@@ -75,8 +96,8 @@ def init_db():
             receiver_id TEXT NOT NULL,
             encrypted_payload TEXT NOT NULL,
             created_at INTEGER NOT NULL,
-            FOREIGN KEY(sender_id) REFERENCES users(id),
-            FOREIGN KEY(receiver_id) REFERENCES users(id)
+            FOREIGN KEY(sender_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(receiver_id) REFERENCES users(id) ON DELETE CASCADE
         )""")
         conn.commit()
 
@@ -108,6 +129,7 @@ def static_files(path):
     else:
         return "File not found", 404
 
+# FIXED: /register links profile to user
 @app.route('/register', methods=['POST'])
 def register():
     data = request.json
@@ -117,23 +139,34 @@ def register():
     if not email or not password or not public_key:
         return jsonify({'error': 'Email, password, and public_key required'}), 400
 
-    max_attempts = 5
-    for _ in range(max_attempts):
-        zeus_pin = f"ZT-{random.randint(1000,9999)}-{random.randint(1000,9999)}"
-        try:
-            password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-            with get_db() as conn:
-                conn.execute(
-                    "INSERT INTO users (id, zeus_pin, username, password_hash, public_key, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-                    (str(uuid.uuid4()), zeus_pin, email.split('@')[0], password_hash, public_key, int(time.time()))
-                )
-                conn.commit()
-            return jsonify({'zeus_pin': zeus_pin})
-        except sqlite3.IntegrityError as e:
-            if "zeus_pin" in str(e):
-                continue
+    with get_db() as conn:
+        # Check if user already exists
+        existing_user = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+        if existing_user:
             return jsonify({'error': 'Email already registered'}), 400
-    return jsonify({'error': 'Failed to generate unique PIN'}), 500
+
+        # Check if profile exists for this email
+        profile = conn.execute("SELECT id FROM profiles WHERE email = ?", (email,)).fetchone()
+        if not profile:
+            return jsonify({'error': 'Profile not found. Complete profile creation first.'}), 400
+
+        # Create user account
+        password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+        user_id = str(uuid.uuid4())
+        
+        conn.execute(
+            "INSERT INTO users (id, email, password_hash, public_key, created_at) VALUES (?, ?, ?, ?, ?)",
+            (user_id, email, password_hash, public_key, int(time.time()))
+        )
+        
+        # Link profile to user
+        conn.execute(
+            "UPDATE profiles SET user_id = ? WHERE email = ?",
+            (user_id, email)
+        )
+        conn.commit()
+
+    return jsonify({'user_id': user_id})
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -144,34 +177,49 @@ def login():
         return jsonify({'error': 'Zeus-PIN and password required'}), 400
 
     with get_db() as conn:
-        user = conn.execute("SELECT id, password_hash FROM users WHERE zeus_pin = ?", (zeus_pin,)).fetchone()
-    if user and bcrypt.checkpw(password.encode(), user['password_hash'].encode()):
-        token = jwt.encode({'user_id': user['id'], 'exp': int(time.time()) + 86400}, JWT_SECRET, algorithm='HS256')
-        return jsonify({'token': token, 'user_id': user['id'], 'zeus_pin': zeus_pin})
+        # Find user via Zeus-PIN → profile → user
+        result = conn.execute("""
+            SELECT u.id, u.password_hash 
+            FROM users u
+            JOIN profiles p ON u.id = p.user_id
+            WHERE p.zeus_pin = ?
+        """, (zeus_pin,)).fetchone()
+        
+    if result and bcrypt.checkpw(password.encode(), result['password_hash'].encode()):
+        token = jwt.encode({'user_id': result['id'], 'exp': int(time.time()) + 86400}, JWT_SECRET, algorithm='HS256')
+        return jsonify({'token': token, 'user_id': result['id'], 'zeus_pin': zeus_pin})
     else:
         return jsonify({'error': 'Invalid credentials'}), 401
 
-# NEW ENDPOINT: Create Profile (Generates Unique Zeus-PIN)
+# FIXED: /api/create-profile creates profile with email
 @app.route('/api/create-profile', methods=['POST'])
 def create_profile():
     data = request.json
     email = data.get('email')
-    name = data.get('name')
+    display_name = data.get('display_name')
     about = data.get('about', '')
+    avatar_url = data.get('avatar_url', '')
 
-    if not email or not name:
-        return jsonify({'error': 'Email and name required'}), 400
+    if not email or not display_name:
+        return jsonify({'error': 'Email and display_name required'}), 400
+
+    # Check if profile already exists for this email
+    with get_db() as conn:
+        existing_profile = conn.execute("SELECT id FROM profiles WHERE email = ?", (email,)).fetchone()
+        if existing_profile:
+            return jsonify({'error': 'Profile already exists for this email'}), 400
 
     # Generate unique Zeus-PIN
     max_attempts = 5
     for _ in range(max_attempts):
         zeus_pin = f"ZT-{random.randint(1000,9999)}-{random.randint(1000,9999)}"
         try:
+            profile_id = str(uuid.uuid4())
             with get_db() as conn:
-                # Insert user with empty password/public_key (will be set later)
+                # Insert profile with NULL user_id (will be filled during registration)
                 conn.execute(
-                    "INSERT INTO users (id, zeus_pin, username, password_hash, public_key, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-                    (str(uuid.uuid4()), zeus_pin, name, "", "", int(time.time()))
+                    "INSERT INTO profiles (id, user_id, zeus_pin, display_name, about, avatar_url, email, created_at) VALUES (?, NULL, ?, ?, ?, ?, ?, ?)",
+                    (profile_id, zeus_pin, display_name, about, avatar_url, email, int(time.time()))
                 )
                 conn.commit()
             break
@@ -182,9 +230,52 @@ def create_profile():
 
     return jsonify({
         'zeus_pin': zeus_pin,
-        'name': name,
-        'about': about
+        'display_name': display_name,
+        'about': about,
+        'avatar_url': avatar_url
     })
+
+# FIXED: /api/profile GET fetches from profiles table
+@app.route('/api/profile', methods=['GET'])
+@require_auth
+def get_profile():
+    user_id = request.user_id
+    with get_db() as conn:
+        profile = conn.execute("""
+            SELECT p.zeus_pin, p.display_name, p.about, p.avatar_url
+            FROM profiles p
+            WHERE p.user_id = ?
+        """, (user_id,)).fetchone()
+    if not profile:
+        return jsonify({'error': 'Profile not found'}), 404
+    return jsonify({
+        'zeus_pin': profile['zeus_pin'],
+        'display_name': profile['display_name'],
+        'about': profile['about'],
+        'avatar_url': profile['avatar_url']
+    })
+
+# FIXED: /api/profile PUT updates ONLY profile fields
+@app.route('/api/profile', methods=['PUT'])
+@require_auth
+def update_profile():
+    user_id = request.user_id
+    data = request.json
+    display_name = data.get('display_name')
+    about = data.get('about', '')
+    avatar_url = data.get('avatar_url', '')
+
+    if not display_name:
+        return jsonify({'error': 'Display name required'}), 400
+
+    with get_db() as conn:
+        conn.execute("""
+            UPDATE profiles 
+            SET display_name = ?, about = ?, avatar_url = ?
+            WHERE user_id = ?
+        """, (display_name, about, avatar_url, user_id))
+        conn.commit()
+    return jsonify({'message': 'Profile updated'})
 
 @app.route('/api/contact-request', methods=['POST'])
 @require_auth
@@ -199,11 +290,11 @@ def create_contact_request():
         return jsonify({'error': 'Missing fields'}), 400
 
     with get_db() as conn:
-        target = conn.execute("SELECT id FROM users WHERE zeus_pin = ?", (target_pin,)).fetchone()
+        target = conn.execute("SELECT user_id FROM profiles WHERE zeus_pin = ?", (target_pin,)).fetchone()
         if not target:
             return jsonify({'error': 'Contact not found'}), 404
 
-        target_id = target['id']
+        target_id = target['user_id']
         requester_id = request.user_id
         if requester_id == target_id:
             return jsonify({'error': 'Cannot send request to yourself'}), 400
@@ -392,17 +483,14 @@ def send_message():
 
     return jsonify({'message': 'Sent'})
 
-# NEW ENDPOINT: Delete Account
+# FIXED: Delete Account - removes all related data via CASCADE
 @app.route('/api/delete-account', methods=['POST'])
 @require_auth
 def delete_account():
     user_id = request.user_id
     with get_db() as conn:
-        # Delete user and all related data
+        # Delete user (CASCADE will delete profile, contacts, messages, contact_requests)
         conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
-        conn.execute("DELETE FROM contacts WHERE user_id = ? OR contact_user_id = ?", (user_id, user_id))
-        conn.execute("DELETE FROM contact_requests WHERE sender_id = ? OR receiver_id = ?", (user_id, user_id))
-        conn.execute("DELETE FROM messages WHERE sender_id = ? OR receiver_id = ?", (user_id, user_id))
         conn.commit()
     return jsonify({'message': 'Account deleted'})
 
@@ -410,15 +498,11 @@ if DEBUG_MODE:
     @app.route("/debug/users")
     def debug_users():
         with get_db() as conn:
-            users = conn.execute("SELECT zeus_pin FROM users").fetchall()
-        return jsonify([u["zeus_pin"] for u in users])
+            users = conn.execute("SELECT email FROM users").fetchall()
+        return jsonify([u["email"] for u in users])
 
-    @app.route("/debug/contacts")
-    def debug_contacts():
+    @app.route("/debug/profiles")
+    def debug_profiles():
         with get_db() as conn:
-            rows = conn.execute("""
-                SELECT user_id, contact_user_id, initiator_id, 
-                       initiator_ready, responder_ready, handshake_complete
-                FROM contacts
-            """).fetchall()
-        return jsonify([dict(r) for r in rows])
+            profiles = conn.execute("SELECT zeus_pin, display_name, email FROM profiles").fetchall()
+        return jsonify([dict(p) for p in profiles])

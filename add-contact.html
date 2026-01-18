@@ -79,6 +79,9 @@
       margin-bottom: 16px;
       color: #fff;
     }
+    .input-group {
+      margin-bottom: 16px;
+    }
     input {
       width: 100%;
       padding: 12px;
@@ -101,6 +104,21 @@
       width: 100%;
       max-width: 400px;
     }
+    .note {
+      background: #1a1a1a;
+      border-left: 4px solid #d4af37;
+      padding: 12px;
+      margin-top: 16px;
+      font-size: 13px;
+      text-align: left;
+      line-height: 1.5;
+    }
+    .back-btn {
+      background: #666;
+      margin-top: 8px;
+      width: auto;
+      max-width: 200px;
+    }
   </style>
 </head>
 <body>
@@ -118,46 +136,72 @@
   <div class="container">
     <div class="box">
       <div class="box-title">Add Contact</div>
-      <input type="text" id="zeus-pin-input" placeholder="Enter Zeus-PIN" />
-      <button class="btn" onclick="addContact()">Send Request</button>
+      <div class="input-group">
+        <input type="text" id="zeusPin" placeholder="Enter Zeus-PIN (e.g. ZT-1234-5678)" />
+      </div>
+      <button class="btn" id="addBtn" onclick="addContact()">Send Request</button>
+      <button class="btn back-btn" onclick="goBack()">← Back to Chat</button>
+      <div class="note">
+        Enter the Zeus-PIN of the user you want to connect with.<br>
+        They must accept your request before messaging.
+      </div>
     </div>
   </div>
 
   <script>
-    async function addContact() {
-      const contactPin = document.getElementById('zeus-pin-input').value.trim();
-      const myPin = localStorage.getItem('my_zeus_pin');
+    // Enforce authentication
+    const authToken = localStorage.getItem('auth_token');
+    if (!authToken) {
+      alert('Authentication required. Please log in.');
+      window.location.href = 'emailinput.html';
+    }
 
-      if (!myPin) {
-        alert("You must be logged in. Please register or log in first.");
-        return;
-      }
-      if (!contactPin) {
-        alert("Please enter a Zeus-PIN.");
+    function goBack() {
+      window.location.href = 'chat.html';
+    }
+
+    async function addContact() {
+      const zeusPinInput = document.getElementById('zeusPin');
+      const addBtn = document.getElementById('addBtn');
+
+      if (addBtn.disabled) return;
+      addBtn.disabled = true;
+      addBtn.textContent = 'Sending...';
+
+      const zeusPin = zeusPinInput.value.trim();
+
+      if (!zeusPin) {
+        alert('Please enter a Zeus-PIN.');
+        addBtn.disabled = false;
+        addBtn.textContent = 'Send Request';
         return;
       }
 
       try {
         const response = await fetch('/api/contact-request', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            zeus_pin: contactPin,
-            requester_id: myPin
-          })
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({ zeus_pin: zeusPin })
         });
 
         const result = await response.json();
 
         if (response.ok) {
-          alert(result.message || 'Request sent successfully!');
-          window.location.href = 'chat.html';
+          alert('Contact request sent!');
+          zeusPinInput.value = '';
+          addBtn.disabled = false;
+          addBtn.textContent = 'Send Request';
         } else {
-          alert('Error: ' + (result.error || 'Failed to send request.'));
+          throw new Error(result.error || 'Failed to send request');
         }
       } catch (error) {
-        console.error('Fetch error:', error);
-        alert('Network error: Could not reach server. Make sure Flask is running.');
+        console.error('Error:', error);
+        alert('Error: ' + error.message);
+        addBtn.disabled = false;
+        addBtn.textContent = 'Send Request';
       }
     }
   </script>

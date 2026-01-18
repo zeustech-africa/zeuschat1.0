@@ -89,7 +89,7 @@
       background: #333;
       border: 1px solid #444;
       color: #fff;
-      border-radius: 6px;
+      border-radius: 64px;
     }
     .btn {
       background: #FFD700;
@@ -131,7 +131,7 @@
     <div class="box">
       <div class="box-title">Create Your Profile</div>
       <div class="input-group">
-        <input type="text" id="name" placeholder="Display Name (e.g. John Doe)" />
+        <input type="text" id="displayName" placeholder="Display Name (e.g. John Doe)" />
       </div>
       <div class="input-group">
         <textarea id="about" placeholder="About you (optional)"></textarea>
@@ -146,19 +146,20 @@
 
   <script>
     // Enforce step-locked flow
-    if (!localStorage.getItem('pending_email')) {
-      alert('Session expired. Please start over.');
+    const signupSessionId = localStorage.getItem('signup_session_id');
+    if (!signupSessionId) {
+      alert('Session expired. Please restart signup from the beginning.');
       window.location.href = 'emailinput.html';
     }
 
-    document.getElementById('name').addEventListener('keypress', function(e) {
+    document.getElementById('displayName').addEventListener('keypress', function(e) {
       if (e.key === 'Enter') {
         createProfile();
       }
     });
 
     async function createProfile() {
-      const nameInput = document.getElementById('name');
+      const displayNameInput = document.getElementById('displayName');
       const aboutInput = document.getElementById('about');
       const createBtn = document.getElementById('createBtn');
 
@@ -166,11 +167,11 @@
       createBtn.disabled = true;
       createBtn.textContent = 'Creating...';
 
-      const email = localStorage.getItem('pending_email');
-      const name = nameInput.value.trim();
+      const session_id = localStorage.getItem('signup_session_id');
+      const displayName = displayNameInput.value.trim();
       const about = aboutInput.value.trim();
 
-      if (!name) {
+      if (!displayName) {
         alert('Please enter your display name.');
         createBtn.disabled = false;
         createBtn.textContent = 'Save and Continue';
@@ -178,11 +179,11 @@
       }
 
       try {
-        // Generate profile + Zeus-PIN on backend
+        // Generate profile + Zeus-PIN on backend using session_id
         const response = await fetch('/api/create-profile', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, name, about })
+          body: JSON.stringify({ session_id, display_name: displayName, about })
         });
 
         const result = await response.json();
@@ -190,8 +191,11 @@
         if (response.ok && result.zeus_pin) {
           // Save profile data locally
           localStorage.setItem('my_zeus_pin', result.zeus_pin);
-          localStorage.setItem('profile_name', name);
+          localStorage.setItem('profile_display_name', displayName);
           localStorage.setItem('profile_about', about);
+
+          // Clear session ID
+          localStorage.removeItem('signup_session_id');
 
           // Redirect to password creation
           window.location.href = 'password-create.html';
@@ -200,7 +204,7 @@
         }
       } catch (error) {
         console.error('Profile creation error:', error);
-        alert('Error: ' + (error.message || 'Failed to create profile. Please try again.'));
+        alert('Error: ' + (error.message || 'Failed to create profile. Please restart signup.'));
         createBtn.disabled = false;
         createBtn.textContent = 'Save and Continue';
       }

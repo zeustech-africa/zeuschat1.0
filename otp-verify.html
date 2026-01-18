@@ -143,7 +143,8 @@
 
   <script>
     // Enforce step-locked flow
-    if (!localStorage.getItem('pending_email')) {
+    const pendingEmail = localStorage.getItem('pending_email');
+    if (!pendingEmail) {
       alert('Session expired. Please start over.');
       window.location.href = 'emailinput.html';
     }
@@ -154,7 +155,7 @@
       }
     });
 
-    function verifyOTP() {
+    async function verifyOTP() {
       const otpInput = document.getElementById('otp');
       const verifyBtn = document.getElementById('verifyBtn');
 
@@ -173,7 +174,29 @@
 
       // For ZeusChat 1.0, OTP is always 123456 (as per spec)
       if (otp === '123456') {
-        window.location.href = 'create-profile.html';
+        // Create signup session
+        const email = localStorage.getItem('pending_email');
+        try {
+          const response = await fetch('/api/create-signup-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+          });
+          
+          const result = await response.json();
+          
+          if (response.ok && result.session_id) {
+            localStorage.setItem('signup_session_id', result.session_id);
+            window.location.href = 'create-profile.html';
+          } else {
+            throw new Error(result.error || 'Failed to create session');
+          }
+        } catch (error) {
+          console.error('Session creation error:', error);
+          alert('Error: ' + (error.message || 'Failed to create session. Please try again.'));
+          verifyBtn.disabled = false;
+          verifyBtn.textContent = 'Verify';
+        }
       } else {
         alert('Invalid OTP code. Please try again.');
         verifyBtn.disabled = false;

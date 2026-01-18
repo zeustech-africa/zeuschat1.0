@@ -13,12 +13,21 @@ from flask_cors import CORS
 app = Flask(__name__)
 # Use JWT_SECRET for session signing (must be consistent)
 app.secret_key = os.environ["JWT_SECRET"]
-# Enable secure cookies with proper SameSite for cross-origin
-app.config.update(
-    SESSION_COOKIE_SECURE=True,
-    SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SAMESITE='None',
-)
+
+# Environment-aware cookie settings
+DEBUG_MODE = os.environ.get("DEBUG_MODE", "false").lower() == "true"
+if DEBUG_MODE:
+    app.config.update(
+        SESSION_COOKIE_SECURE=False,
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE='Lax',
+    )
+else:
+    app.config.update(
+        SESSION_COOKIE_SECURE=True,
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE='None',
+    )
 
 # Read frontend URL from environment
 frontend_url = os.environ.get("FRONTEND_URL", "https://chat.zeustech.com")
@@ -30,7 +39,6 @@ os.makedirs('data', exist_ok=True)
 # Use persistent disk for database
 DATABASE_PATH = os.path.join('data', 'zeuschat.db')
 JWT_SECRET = os.environ["JWT_SECRET"]
-DEBUG_MODE = os.environ.get("DEBUG_MODE", "false").lower() == "true"
 
 def get_db():
     conn = sqlite3.connect(DATABASE_PATH, timeout=20.0)
@@ -105,12 +113,8 @@ def init_db():
             FOREIGN KEY(receiver_id) REFERENCES users(id) ON DELETE CASCADE
         )""")
         
-        # Auto-cleanup orphaned profiles (user_id IS NULL and older than 30 minutes)
-        conn.execute("""
-        DELETE FROM profiles 
-        WHERE user_id IS NULL 
-        AND created_at < ?
-        """, (int(time.time()) - 1800,))
+        # REMOVED orphan cleanup query to prevent profile loss during signup
+        # Profiles with user_id IS NULL are kept until registration completes
         
         conn.commit()
 
@@ -179,11 +183,23 @@ def verify_otp():
     
     return jsonify({'message': 'OTP verified'})
 
-# FIXED: /api/create-profile uses server-side session ONLY
+# FIXED: /api/create-profile safely handles multiple input formats and field names
 @app.route('/api/create-profile', methods=['POST'])
 def create_profile():
-    data = request.json
-    display_name = data.get('display_name')
+    # Safely extract data from JSON or form
+    if request.is_json:
+        data = request.json or {}
+    else:
+        data = request.form.to_dict()
+    
+    # Try multiple possible display name fields
+    display_name = None
+    for field in ['display_name', 'name', 'username', 'full_name']:
+        value = data.get(field)
+        if value and str(value).strip():
+            display_name = str(value).strip()
+            break
+    
     about = data.get('about', '')
     avatar_url = data.get('avatar_url', '')
 

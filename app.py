@@ -7,11 +7,22 @@ import jwt
 import bcrypt
 import hashlib
 import re
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, session
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app, origins=[os.environ.get("FRONTEND_URL", "https://chat.zeustech.com")])
+# Use JWT_SECRET for session signing (must be consistent)
+app.secret_key = os.environ["JWT_SECRET"]
+# Enable secure cookies with proper SameSite for cross-origin
+app.config.update(
+    SESSION_COOKIE_SECURE=True,
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='None',
+)
+
+# Read frontend URL from environment
+frontend_url = os.environ.get("FRONTEND_URL", "https://chat.zeustech.com")
+CORS(app, origins=[frontend_url], supports_credentials=True)
 
 # Ensure data directory exists
 os.makedirs('data', exist_ok=True)
@@ -24,6 +35,7 @@ DEBUG_MODE = os.environ.get("DEBUG_MODE", "false").lower() == "true"
 def get_db():
     conn = sqlite3.connect(DATABASE_PATH, timeout=20.0)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")  # Critical: enable foreign key enforcement
     return conn
 
 def init_db():
@@ -52,13 +64,6 @@ def init_db():
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         )""")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_zeus_pin ON profiles(zeus_pin)")
-        
-        # Auto-cleanup orphaned profiles (user_id IS NULL and older than 30 minutes)
-        conn.execute("""
-        DELETE FROM profiles 
-        WHERE user_id IS NULL 
-        AND created_at < ?
-        """, (int(time.time()) - 1800,))  # 30 minutes = 1800 seconds
         
         conn.execute("""
         CREATE TABLE IF NOT EXISTS contact_requests (
@@ -99,6 +104,14 @@ def init_db():
             FOREIGN KEY(sender_id) REFERENCES users(id) ON DELETE CASCADE,
             FOREIGN KEY(receiver_id) REFERENCES users(id) ON DELETE CASCADE
         )""")
+        
+        # Auto-cleanup orphaned profiles (user_id IS NULL and older than 30 minutes)
+        conn.execute("""
+        DELETE FROM profiles 
+        WHERE user_id IS NULL 
+        AND created_at < ?
+        """, (int(time.time()) - 1800,))
+        
         conn.commit()
 
 init_db()
@@ -129,15 +142,117 @@ def static_files(path):
     else:
         return "File not found", 404
 
-# FIXED: /register links profile to user
+# NEW: Start signup session (called from emailinput.html)
+@app.route('/api/start-signup', methods=['POST'])
+def start_signup():
+    data = request.json
+    email = data.get('email')
+    if not email:
+        return jsonify({'error': 'Email required'}), 400
+    
+    # Store email in server-side session
+    session['signup_email'] = email
+    session['signup_state'] = 'email_submitted'
+    
+    return jsonify({'message': 'Signup session started'})
+
+# NEW: Verify OTP and create verified session
+@app.route('/api/verify-otp', methods=['POST'])
+def verify_otp():
+    data = request.json
+    otp = data.get('otp')
+    
+    if not otp or otp != '123456':
+        return jsonify({'error': 'Invalid OTP code'}), 400
+    
+    # Check if email exists in session
+    if 'signup_email' not in session:
+        return jsonify({'error': 'No signup session found. Please restart.'}), 400
+    
+    email = session['signup_email']
+    if not email:
+        return jsonify({'error': 'Invalid signup session. Please restart.'}), 400
+    
+    # Mark session as verified and store email
+    session['signup_state'] = 'email_verified'
+    session['verified_email'] = email
+    
+    return jsonify({'message': 'OTP verified'})
+
+# FIXED: /api/create-profile uses server-side session ONLY
+@app.route('/api/create-profile', methods=['POST'])
+def create_profile():
+    data = request.json
+    display_name = data.get('display_name')
+    about = data.get('about', '')
+    avatar_url = data.get('avatar_url', '')
+
+    if not display_name:
+        return jsonify({'error': 'Display name required'}), 400
+
+    # Get email from server-side session (MUST be verified)
+    if 'signup_state' not in session or session.get('signup_state') != 'email_verified':
+        return jsonify({'error': 'Invalid or expired session. Please restart signup.'}), 400
+
+    if 'verified_email' not in session:
+        return jsonify({'error': 'Email not verified. Please restart signup.'}), 400
+
+    email = session['verified_email']
+    if not email:
+        return jsonify({'error': 'Invalid signup session. Please restart.'}), 400
+
+    with get_db() as conn:
+        # Check if profile already exists for this email
+        existing_profile = conn.execute("SELECT id FROM profiles WHERE email = ?", (email,)).fetchone()
+        if existing_profile:
+            return jsonify({'error': 'Profile already exists for this email'}), 400
+
+        # Generate unique Zeus-PIN
+        max_attempts = 5
+        for _ in range(max_attempts):
+            zeus_pin = f"ZT-{random.randint(1000,9999)}-{random.randint(1000,9999)}"
+            try:
+                profile_id = str(uuid.uuid4())
+                with get_db() as conn_inner:
+                    # Insert profile with NULL user_id (will be filled during registration)
+                    conn_inner.execute(
+                        "INSERT INTO profiles (id, user_id, zeus_pin, display_name, about, avatar_url, email, created_at) VALUES (?, NULL, ?, ?, ?, ?, ?, ?)",
+                        (profile_id, zeus_pin, display_name, about, avatar_url, email, int(time.time()))
+                    )
+                    conn_inner.commit()
+                break
+            except sqlite3.IntegrityError:
+                continue
+        else:
+            return jsonify({'error': 'Failed to generate unique PIN'}), 500
+
+    return jsonify({
+        'zeus_pin': zeus_pin,
+        'display_name': display_name,
+        'about': about,
+        'avatar_url': avatar_url
+    })
+
+# FIXED: /register completes user account using session email
 @app.route('/register', methods=['POST'])
 def register():
     data = request.json
-    email = data.get('email')
     password = data.get('password')
     public_key = data.get('public_key')
-    if not email or not password or not public_key:
-        return jsonify({'error': 'Email, password, and public_key required'}), 400
+    if not password or not public_key:
+        return jsonify({'error': 'Password and public_key required'}), 400
+    
+    # Validate public_key is non-empty
+    if not public_key.strip():
+        return jsonify({'error': 'Public key cannot be empty'}), 400
+
+    # Get email from server-side session
+    if 'verified_email' not in session:
+        return jsonify({'error': 'No verified email found. Complete profile creation first.'}), 400
+
+    email = session['verified_email']
+    if not email:
+        return jsonify({'error': 'Invalid signup session. Please restart.'}), 400
 
     with get_db() as conn:
         # Check if user already exists
@@ -166,6 +281,11 @@ def register():
         )
         conn.commit()
 
+    # Clear signup session after successful registration
+    session.pop('signup_email', None)
+    session.pop('signup_state', None)
+    session.pop('verified_email', None)
+    
     return jsonify({'user_id': user_id})
 
 @app.route('/login', methods=['POST'])
@@ -190,50 +310,6 @@ def login():
         return jsonify({'token': token, 'user_id': result['id'], 'zeus_pin': zeus_pin})
     else:
         return jsonify({'error': 'Invalid credentials'}), 401
-
-# FIXED: /api/create-profile creates profile with email
-@app.route('/api/create-profile', methods=['POST'])
-def create_profile():
-    data = request.json
-    email = data.get('email')
-    display_name = data.get('display_name')
-    about = data.get('about', '')
-    avatar_url = data.get('avatar_url', '')
-
-    if not email or not display_name:
-        return jsonify({'error': 'Email and display_name required'}), 400
-
-    # Check if profile already exists for this email
-    with get_db() as conn:
-        existing_profile = conn.execute("SELECT id FROM profiles WHERE email = ?", (email,)).fetchone()
-        if existing_profile:
-            return jsonify({'error': 'Profile already exists for this email'}), 400
-
-    # Generate unique Zeus-PIN
-    max_attempts = 5
-    for _ in range(max_attempts):
-        zeus_pin = f"ZT-{random.randint(1000,9999)}-{random.randint(1000,9999)}"
-        try:
-            profile_id = str(uuid.uuid4())
-            with get_db() as conn:
-                # Insert profile with NULL user_id (will be filled during registration)
-                conn.execute(
-                    "INSERT INTO profiles (id, user_id, zeus_pin, display_name, about, avatar_url, email, created_at) VALUES (?, NULL, ?, ?, ?, ?, ?, ?)",
-                    (profile_id, zeus_pin, display_name, about, avatar_url, email, int(time.time()))
-                )
-                conn.commit()
-            break
-        except sqlite3.IntegrityError:
-            continue
-    else:
-        return jsonify({'error': 'Failed to generate unique PIN'}), 500
-
-    return jsonify({
-        'zeus_pin': zeus_pin,
-        'display_name': display_name,
-        'about': about,
-        'avatar_url': avatar_url
-    })
 
 # FIXED: /api/profile GET fetches from profiles table
 @app.route('/api/profile', methods=['GET'])

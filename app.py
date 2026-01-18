@@ -31,7 +31,10 @@ else:
 
 # Read frontend URL from environment
 frontend_url = os.environ.get("FRONTEND_URL", "https://chat.zeustech.com")
-CORS(app, origins=[frontend_url], supports_credentials=True)
+try:
+    CORS(app, origins=[frontend_url], supports_credentials=True)
+except Exception as e:
+    print(f"❌ CORS ERROR: {e}")
 
 # Ensure data directory exists
 os.makedirs('data', exist_ok=True)

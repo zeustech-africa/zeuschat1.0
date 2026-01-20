@@ -163,16 +163,15 @@ def start_signup():
     
     return jsonify({'message': 'Signup session started'})
 
-# NEW: Verify OTP and create verified session
+# FIXED: /api/verify-otp safely handles JSON parsing
 @app.route('/api/verify-otp', methods=['POST'])
 def verify_otp():
-    data = request.json
+    data = request.get_json(silent=True) or {}
     otp = data.get('otp')
     
     if not otp or otp != '123456':
         return jsonify({'error': 'Invalid OTP code'}), 400
     
-    # Check if email exists in session
     if 'signup_email' not in session:
         return jsonify({'error': 'No signup session found. Please restart.'}), 400
     
@@ -180,7 +179,6 @@ def verify_otp():
     if not email:
         return jsonify({'error': 'Invalid signup session. Please restart.'}), 400
     
-    # Mark session as verified and store email
     session['signup_state'] = 'email_verified'
     session['verified_email'] = email
     

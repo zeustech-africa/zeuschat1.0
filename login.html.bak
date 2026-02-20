@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — ZeusChat</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    body {
+      background: #000;
+      overflow: hidden;
+      height: 100vh;
+      color: #fff;
+    }
+    .video-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: -1;
+    }
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      z-index: 0;
+    }
+    .header {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .logo {
+      height: 32px;
+      margin-bottom: 4px;
+    }
+    .byline {
+      font-size: 12px;
+      color: #FFD700;
+      font-weight: 500;
+    }
+    .container {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 20px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    .box {
+      background: #222;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 16px 0;
+      width: 100%;
+      max-width: 600px;
+      text-align: left;
+    }
+    .box-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #fff;
+    }
+    .input-group {
+      margin-bottom: 16px;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      background: #333;
+      border: 1px solid #444;
+      color: #fff;
+      border-radius: 6px;
+    }
+    .btn {
+      background: #FFD700;
+      color: #000;
+      border: none;
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 16px;
+      width: 100%;
+      max-width: 400px;
+    }
+    .link {
+      color: #FFD700;
+      text-decoration: underline;
+      margin-top: 16px;
+      font-size: 14px;
+    }
+    .footer {
+      margin-top: 32px;
+      font-size: 12px;
+      color: #aaa;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <video class="video-bg" autoplay muted loop>
+    <source src="zeustech-register.mp4" type="video/mp4">
+  </video>
+  <div class="overlay"></div>
+
+  <!-- Top-left: Logo + Byline -->
+  <div class="header">
+    <img src="zeustech-logo-zeushchat.png" class="logo" alt="ZeusTech">
+    <div class="byline">ZeusChat by ZeusTech</div>
+  </div>
+
+  <div class="container">
+    <!-- Box: Login -->
+    <div class="box">
+      <div class="box-title">Log In to Existing Account</div>
+      <div class="input-group">
+        <input type="text" id="zeus-pin" placeholder="Zeus-PIN (e.g. ZT-1234-5678)" />
+      </div>
+      <div class="input-group">
+        <input type="password" id="password" placeholder="Password" />
+      </div>
+      <button class="btn" onclick="login()">Log In</button>
+      <a href="index.html" class="link">← Back to Welcome</a>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      Don't have an account? <a href="index.html" class="link">Get started</a><br>
+      Your messages self-destruct after viewing — CIA-grade privacy<br>
+      Terms & Privacy Policy
+    </div>
+  </div>
+
+  <script>
+    function login() {
+      const zeusPIN = document.getElementById('zeus-pin').value;
+      const password = document.getElementById('password').value;
+      
+      if (!zeusPIN || !password) {
+        alert("Please enter Zeus-PIN and password.");
+        return;
+      }
+
+      // Simulate login (in real app: verify with backend)
+      const savedProfile = JSON.parse(localStorage.getItem('profile'));
+      if (savedProfile && localStorage.getItem('zeus_pin') === zeusPIN) {
+        localStorage.setItem('currentSession', 'active');
+        alert(`✅ Welcome back, ${savedProfile.name}!\nYour chats, contacts, and settings are restored.`);
+        window.location.href = 'chat.html';
+      } else {
+        alert("❌ Invalid Zeus-PIN or password.\nPlease try again or create a new account.");
+      }
+    }
+  </script>
+</body>
+</html>

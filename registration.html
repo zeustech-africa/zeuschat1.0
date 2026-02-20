@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register — ZeusChat</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    body {
+      background: #000;
+      overflow: hidden;
+      height: 100vh;
+      color: #fff;
+    }
+    .video-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: -1;
+    }
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      z-index: 0;
+    }
+    .header {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .logo {
+      height: 32px;
+      margin-bottom: 4px;
+    }
+    .byline {
+      font-size: 12px;
+      color: #FFD700;
+      font-weight: 500;
+    }
+    .container {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 20px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    .box {
+      background: #222;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 16px 0;
+      width: 100%;
+      max-width: 600px;
+      text-align: left;
+    }
+    .box-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #fff;
+    }
+    .step {
+      display: flex;
+      align-items: flex-start;
+      margin: 12px 0;
+    }
+    .step-number {
+      background: #333;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 14px;
+      margin-right: 12px;
+    }
+    .step-text {
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .qr-box {
+      background: #111;
+      padding: 16px;
+      border-radius: 8px;
+      margin: 16px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .qr-code {
+      width: 160px;
+      height: 160px;
+      background: url('zeuschaticon-transparent-3d-spin.png') center/contain no-repeat;
+      opacity: 0.8;
+    }
+    .qr-text {
+      font-size: 14px;
+      text-align: left;
+      margin-left: 16px;
+    }
+    .btn {
+      background: #FFD700;
+      color: #000;
+      border: none;
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 16px;
+      width: 100%;
+      max-width: 400px;
+    }
+    .note {
+      background: #1a1a1a;
+      border-left: 4px solid #d4af37;
+      padding: 12px;
+      margin-top: 16px;
+      font-size: 13px;
+      text-align: left;
+      line-height: 1.5;
+    }
+    .footer {
+      position: absolute;
+      bottom: 24px;
+      left: 24px;
+      z-index: 2;
+      text-align: left;
+    }
+    .footer a {
+      color: #d4af37;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <video class="video-bg" autoplay muted loop>
+    <source src="zeustech-register.mp4" type="video/mp4">
+  </video>
+  <div class="overlay"></div>
+
+  <!-- Top-left: Logo + Byline -->
+  <div class="header">
+    <img src="zeustech-logo-zeushchat.png" class="logo" alt="ZeusTech">
+    <div class="byline">ZeusChat by ZeusTech</div>
+  </div>
+
+  <div class="container">
+    <div class="box">
+      <div class="box-title">Don't have a ZeusChat account? Get started</div>
+      
+      <div class="step">
+        <div class="step-number">1</div>
+        <div class="step-text">Open ZeusChat on your phone</div>
+      </div>
+      <div class="step">
+        <div class="step-number">2</div>
+        <div class="step-text">On Android tap Menu • On iPhone tap Settings</div>
+      </div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <div class="step-text">Tap Linked devices, then Link device</div>
+      </div>
+      <div class="step">
+        <div class="step-number">4</div>
+        <div class="step-text">Scan the QR code to confirm</div>
+      </div>
+
+      <div class="qr-box">
+        <div class="qr-code"></div>
+        <div class="qr-text">
+          <strong>Log in with email</strong><br>
+          Click "Get Started" below to enter your email.
+        </div>
+      </div>
+
+      <button class="btn" onclick="location.href='emailinput.html'">Get Started</button>
+
+      <div class="note">
+        Your personal messages are end-to-end encrypted.<br>
+        No saving, no screenshots, no traces.
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Don't have an account? <a href="emailinput.html">Get started</a><br>
+    <a href="privacy.html">Terms & Privacy Policy</a>
+  </div>
+</body>
+</html>

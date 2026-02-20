@@ -1,0 +1,12 @@
+*.mp4
+videos/
+static/videos/
+*.mp4
+videos/
+static/videos/
+zeuschat.db
+zeuschat.db
+*.mp4
+videos/
+backend/.env
+.env

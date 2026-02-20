@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Updates — ZeusChat</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    body {
+      background: #0b0b0b;
+      color: #fff;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .container {
+      padding: 20px;
+      flex: 1;
+    }
+    .section {
+      background: #121212;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .section-title {
+      color: #d4af37;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .update-item {
+      padding: 12px;
+      border-bottom: 1px solid #222;
+    }
+    .update-header {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #2a2a2a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+    }
+    .update-time {
+      font-size: 12px;
+      color: #777;
+    }
+    .btn {
+      background: #d4af37;
+      color: #000;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 16px;
+      width: 100%;
+    }
+    .back-btn {
+      background: #222;
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-bottom: 16px;
+    }
+    .upload-btn {
+      background: #222;
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    .media-preview {
+      margin-top: 8px;
+      max-width: 100%;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <button class="back-btn" onclick="window.location.href='chat.html'">Back</button>
+    <div class="section">
+      <div class="section-title">My Updates</div>
+      <div class="update-item">
+        <div class="update-header">
+          <div class="avatar">M</div>
+          <div>Mom</div>
+          <div class="update-time">2h ago</div>
+        </div>
+        <div>Just finished the ZeusChat build!</div>
+      </div>
+      <div class="update-item">
+        <div class="update-header">
+          <div class="avatar">T</div>
+          <div>Tech Group</div>
+          <div class="update-time">5h ago</div>
+        </div>
+        <div>New feature deployed!</div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">Add Update</div>
+      <textarea id="update-text" placeholder="What's on your mind?" style="width:100%;height:100px;background:#222;color:#fff;border:1px solid #444;border-radius:6px;padding:12px;margin:8px 0;"></textarea>
+      <input type="file" id="media-upload" accept="image/*,video/*" style="display:none;" onchange="previewMedia(event)">
+      <button class="upload-btn" onclick="document.getElementById('media-upload').click()">Upload Media</button>
+      <div id="media-preview"></div>
+      <button class="btn" onclick="addUpdate()">Post Update</button>
+    </div>
+  </div>
+
+  <script>
+    function previewMedia(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function() {
+        const output = document.getElementById('media-preview');
+        if (file.type.startsWith('image')) {
+          output.innerHTML = `<img src="${reader.result}" class="media-preview" alt="Preview">`;
+        } else if (file.type.startsWith('video')) {
+          output.innerHTML = `<video controls class="media-preview"><source src="${reader.result}" type="${file.type}">Your browser does not support video.</video>`;
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function addUpdate() {
+      const updateText = document.getElementById('update-text').value;
+      if (!updateText) {
+        alert("Please enter an update.");
+        return;
+      }
+
+      alert("✅ Update posted! It will expire in 6 hours.");
+      document.getElementById('update-text').value = '';
+      document.getElementById('media-preview').innerHTML = '';
+    }
+  </script>
+</body>
+</html>

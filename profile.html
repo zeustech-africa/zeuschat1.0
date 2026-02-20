@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile — ZeusChat</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    body {
+      background: #000;
+      overflow: hidden;
+      height: 100vh;
+      color: #fff;
+    }
+    .video-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: -1;
+    }
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      z-index: 0;
+    }
+    .header {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .logo {
+      height: 32px;
+      margin-bottom: 4px;
+    }
+    .byline {
+      font-size: 12px;
+      color: #FFD700;
+      font-weight: 500;
+    }
+    .container {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 20px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    .box {
+      background: #222;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 16px 0;
+      width: 100%;
+      max-width: 600px;
+      text-align: left;
+    }
+    .box-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #fff;
+    }
+    .input-group {
+      margin-bottom: 16px;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      background: #333;
+      border: 1px solid #444;
+      color: #fff;
+      border-radius: 6px;
+    }
+    .btn {
+      background: #FFD700;
+      color: #000;
+      border: none;
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 16px;
+      width: 100%;
+      max-width: 400px;
+    }
+    .note {
+      background: #1a1a1a;
+      border-left: 4px solid #d4af37;
+      padding: 12px;
+      margin-top: 16px;
+      font-size: 13px;
+      text-align: left;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <video class="video-bg" autoplay muted loop>
+    <source src="zeustech-register.mp4" type="video/mp4">
+  </video>
+  <div class="overlay"></div>
+
+  <!-- Top-left: Logo + Byline -->
+  <div class="header">
+    <img src="zeustech-logo-zeushchat.png" class="logo" alt="ZeusTech">
+    <div class="byline">ZeusChat by ZeusTech</div>
+  </div>
+
+  <div class="container">
+    <div class="box">
+      <div class="box-title">Profile</div>
+      <div class="input-group">
+        <input type="text" id="displayName" placeholder="Display Name" />
+        <textarea id="about" placeholder="About you (optional)"></textarea>
+        <input type="text" id="avatarUrl" placeholder="Avatar URL (optional)" />
+      </div>
+      <div style="margin: 16px 0; padding: 12px; background: #1a1a1a; border-left: 4px solid #d4af37;">
+        <div style="display: flex; justify-content: space-between; padding: 4px 0;">
+          <span>Your Zeus-PIN:</span>
+          <span id="zeusPinDisplay" style="color: #FFD700; font-weight: bold;">Loading...</span>
+        </div>
+      </div>
+      <button class="btn" id="saveBtn" onclick="saveProfile()">Save Profile</button>
+    </div>
+  </div>
+
+  <script>
+    // Enforce authentication
+    const authToken = localStorage.getItem('auth_token');
+    if (!authToken) {
+      alert('Authentication required. Please log in.');
+      window.location.href = 'login.html';
+    }
+
+    async function loadProfile() {
+      try {
+        const API_BASE = window.location.origin;
+        const response = await fetch(`${API_BASE}/api/profile`, {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.display_name && result.zeus_pin) {
+          document.getElementById('displayName').value = result.display_name;
+          document.getElementById('about').value = result.about || '';
+          document.getElementById('avatarUrl').value = result.avatar_url || '';
+          document.getElementById('zeusPinDisplay').textContent = result.zeus_pin;
+        } else {
+          throw new Error(result.error || 'Failed to load profile');
+        }
+      } catch (error) {
+        console.error('Profile load error:', error);
+        alert('Error: ' + (error.message || 'Failed to load profile. Please try again.'));
+      }
+    }
+
+    async function saveProfile() {
+      const displayNameInput = document.getElementById('displayName');
+      const aboutInput = document.getElementById('about');
+      const avatarUrlInput = document.getElementById('avatarUrl');
+      const saveBtn = document.getElementById('saveBtn');
+
+      if (saveBtn.disabled) return;
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving...';
+
+      const displayName = displayNameInput.value.trim();
+      const about = aboutInput.value.trim();
+      const avatarUrl = avatarUrlInput.value.trim();
+
+      if (!displayName) {
+        alert('Please enter your display name.');
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Profile';
+        return;
+      }
+
+      try {
+        const API_BASE = window.location.origin;
+        const response = await fetch(`${API_BASE}/api/profile`, {
+          method: 'PUT',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({ 
+            display_name: displayName, 
+            about: about, 
+            avatar_url: avatarUrl 
+          })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          alert('✅ Profile saved!');
+          window.location.href = 'chat.html';
+        } else {
+          throw new Error(result.error || 'Failed to save profile');
+        }
+      } catch (error) {
+        console.error('Profile save error:', error);
+        alert('Error: ' + (error.message || 'Failed to save profile. Please try again.'));
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Profile';
+      }
+    }
+
+    // Load profile on page load
+    window.addEventListener('DOMContentLoaded', loadProfile);
+  </script>
+</body>
+</html>

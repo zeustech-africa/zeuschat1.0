@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Enter Email — ZeusChat</title>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background: #000;
+      overflow: hidden;
+      height: 100vh;
+      color: #fff;
+    }
+
+    .video-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: -1;
+    }
+
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 0;
+    }
+
+    .header {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .logo {
+      height: 32px;
+      margin-bottom: 4px;
+    }
+
+    .byline {
+      font-size: 12px;
+      color: #FFD700;
+      font-weight: 500;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 20px;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .box {
+      background: #222;
+      border-radius: 12px;
+      padding: 24px;
+      width: 100%;
+      max-width: 600px;
+      text-align: left;
+    }
+
+    .box-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    .input-group {
+      margin-bottom: 16px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      background: #333;
+      border: 1px solid #444;
+      color: #fff;
+      border-radius: 6px;
+    }
+
+    .btn {
+      background: #FFD700;
+      color: #000;
+      border: none;
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 16px;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .note {
+      background: #1a1a1a;
+      border-left: 4px solid #d4af37;
+      padding: 12px;
+      margin-top: 16px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+
+<body>
+  <video class="video-bg" autoplay muted loop>
+    <source src="zeustech-register.mp4" type="video/mp4" />
+  </video>
+
+  <div class="overlay"></div>
+
+  <div class="header">
+    <img src="zeustech-logo-zeushchat.png" class="logo" alt="ZeusTech" />
+    <div class="byline">ZeusChat by ZeusTech</div>
+  </div>
+
+  <div class="container">
+    <div class="box">
+      <div class="box-title">Enter your email</div>
+
+      <div class="input-group">
+        <input type="email" id="email" placeholder="you@email.com" />
+      </div>
+
+      <button class="btn" id="nextBtn" onclick="saveEmail()">Next</button>
+
+      <div class="note" style="background: #2a2a1a; border-color: #FFD700;">
+        <strong>🧪 Test Mode Active:</strong><br />
+        Enter any email → Next → Use code <strong>123456</strong><br />
+        You'll get a unique Zeus-PIN for secure messaging.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById("email").addEventListener("keypress", function (e) {
+      if (e.key === "Enter") saveEmail();
+    });
+
+    function saveEmail() {
+      const emailInput = document.getElementById("email");
+      const nextBtn = document.getElementById("nextBtn");
+
+      if (nextBtn.disabled) return;
+
+      nextBtn.disabled = true;
+      nextBtn.textContent = "Processing...";
+
+      let email = emailInput.value.trim().toLowerCase();
+
+      if (!email) {
+        alert("Please enter your email.");
+        nextBtn.disabled = false;
+        nextBtn.textContent = "Next";
+        return;
+      }
+
+      const emailRegex =
+        /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+
+      if (!emailRegex.test(email)) {
+        alert("Please enter a valid email address.");
+        nextBtn.disabled = false;
+        nextBtn.textContent = "Next";
+        return;
+      }
+
+      localStorage.setItem("pending_email", email);
+
+      // otp-verify.html MUST validate pending_email exists to enforce step-locked flow
+      window.location.href = "otp-verify.html";
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verify OTP — ZeusChat</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    body {
+      background: #000;
+      overflow: hidden;
+      height: 100vh;
+      color: #fff;
+    }
+    .video-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: -1;
+    }
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      z-index: 0;
+    }
+    .header {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .logo {
+      height: 32px;
+      margin-bottom: 4px;
+    }
+    .byline {
+      font-size: 12px;
+      color: #FFD700;
+      font-weight: 500;
+    }
+    .container {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 20px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    .box {
+      background: #222;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 16px 0;
+      width: 100%;
+      max-width: 600px;
+      text-align: left;
+    }
+    .box-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #fff;
+    }
+    .input-group {
+      margin-bottom: 16px;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      background: #333;
+      border: 1px solid #444;
+      color: #fff;
+      border-radius: 6px;
+    }
+    .btn {
+      background: #FFD700;
+      color: #000;
+      border: none;
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 16px;
+      width: 100%;
+      max-width: 400px;
+    }
+    .note {
+      background: #1a1a1a;
+      border-left: 4px solid #d4af37;
+      padding: 12px;
+      margin-top: 16px;
+      font-size: 13px;
+      text-align: left;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <video class="video-bg" autoplay muted loop>
+    <source src="zeustech-register.mp4" type="video/mp4">
+  </video>
+  <div class="overlay"></div>
+
+  <!-- Top-left: Logo + Byline -->
+  <div class="header">
+    <img src="zeustech-logo-zeushchat.png" class="logo" alt="ZeusTech">
+    <div class="byline">ZeusChat by ZeusTech</div>
+  </div>
+
+  <div class="container">
+    <div class="box">
+      <div class="box-title">Enter OTP Code</div>
+      <div class="input-group">
+        <input type="text" id="otp" placeholder="Enter 6-digit code" maxlength="6" value="123456" />
+      </div>
+      <button class="btn" id="verifyBtn" onclick="verifyOTP()">Verify</button>
+      <div class="note" style="background: #2a2a1a; border-color: #FFD700;">
+        <strong>🧪 Test Mode:</strong> Use code <strong>123456</strong> (auto-filled)<br>
+        Click "Verify" to continue.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Enforce step-locked flow
+    const pendingEmail = localStorage.getItem('pending_email');
+    if (!pendingEmail) {
+      alert('Session expired. Please start over.');
+      window.location.href = 'emailinput.html';
+    }
+
+    document.getElementById('otp').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        verifyOTP();
+      }
+    });
+
+    async function verifyOTP() {
+      const otpInput = document.getElementById('otp');
+      const verifyBtn = document.getElementById('verifyBtn');
+
+      if (verifyBtn.disabled) return;
+      verifyBtn.disabled = true;
+      verifyBtn.textContent = 'Verifying...';
+
+      const otp = otpInput.value.trim();
+
+      if (!otp || otp.length !== 6) {
+        alert('Please enter a 6-digit OTP code.');
+        verifyBtn.disabled = false;
+        verifyBtn.textContent = 'Verify';
+        return;
+      }
+
+      // For ZeusChat 1.0, OTP is always 123456 (as per spec)
+      if (otp === '123456') {
+        const email = localStorage.getItem('pending_email');
+        const API_BASE = window.location.origin;
+        try {
+          // Step 1: Start signup session with backend
+          const startResponse = await fetch(`${API_BASE}/api/start-signup`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ email })
+          });
+          
+          if (!startResponse.ok) {
+            const errorData = await startResponse.json();
+            throw new Error(errorData.error || 'Failed to start signup session');
+          }
+          
+          console.log('✅ Signup session started');
+          
+          // Step 2: Verify OTP with backend
+          const verifyResponse = await fetch(`${API_BASE}/api/verify-otp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ otp })
+          });
+          
+          console.log('📡 OTP verification response:', verifyResponse.status);
+          
+          const verifyResult = await verifyResponse.json();
+          
+          if (verifyResponse.ok && verifyResult.message) {
+            console.log('✅ OTP verified, redirecting to profile creation...');
+            // Redirect to profile creation
+            window.location.href = 'create-profile.html';
+          } else {
+            console.error('❌ OTP verification failed:', verifyResult);
+            throw new Error(verifyResult.error || 'OTP verification failed');
+          }
+        } catch (error) {
+          console.error('OTP verification error:', error);
+          alert('Error: ' + (error.message || 'OTP verification failed. Please try again.'));
+          verifyBtn.disabled = false;
+          verifyBtn.textContent = 'Verify';
+        }
+      } else {
+        alert('Invalid OTP code. Please try again.');
+        verifyBtn.disabled = false;
+        verifyBtn.textContent = 'Verify';
+      }
+    }
+  </script>
+</body>
+</html>

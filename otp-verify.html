@@ -60,7 +60,6 @@
       padding: 20px;
       height: 100vh;
       display: flex;
-      flex-direction: column;
       justify-content: center;
       align-items: center;
     }
@@ -68,7 +67,6 @@
       background: #222;
       border-radius: 12px;
       padding: 24px;
-      margin: 16px 0;
       width: 100%;
       max-width: 600px;
       text-align: left;
@@ -76,8 +74,12 @@
     .box-title {
       font-size: 20px;
       font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .box-subtitle {
+      font-size: 13px;
+      color: #aaa;
       margin-bottom: 16px;
-      color: #fff;
     }
     .input-group {
       margin-bottom: 16px;
@@ -85,11 +87,13 @@
     input {
       width: 100%;
       padding: 12px;
-      margin: 8px 0;
       background: #333;
       border: 1px solid #444;
       color: #fff;
       border-radius: 6px;
+      font-size: 16px;
+      letter-spacing: 2px;
+      text-align: center;
     }
     .btn {
       background: #FFD700;
@@ -104,14 +108,26 @@
       width: 100%;
       max-width: 400px;
     }
+    .btn:disabled {
+      background: #666;
+      cursor: not-allowed;
+    }
     .note {
       background: #1a1a1a;
       border-left: 4px solid #d4af37;
       padding: 12px;
       margin-top: 16px;
       font-size: 13px;
-      text-align: left;
       line-height: 1.5;
+    }
+    .error {
+      background: #331a1a;
+      border-left: 4px solid #ff4444;
+      padding: 12px;
+      margin-top: 16px;
+      font-size: 13px;
+      color: #ff9999;
+      display: none;
     }
   </style>
 </head>
@@ -129,26 +145,39 @@
 
   <div class="container">
     <div class="box">
-      <div class="box-title">Enter OTP Code</div>
+      <div class="box-title">Verify your email</div>
+      <div class="box-subtitle">Enter the 6-digit code we sent to <span id="emailDisplay"></span></div>
+
       <div class="input-group">
-        <input type="text" id="otp" placeholder="Enter 6-digit code" maxlength="6" value="123456" />
+        <input type="text" id="otp" placeholder="000000" maxlength="6" autocomplete="off" value="123456">
       </div>
-      <button class="btn" id="verifyBtn" onclick="verifyOTP()">Verify</button>
+
+      <button class="btn" id="verifyBtn" onclick="verifyOTP()">Verify & Continue</button>
+
+      <div id="errorMsg" class="error"></div>
+
       <div class="note" style="background: #2a2a1a; border-color: #FFD700;">
-        <strong>🧪 Test Mode:</strong> Use code <strong>123456</strong> (auto-filled)<br>
-        Click "Verify" to continue.
+        <strong>🧪 Test Mode Active:</strong><br />
+        Default code: <strong>123456</strong><br />
+        This will generate your unique Zeus-PIN for secure messaging.
       </div>
     </div>
   </div>
 
   <script>
-    // Enforce step-locked flow
+    const API_BASE = window.location.origin;
+
+    // Enforce step-locked flow: Must come from emailinput.html
     const pendingEmail = localStorage.getItem('pending_email');
     if (!pendingEmail) {
       alert('Session expired. Please start over.');
       window.location.href = 'emailinput.html';
     }
 
+    // Display pending email
+    document.getElementById('emailDisplay').textContent = pendingEmail;
+
+    // Allow Enter key to verify
     document.getElementById('otp').addEventListener('keypress', function(e) {
       if (e.key === 'Enter') {
         verifyOTP();
@@ -158,117 +187,73 @@
     async function verifyOTP() {
       const otpInput = document.getElementById('otp');
       const verifyBtn = document.getElementById('verifyBtn');
+      const errorMsg = document.getElementById('errorMsg');
 
+      // Prevent double submission
       if (verifyBtn.disabled) return;
       verifyBtn.disabled = true;
       verifyBtn.textContent = 'Verifying...';
+      errorMsg.style.display = 'none';
 
+      const email = localStorage.getItem('pending_email');
       const otp = otpInput.value.trim();
 
-      if (!otp || otp.length !== 6) {
-        alert('Please enter a 6-digit OTP code.');
+      // Validate OTP
+      if (!otp || otp.length !== 6 || !/^\d+$/.test(otp)) {
+        errorMsg.textContent = 'Please enter a valid 6-digit code.';
+        errorMsg.style.display = 'block';
         verifyBtn.disabled = false;
-        verifyBtn.textContent = 'Verify';
+        verifyBtn.textContent = 'Verify & Continue';
         return;
       }
 
-      // For ZeusChat 1.0, OTP is always 123456 (as per spec)
-      if (otp === '123456') {
-        const email = localStorage.getItem('pending_email');
-        const API_BASE = window.location.origin;
-        
-        try {
-          console.log('🔐 ===== OTP VERIFICATION STARTING =====');
-          console.log('📧 Email:', email);
-          console.log('🔑 OTP:', otp);
-          console.log('🌐 API Base:', API_BASE);
-          console.log('🌐 Current URL:', window.location.href);
-          console.log('🌐 Origin:', window.location.origin);
-          
-          const url = `${API_BASE}/api/verify-otp`;
-          console.log('📡 Calling URL:', url);
-          
-          console.log('📤 Request payload:', JSON.stringify({ email, otp }));
-          
-          // Step 1: Verify OTP with backend - get zeus_pin
-          const verifyResponse = await fetch(url, {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            },
-            body: JSON.stringify({ email, otp })
-          });
-          
-          console.log('📊 Response Status:', verifyResponse.status);
-          console.log('📊 Response OK:', verifyResponse.ok);
-          console.log('📊 Response Status Text:', verifyResponse.statusText);
-          
-          // Log all response headers
-          const headers = {};
-          verifyResponse.headers.forEach((value, key) => {
-            headers[key] = value;
-          });
-          console.log('📊 Response Headers:', headers);
-          
-          // Check content type before parsing
-          const contentType = verifyResponse.headers.get('content-type');
-          console.log('📊 Content-Type:', contentType);
-          
-          if (!contentType || !contentType.includes('application/json')) {
-            // If not JSON, get the raw text
-            const text = await verifyResponse.text();
-            console.error('❌ Non-JSON response received!');
-            console.error('❌ Response body (first 500 chars):', text.substring(0, 500));
-            throw new Error(`Server returned non-JSON response (${verifyResponse.status}): ${text.substring(0, 200)}`);
-          }
-          
-          const verifyResult = await verifyResponse.json();
-          console.log('✅ Response Data:', verifyResult);
-          console.log('✅ Success flag:', verifyResult.success);
-          console.log('✅ Zeus PIN:', verifyResult.zeus_pin);
-          
-          if (verifyResponse.ok && verifyResult.success && verifyResult.zeus_pin) {
-            console.log('✅ ===== OTP VERIFIED SUCCESSFULLY =====');
-            console.log('✅ Zeus PIN generated:', verifyResult.zeus_pin);
-            
-            // Save zeus_pin and email to localStorage for profile creation
-            localStorage.setItem('my_zeus_pin', verifyResult.zeus_pin);
-            localStorage.setItem('registration_email', email);
-            
-            console.log('💾 Saved to localStorage:');
-            console.log('  - my_zeus_pin:', localStorage.getItem('my_zeus_pin'));
-            console.log('  - registration_email:', localStorage.getItem('registration_email'));
-            
-            console.log('🔀 Redirecting to profile-create.html...');
-            
-            // Redirect to profile creation
-            window.location.href = 'profile-create.html';
-          } else {
-            console.error('❌ ===== OTP VERIFICATION FAILED =====');
-            console.error('❌ Response:', verifyResult);
-            console.error('❌ Status:', verifyResponse.status);
-            console.error('❌ Success:', verifyResult.success);
-            console.error('❌ Zeus PIN:', verifyResult.zeus_pin);
-            throw new Error(verifyResult.error || verifyResult.message || 'OTP verification failed');
-          }
-        } catch (error) {
-          console.error('❌ ===== ERROR OCCURRED =====');
-          console.error('❌ Error type:', error.constructor.name);
-          console.error('❌ Error message:', error.message);
-          console.error('❌ Error stack:', error.stack);
-          
-          // Show detailed error to user
-          alert(`❌ OTP Verification Error:\n\n${error.message}\n\n📋 Check browser console (F12) for details.`);
-          
-          verifyBtn.disabled = false;
-          verifyBtn.textContent = 'Verify';
+      try {
+        console.log('🔐 Verifying OTP...');
+        console.log('📧 Email:', email);
+        console.log('🔑 OTP:', otp);
+
+        // Call /api/verify-otp endpoint
+        const response = await fetch(`${API_BASE}/api/verify-otp`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ 
+            email, 
+            otp 
+          })
+        });
+
+        console.log('📡 Response status:', response.status);
+        const result = await response.json();
+        console.log('📊 Response data:', result);
+
+        if (!response.ok) {
+          throw new Error(result.error || 'OTP verification failed');
         }
-      } else {
-        console.warn('⚠️ Invalid OTP entered:', otp);
-        alert('Invalid OTP code. Please enter 123456');
+
+        if (!result.zeus_pin) {
+          throw new Error('Invalid response: no zeus_pin generated');
+        }
+
+        console.log('✅ OTP verified! Zeus PIN:', result.zeus_pin);
+
+        // Store Zeus PIN for next step
+        localStorage.setItem('registration_email', email);
+        localStorage.setItem('my_zeus_pin', result.zeus_pin);
+        
+        // Remove pending email (step is complete)
+        localStorage.removeItem('pending_email');
+
+        console.log('🎉 Redirecting to profile creation...');
+        // Proceed to profile creation
+        window.location.href = 'profile-create.html';
+
+      } catch (error) {
+        console.error('❌ OTP verification error:', error);
+        errorMsg.textContent = 'Error: ' + (error.message || 'OTP verification failed. Please try again.');
+        errorMsg.style.display = 'block';
         verifyBtn.disabled = false;
-        verifyBtn.textContent = 'Verify';
+        verifyBtn.textContent = 'Verify & Continue';
       }
     }
   </script>

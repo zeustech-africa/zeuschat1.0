@@ -1,207 +1,319 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Create Profile — ZeusChat</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-    body {
-      background: #000;
-      overflow: hidden;
-      height: 100vh;
-      color: #fff;
-    }
-    .video-bg {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      z-index: -1;
-    }
-    .overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.6);
-      z-index: 0;
-    }
-    .header {
-      position: absolute;
-      top: 24px;
-      left: 24px;
-      z-index: 2;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-    }
-    .logo {
-      height: 32px;
-      margin-bottom: 4px;
-    }
-    .byline {
-      font-size: 12px;
-      color: #FFD700;
-      font-weight: 500;
-    }
-    .container {
-      position: relative;
-      z-index: 1;
-      text-align: center;
-      padding: 20px;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-    }
-    .box {
-      background: #222;
-      border-radius: 12px;
-      padding: 24px;
-      margin: 16px 0;
-      width: 100%;
-      max-width: 600px;
-      text-align: left;
-    }
-    .box-title {
-      font-size: 20px;
-      font-weight: 600;
-      margin-bottom: 16px;
-      color: #fff;
-    }
-    .zeus-pin-display {
-      background: #333;
-      padding: 12px;
-      border-radius: 8px;
-      font-family: monospace;
-      font-size: 16px;
-      margin-bottom: 16px;
-      word-spacing: 4px;
-      text-align: center;
-    }
-    .input-group {
-      margin-bottom: 16px;
-    }
-    input {
-      width: 100%;
-      padding: 12px;
-      margin: 8px 0;
-      background: #333;
-      border: 1px solid #444;
-      color: #fff;
-      border-radius: 6px;
-    }
-    .btn {
-      background: #FFD700;
-      color: #000;
-      border: none;
-      padding: 12px 24px;
-      font-size: 14px;
-      font-weight: 600;
-      border-radius: 6px;
-      cursor: pointer;
-      margin-top: 16px;
-      width: 100%;
-      max-width: 400px;
-    }
-    .note {
-      background: #1a1a1a;
-      border-left: 4px solid #d4af37;
-      padding: 12px;
-      margin-top: 16px;
-      font-size: 13px;
-      text-align: left;
-      line-height: 1.5;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Profile - ZeusChat</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        .video-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+        }
+        .video-background video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: -1;
+        }
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+        .form-box {
+            background: rgba(0, 0, 0, 0.85);
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 100%;
+            border: 2px solid #FFD700;
+        }
+        h1 {
+            color: #FFD700;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .zeus-pin {
+            background: #FFD700;
+            color: #000;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 1.8em;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+            word-break: break-all;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: 2px solid #FFD700;
+            border-radius: 10px;
+            background: #111;
+            color: #fff;
+            font-size: 1em;
+            box-sizing: border-box;
+        }
+        input:focus {
+            outline: none;
+            background: #1a1a1a;
+        }
+        .profile-pic-upload {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .profile-pic-upload p {
+            color: #FFD700;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+        .profile-pic-preview {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #FFD700;
+            margin: 10px auto;
+            display: block;
+            background: #222;
+        }
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+        .file-input-label {
+            display: block;
+            padding: 15px;
+            background: #222;
+            border: 2px dashed #FFD700;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            color: #FFD700;
+            margin: 10px 0;
+            transition: background 0.3s;
+        }
+        .file-input-label:hover {
+            background: #333;
+        }
+        .btn {
+            background: #FFD700;
+            color: #000;
+            padding: 15px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            width: 100%;
+            margin: 10px 0;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #FFA500;
+        }
+        .btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        .info-text {
+            text-align: center;
+            margin: 10px 0;
+            font-size: 0.9em;
+            color: #FFD700;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            color: #FFD700;
+        }
+    </style>
 </head>
 <body>
-  <video class="video-bg" autoplay muted loop>
-    <source src="zeuschat-profile.mp4" type="video/mp4">
-  </video>
-  <div class="overlay"></div>
-
-  <div class="header">
-    <img src="zeustech-logo-zeushchat.png" class="logo" alt="ZeusTech">
-    <div class="byline">ZeusChat by ZeusTech</div>
-  </div>
-
-  <div class="container">
-    <div class="box">
-      <div class="box-title">Create Your Profile</div>
-      
-      <div class="zeus-pin-display" id="zeus-pin-display">
-        ZT-XXXX-XXXX
-      </div>
-
-      <div class="note">
-        Please copy and save your Zeus-PIN. You will need it to log in and connect with others.
-      </div>
-
-      <div class="input-group">
-        <input type="text" id="name" placeholder="Your full name" />
-      </div>
-      <div class="input-group">
-        <input type="text" id="about" placeholder="About you" />
-      </div>
-
-      <button class="btn" onclick="saveProfile()">Save & Continue</button>
+    <div class="video-background">
+        <video autoplay muted loop playsinline">
+            <source src="zeuschat-profile.mp4" type="video/mp4">
+        </video>
     </div>
-  </div>
-
-  <script>
-    const API_BASE = window.location.origin;
-    let currentZeusPIN = '';
-
-    window.addEventListener('DOMContentLoaded', () => {
-      const zeusPin = localStorage.getItem('my_zeus_pin') || 'ZT-XXXX-XXXX';
-      currentZeusPIN = zeusPin;
-      document.getElementById('zeus-pin-display').textContent = zeusPin;
-      
-      // Require a valid PIN before continuing
-      if (zeusPin === 'ZT-XXXX-XXXX') {
-        alert('Session invalid. Please start registration again.');
-        window.location.href = 'emailinput.html';
-      }
-    });
-
-    async function saveProfile() {
-      const name = document.getElementById('name').value.trim();
-      const about = document.getElementById('about').value.trim();
-      const email = localStorage.getItem('registration_email');
-
-      if (!name) {
-        alert("Please enter your full name.");
-        return;
-      }
-
-      if (!email) {
-        alert("Session invalid. Please start registration again.");
-        window.location.href = 'emailinput.html';
-        return;
-      }
-
-      console.log('💾 Saving profile with:');
-      console.log('📧 Email:', email);
-      console.log('👤 Name:', name);
-      console.log('🔐 Zeus PIN:', currentZeusPIN);
-
-      // Redirect to password creation
-      localStorage.setItem('registration_full_name', name);
-      localStorage.setItem('registration_about', about);
-      
-      window.location.href = 'password-create.html';
-    }
-  </script>
+    <div class="overlay"></div>
+    
+    <div class="container">
+        <div class="form-box">
+            <h1>🔐 Create Your Profile</h1>
+            <div class="zeus-pin" id="zeusPin">ZT-XXXX-XXXX</div>
+            <p class="info-text">⚠️ Save your Zeus PIN. You need it to login.</p>
+            
+            <input type="text" id="fullName" placeholder="Full Name" required autocomplete="off">
+            
+            <div class="profile-pic-upload">
+                <p>📷 Profile Picture (Optional)</p>
+                <img id="profilePreview" class="profile-pic-preview" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 150'%3E%3Crect fill='%23333' width='150' height='150'/%3E%3Ctext fill='%23FFD700' font-size='80' x='50%25' y='50%25' text-anchor='middle' dy='.3em'%3E👤%3C/text%3E%3C/svg%3E" alt="Profile">
+                <div class="file-input-wrapper">
+                    <input type="file" id="profilePic" accept="image/*">
+                    <label for="profilePic" class="file-input-label">📁 Click to upload photo</label>
+                </div>
+            </div>
+            
+            <input type="password" id="password" placeholder="Password (min 6 chars)" required autocomplete="off">
+            <input type="password" id="confirmPassword" placeholder="Confirm Password" required autocomplete="off">
+            
+            <button class="btn" id="submitBtn" onclick="completeRegistration()">✅ Save & Continue</button>
+            <div class="loading" id="loading">⏳ Creating account...</div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = window.location.origin;
+        
+        // Enforce step-locked flow: Must come from otp-verify.html
+        const myZeusPin = localStorage.getItem('my_zeus_pin');
+        const registrationEmail = localStorage.getItem('registration_email');
+        
+        if (!myZeusPin || !registrationEmail) {
+            alert('Session expired. Please start over.');
+            window.location.href = 'emailinput.html';
+        }
+        
+        // Display Zeus PIN
+        document.getElementById('zeusPin').textContent = myZeusPin;
+        
+        // Preview profile image
+        document.getElementById('profilePic').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('profilePreview').src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // Convert file to base64
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+        
+        async function completeRegistration() {
+            const fullName = document.getElementById('fullName').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const email = localStorage.getItem('registration_email');
+            const zeusPin = localStorage.getItem('my_zeus_pin');
+            const profilePicInput = document.getElementById('profilePic');
+            const submitBtn = document.getElementById('submitBtn');
+            const loading = document.getElementById('loading');
+            
+            if (!fullName || !password || !confirmPassword) {
+                alert('❌ Please fill all required fields');
+                return;
+            }
+            
+            if (password.length < 6) {
+                alert('❌ Password must be at least 6 characters');
+                return;
+            }
+            
+            if (password !== confirmPassword) {
+                alert('❌ Passwords do not match');
+                return;
+            }
+            
+            let profilePic = '';
+            if (profilePicInput.files.length > 0) {
+                try {
+                    profilePic = await fileToBase64(profilePicInput.files[0]);
+                } catch (error) {
+                    console.error('Error reading file:', error);
+                    alert('❌ Error reading image file');
+                    return;
+                }
+            }
+            
+            // Disable button and show loading
+            submitBtn.disabled = true;
+            loading.style.display = 'block';
+            
+            try {
+                console.log('📝 Completing registration...');
+                console.log('📧 Email:', email);
+                console.log('👤 Name:', fullName);
+                console.log('🔐 Zeus PIN:', zeusPin);
+                
+                const response = await fetch(`${API_BASE}/api/complete-registration`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        email: email,
+                        zeus_pin: zeusPin,
+                        password: password,
+                        full_name: fullName,
+                        profile_pic: profilePic
+                    })
+                });
+                
+                console.log('📡 Response status:', response.status);
+                const data = await response.json();
+                console.log('📊 Response data:', data);
+                
+                if (response.ok && data.success) {
+                    console.log('✅ Registration successful!');
+                    
+                    // Store user info for later
+                    localStorage.setItem('user_full_name', fullName);
+                    localStorage.setItem('registration_full_name', fullName);
+                    
+                    console.log('🎉 Redirecting to password creation...');
+                    // Redirect to password creation
+                    window.location.href = 'password-create.html';
+                } else {
+                    throw new Error(data.error || 'Registration failed');
+                }
+            } catch (error) {
+                console.error('❌ Error:', error);
+                alert('❌ ' + (error.message || 'Failed to create profile'));
+                submitBtn.disabled = false;
+                loading.style.display = 'none';
+            }
+        }
+        
+        // Enter key submits form
+        document.getElementById('confirmPassword').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') completeRegistration();
+        });
+    </script>
 </body>
 </html>

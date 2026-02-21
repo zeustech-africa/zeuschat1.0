@@ -1,15 +1,20 @@
-*.mp4
-videos/
-static/videos/
-*.mp4
-videos/
-static/videos/
+# Database files (local development only)
 zeuschat.db
-zeuschat.db
-*.mp4
-videos/
+
+# Environment files
 backend/.env
 .env
+
+# Python cache
 __pycache__/
+*.pyc
+
+# Logs
 *.log
+
+# Virtual environment
 .venv/
+
+# Large video folders (but allow root mp4 files for deployment)
+videos/
+static/videos/

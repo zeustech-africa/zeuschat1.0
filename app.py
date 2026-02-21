@@ -2,18 +2,31 @@ import os
 import secrets
 import hashlib
 import sqlite3
+from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 
 app = Flask(__name__, static_folder='.')
 
 # ======== CORS CONFIGURATION =========
-CORS(app, 
-    origins=["https://zeuschat1-0.onrender.com", "https://zeuschat.onrender.com", "http://localhost:8888", "http://localhost:5000"],
-    supports_credentials=True,
-    methods=["GET", "POST", "OPTIONS"])
+# Dynamic CORS - allows requests from any origin (Required for Render deployments)
+@app.after_request
+def after_request(response):
+    origin = request.headers.get('Origin')
+    # Allow all origins for now (can restrict later if needed)
+    if origin:
+        response.headers['Access-Control-Allow-Origin'] = origin
+    else:
+        # If no Origin header, allow from same domain
+        response.headers['Access-Control-Allow-Origin'] = '*'
+    
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+    response.headers['Access-Control-Max-Age'] = '3600'
+    return response
 
-print("✅ CORS initialized")
+print("✅ Dynamic CORS initialized")
 
 # ======== DATABASE SETUP =========
 os.makedirs('data', exist_ok=True)
@@ -26,53 +39,73 @@ def get_db():
 
 def init_db():
     """Initialize database with required schema"""
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT UNIQUE NOT NULL,
-            zeus_pin TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            full_name TEXT,
-            profile_pic TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS contacts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            contact_user_id INTEGER NOT NULL,
-            status TEXT DEFAULT 'pending',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id),
-            FOREIGN KEY (contact_user_id) REFERENCES users(id)
-        )
-    ''')
-    
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            sender_id INTEGER NOT NULL,
-            receiver_id INTEGER NOT NULL,
-            content TEXT NOT NULL,
-            ttl_seconds INTEGER NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            viewed_at TIMESTAMP,
-            FOREIGN KEY (sender_id) REFERENCES users(id),
-            FOREIGN KEY (receiver_id) REFERENCES users(id)
-        )
-    ''')
-    
-    conn.commit()
-    conn.close()
+    print("🔧 Initializing database...")
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT UNIQUE NOT NULL,
+                zeus_pin TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                full_name TEXT,
+                profile_pic TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS contacts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                contact_user_id INTEGER NOT NULL,
+                status TEXT DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                FOREIGN KEY (contact_user_id) REFERENCES users(id)
+            )
+        ''')
+        
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                sender_id INTEGER NOT NULL,
+                receiver_id INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                ttl_seconds INTEGER NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                viewed_at TIMESTAMP,
+                FOREIGN KEY (sender_id) REFERENCES users(id),
+                FOREIGN KEY (receiver_id) REFERENCES users(id)
+            )
+        ''')
+        
+        conn.commit()
+        
+        # Verify tables were created
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        tables = [row[0] for row in cursor.fetchall()]
+        print(f"✅ Database initialized successfully")
+        print(f"📊 Tables: {', '.join(tables)}")
+        print(f"📊 Tables: {', '.join(tables)}")
+        
+    except Exception as e:
+        print(f"❌ Database initialization error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
+    finally:
+        if conn:
+            conn.close()
 
 # Initialize DB on startup
-init_db()
-print("✅ Database initialized")
+try:
+    init_db()
+except Exception as e:
+    print(f"⚠️  Database initialization failed: {e}")
+    print("⚠️  App will try to initialize on first request")
 
 # ======== HELPER FUNCTIONS =========
 def generate_zeus_pin():
@@ -93,6 +126,48 @@ def static_files(path):
     if os.path.exists(path):
         return send_from_directory('.', path)
     return send_from_directory('.', 'index.html')
+
+# ======== API ENDPOINTS - HEALTH CHECK =========
+
+@app.route('/health', methods=['GET'])
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """Health check endpoint for monitoring and debugging"""
+    try:
+        from datetime import datetime
+        
+        # Test database connection
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # Check if tables exist
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        tables = [row[0] for row in cursor.fetchall()]
+        
+        # Get user count
+        cursor.execute("SELECT COUNT(*) FROM users")
+        user_count = cursor.fetchone()[0]
+        
+        conn.close()
+        
+        return jsonify({
+            'status': 'healthy',
+            'database': 'connected',
+            'tables': tables,
+            'users': user_count,
+            'timestamp': datetime.now().isoformat(),
+            'environment': os.environ.get('FLASK_ENV', 'development'),
+            'database_path': DATABASE_PATH
+        }), 200
+        
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e),
+            'traceback': traceback.format_exc(),
+            'timestamp': datetime.now().isoformat() if 'datetime' in dir() else 'unknown'
+        }), 500
 
 # ======== API ENDPOINTS - REGISTRATION =========
 
@@ -135,32 +210,47 @@ def verify_otp():
         return '', 204
     
     try:
+        print(f"📥 Received OTP verification request")
+        print(f"📊 Request headers: {dict(request.headers)}")
+        print(f"📊 Request data: {request.get_data(as_text=True)}")
+        
         data = request.json or {}
         email = data.get('email', '').lower().strip()
         otp = data.get('otp', '').strip()
         
+        print(f"📧 Email: {email}")
+        print(f"🔑 OTP: {otp}")
+        
         if not email or not otp:
-            return jsonify({'error': 'Email and OTP required'}), 400
+            print(f"❌ Missing email or OTP")
+            return jsonify({'error': 'Email and OTP required', 'success': False}), 400
         
         # Test mode: accept 123456
         if otp != '123456':
-            return jsonify({'error': 'Invalid OTP code'}), 400
+            print(f"❌ Invalid OTP: {otp}")
+            return jsonify({'error': 'Invalid OTP code', 'success': False}), 400
         
         # Generate unique Zeus PIN
         zeus_pin = generate_zeus_pin()
         
         print(f"✅ OTP verified for {email}, generated PIN: {zeus_pin}")
         
-        return jsonify({
+        response_data = {
             'success': True,
             'message': 'OTP verified successfully',
             'zeus_pin': zeus_pin,
             'email': email
-        }), 200
+        }
+        
+        print(f"📤 Sending response: {response_data}")
+        
+        return jsonify(response_data), 200
         
     except Exception as e:
         print(f"❌ verify_otp error: {e}")
-        return jsonify({'error': str(e)}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e), 'success': False}), 500
 
 @app.route('/api/complete-registration', methods=['POST', 'OPTIONS'])
 def complete_registration():

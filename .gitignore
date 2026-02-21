@@ -10,3 +10,6 @@ zeuschat.db
 videos/
 backend/.env
 .env
+__pycache__/
+*.log
+.venv/

@@ -339,6 +339,180 @@ def update_profile():
     
     return jsonify({'success': True, 'message': 'Profile updated successfully'}), 200
 
+# ============ MESSAGING SYSTEM ENDPOINTS ============
+
+@app.route('/api/send-message', methods=['POST', 'OPTIONS'])
+def send_message():
+    """Send a message to a contact (requires accepted handshake)"""
+    if request.method == 'OPTIONS':
+        return jsonify({'success': True}), 200
+    
+    try:
+        if 'user_id' not in session:
+            return jsonify({'error': 'Not authenticated'}), 401
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        sender_id = session['user_id']
+        receiver_zeus_pin = data.get('receiver_pin', '').strip()
+        content = data.get('content', '').strip()
+        ttl_seconds = data.get('ttl', 3600)  # Default 1 hour
+        
+        if not receiver_zeus_pin or not content:
+            return jsonify({'error': 'Missing receiver_pin or content'}), 400
+        
+        # Find receiver by Zeus PIN
+        conn = sqlite3.connect('zeuschat.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT id FROM users WHERE zeus_pin = ?', (receiver_zeus_pin,))
+        receiver = cursor.fetchone()
+        if not receiver:
+            conn.close()
+            return jsonify({'error': 'Receiver not found'}), 404
+        
+        receiver_id = receiver[0]
+        
+        # Check contact handshake (CRITICAL: contacts must be accepted)
+        cursor.execute('''
+            SELECT status FROM contacts 
+            WHERE user_id = ? AND contact_user_id = ? AND status = 'accepted'
+        ''', (sender_id, receiver_id))
+        
+        if not cursor.fetchone():
+            conn.close()
+            return jsonify({'error': 'Contact not accepted. Cannot send message.'}), 403
+        
+        # Insert message
+        cursor.execute('''
+            INSERT INTO messages (sender_id, receiver_id, content, file_url, ttl_seconds)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (sender_id, receiver_id, content, '', ttl_seconds))
+        
+        message_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        
+        print(f"✅ Message sent from user {sender_id} to {receiver_id}")
+        
+        return jsonify({
+            'success': True,
+            'message_id': message_id,
+            'message': 'Message sent successfully'
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ send_message error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/get-messages', methods=['GET'])
+def get_messages():
+    """Get unread messages for current user (auto-delete expired)"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'error': 'Not authenticated'}), 401
+        
+        user_id = session['user_id']
+        conn = sqlite3.connect('zeuschat.db')
+        cursor = conn.cursor()
+        
+        # Get current messages for user (not expired)
+        cursor.execute('''
+            SELECT id, sender_id, receiver_id, content, file_url, ttl_seconds, created_at, viewed_at
+            FROM messages 
+            WHERE receiver_id = ? 
+            AND datetime(created_at, '+' || ttl_seconds || ' seconds') > datetime('now')
+            ORDER BY created_at DESC
+        ''', (user_id,))
+        
+        messages = []
+        for row in cursor.fetchall():
+            messages.append({
+                'id': row[0],
+                'sender_id': row[1],
+                'receiver_id': row[2],
+                'content': row[3],
+                'file_url': row[4],
+                'ttl_seconds': row[5],
+                'created_at': row[6],
+                'viewed_at': row[7]
+            })
+        
+        # Auto-delete expired messages (TTL cleanup)
+        cursor.execute('''
+            DELETE FROM messages 
+            WHERE receiver_id = ? 
+            AND datetime(created_at, '+' || ttl_seconds || ' seconds') <= datetime('now')
+        ''', (user_id,))
+        conn.commit()
+        
+        # Mark retrieved messages as viewed
+        if messages:
+            cursor.execute('''
+                UPDATE messages 
+                SET viewed_at = datetime('now')
+                WHERE receiver_id = ? AND viewed_at IS NULL
+            ''', (user_id,))
+            conn.commit()
+        
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'messages': messages,
+            'count': len(messages)
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ get_messages error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/delete-message', methods=['POST', 'OPTIONS'])
+def delete_message():
+    """Delete a message (by sender or receiver)"""
+    if request.method == 'OPTIONS':
+        return jsonify({'success': True}), 200
+    
+    try:
+        if 'user_id' not in session:
+            return jsonify({'error': 'Not authenticated'}), 401
+        
+        user_id = session['user_id']
+        data = request.get_json()
+        message_id = data.get('message_id')
+        
+        if not message_id:
+            return jsonify({'error': 'Missing message_id'}), 400
+        
+        conn = sqlite3.connect('zeuschat.db')
+        cursor = conn.cursor()
+        
+        # Verify ownership and delete
+        cursor.execute('''
+            DELETE FROM messages 
+            WHERE id = ? AND (sender_id = ? OR receiver_id = ?)
+        ''', (message_id, user_id, user_id))
+        
+        if cursor.rowcount == 0:
+            conn.close()
+            return jsonify({'error': 'Message not found or not authorized'}), 404
+        
+        conn.commit()
+        conn.close()
+        
+        print(f"✅ Message {message_id} deleted by user {user_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Message deleted successfully'
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ delete_message error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/health', methods=['GET'])
 def health():
     """Health check endpoint"""

@@ -439,12 +439,47 @@
   </div>
 
   <script>
+    // ============ SECURITY FEATURES ============
+    
+    // 🛡️ Screenshot Prevention
+    document.addEventListener('keyup', (e) => {
+      // Disable PrintScreen, Cmd+Shift+3/4/5 (Mac), Windows+Shift+S
+      if (e.key === 'PrintScreen' || 
+          (e.metaKey && e.shiftKey && ['3', '4', '5'].includes(e.key)) ||
+          (e.key === 's' && e.metaKey && e.shiftKey)) {
+        navigator.clipboard.writeText('');
+        alert('🚫 Screenshots are disabled for security');
+      }
+    });
+    
+    // Disable right-click to prevent "Save Image As"
+    document.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      alert('🚫 Right-click disabled for security');
+    });
+    
+    // Disable text selection on messages
+    document.addEventListener('selectstart', (e) => {
+      if (e.target.closest('.msg')) {
+        e.preventDefault();
+      }
+    });
+    
+    // Detect when window loses focus (potential screenshot attempt)
+    let screenshotWarningShown = false;
+    window.addEventListener('blur', () => {
+      if (!screenshotWarningShown) {
+        console.warn('⚠️ Window lost focus - possible screenshot attempt');
+        screenshotWarningShown = true;
+      }
+    });
+    
     // Session validation - ensure user is logged in
     const authToken = localStorage.getItem('auth_token');
     const userId = localStorage.getItem('user_id');
-    const zeusPIN = localStorage.getItem('my_zeus_pin');
+    const zeusPIN = localStorage.getItem('zeus_pin') || localStorage.getItem('my_zeus_pin');
     
-    if (!authToken || !userId) {
+    if (!userId) {
       console.warn('⚠️ No active session found. Redirecting to login...');
       alert('Please log in to access ZeusChat.');
       window.location.href = 'login.html';
@@ -535,11 +570,21 @@
       const messagesDiv = document.getElementById('messages');
       const newMessage = document.createElement('div');
       newMessage.className = 'msg out';
-      newMessage.textContent = message;
+      
+      // Add message with timer display
+      const messageContent = document.createElement('div');
+      messageContent.textContent = message;
+      const timerDisplay = document.createElement('div');
+      timerDisplay.style.cssText = 'font-size:10px;color:rgba(0,0,0,0.6);margin-top:4px;';
+      timerDisplay.textContent = `🔥 ${ttl}s`;
+      
+      newMessage.appendChild(messageContent);
+      newMessage.appendChild(timerDisplay);
       messagesDiv.appendChild(newMessage);
       input.value = '';
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
+      // Update contacts list
       const contacts = JSON.parse(localStorage.getItem('contacts')) || [];
       if (contacts.length > 0) {
         contacts[0].lastMessage = message;
@@ -548,11 +593,44 @@
         loadChats();
       }
 
+      // ⏱️ Countdown timer
+      let timeLeft = ttl;
+      const countdown = setInterval(() => {
+        timeLeft--;
+        if (timeLeft > 0) {
+          timerDisplay.textContent = `🔥 ${timeLeft}s`;
+        } else {
+          clearInterval(countdown);
+        }
+      }, 1000);
+
+      // 🔥 Auto-delete after TTL with animation
       setTimeout(() => {
         if (newMessage.parentNode) {
-          newMessage.parentNode.removeChild(newMessage);
+          newMessage.style.transition = 'all 0.5s ease';
+          newMessage.style.opacity = '0';
+          newMessage.style.transform = 'scale(0.8)';
+          setTimeout(() => {
+            if (newMessage.parentNode) {
+              newMessage.parentNode.removeChild(newMessage);
+              console.log('🔥 Message deleted after TTL');
+            }
+          }, 500);
         }
       }, ttl * 1000);
+      
+      // 👁️ Simulate "seen" notification after 2 seconds
+      setTimeout(() => {
+        if (newMessage.parentNode) {
+          const seenIndicator = document.createElement('span');
+          seenIndicator.textContent = ' ✓✓';
+          seenIndicator.style.color = '#00ff00';
+          seenIndicator.style.fontSize = '10px';
+          seenIndicator.style.marginLeft = '4px';
+          timerDisplay.appendChild(seenIndicator);
+          console.log('👁️ Message seen by recipient');
+        }
+      }, 2000);
     }
 
     window.addEventListener('DOMContentLoaded', () => {

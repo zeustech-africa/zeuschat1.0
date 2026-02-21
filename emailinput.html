@@ -188,10 +188,34 @@
         return;
       }
 
-      localStorage.setItem("pending_email", email);
-
-      // otp-verify.html MUST validate pending_email exists to enforce step-locked flow
-      window.location.href = "otp-verify.html";
+      // Call backend to send OTP
+      const API_BASE = window.location.origin;
+      
+      fetch(`${API_BASE}/api/start-signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          localStorage.setItem("pending_email", email);
+          console.log('✅ OTP sent to:', email);
+          // otp-verify.html MUST validate pending_email exists to enforce step-locked flow
+          window.location.href = "otp-verify.html";
+        } else {
+          alert(data.error || 'Failed to send OTP. Please try again.');
+          nextBtn.disabled = false;
+          nextBtn.textContent = "Next";
+        }
+      })
+      .catch(error => {
+        console.error('❌ Signup error:', error);
+        alert('Network error. Please check your connection.');
+        nextBtn.disabled = false;
+        nextBtn.textContent = "Next";
+      });
     }
   </script>
 </body>

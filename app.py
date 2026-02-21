@@ -6,6 +6,15 @@ import secrets
 import hashlib
 from datetime import datetime
 import json
+import sys
+import flask
+
+# Startup logging for deployment verification
+print("="*60)
+print(f"🚀 ZeusChat Server Starting")
+print(f"📦 Python Version: {sys.version}")
+print(f"📦 Flask Version: {flask.__version__}")
+print("="*60)
 
 app = Flask(__name__, static_folder='.', static_url_path='')
 app.secret_key = secrets.token_hex(32)

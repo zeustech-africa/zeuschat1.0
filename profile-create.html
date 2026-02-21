@@ -160,23 +160,46 @@
   </div>
 
   <script>
+    const API_BASE = window.location.origin;
+    let currentZeusPIN = '';
+
     window.addEventListener('DOMContentLoaded', () => {
       const zeusPin = localStorage.getItem('my_zeus_pin') || 'ZT-XXXX-XXXX';
+      currentZeusPIN = zeusPin;
       document.getElementById('zeus-pin-display').textContent = zeusPin;
+      
+      // Require a valid PIN before continuing
+      if (zeusPin === 'ZT-XXXX-XXXX') {
+        alert('Session invalid. Please start registration again.');
+        window.location.href = 'emailinput.html';
+      }
     });
 
-    function saveProfile() {
-      const name = document.getElementById('name').value;
-      const about = document.getElementById('about').value;
-      const zeusPin = localStorage.getItem('my_zeus_pin');
+    async function saveProfile() {
+      const name = document.getElementById('name').value.trim();
+      const about = document.getElementById('about').value.trim();
+      const email = localStorage.getItem('registration_email');
 
       if (!name) {
-        alert("Please enter your name.");
+        alert("Please enter your full name.");
         return;
       }
 
-      // In real app, you'd POST to /update-profile
-      alert(`✅ Profile saved!\nYour Zeus-PIN: ${zeusPin}`);
+      if (!email) {
+        alert("Session invalid. Please start registration again.");
+        window.location.href = 'emailinput.html';
+        return;
+      }
+
+      console.log('💾 Saving profile with:');
+      console.log('📧 Email:', email);
+      console.log('👤 Name:', name);
+      console.log('🔐 Zeus PIN:', currentZeusPIN);
+
+      // Redirect to password creation
+      localStorage.setItem('registration_full_name', name);
+      localStorage.setItem('registration_about', about);
+      
       window.location.href = 'password-create.html';
     }
   </script>

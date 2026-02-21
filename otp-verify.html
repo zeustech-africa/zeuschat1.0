@@ -177,43 +177,37 @@
         const email = localStorage.getItem('pending_email');
         const API_BASE = window.location.origin;
         try {
-          // Step 1: Start signup session with backend
-          const startResponse = await fetch(`${API_BASE}/api/start-signup`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ email })
-          });
+          console.log('🔐 OTP Verification Starting...');
+          console.log('📧 Email:', email);
+          console.log('🔑 OTP:', otp);
           
-          if (!startResponse.ok) {
-            const errorData = await startResponse.json();
-            throw new Error(errorData.error || 'Failed to start signup session');
-          }
-          
-          console.log('✅ Signup session started');
-          
-          // Step 2: Verify OTP with backend
+          // Step 1: Verify OTP with backend - get zeus_pin
           const verifyResponse = await fetch(`${API_BASE}/api/verify-otp`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ otp })
+            body: JSON.stringify({ email, otp })
           });
           
-          console.log('📡 OTP verification response:', verifyResponse.status);
+          console.log('📡 OTP verification response status:', verifyResponse.status);
           
           const verifyResult = await verifyResponse.json();
+          console.log('📊 Response data:', verifyResult);
           
-          if (verifyResponse.ok && verifyResult.message) {
-            console.log('✅ OTP verified, redirecting to profile creation...');
+          if (verifyResponse.ok && verifyResult.success && verifyResult.zeus_pin) {
+            console.log('✅ OTP verified! Zeus PIN generated:', verifyResult.zeus_pin);
+            
+            // Save zeus_pin and email to localStorage for profile creation
+            localStorage.setItem('my_zeus_pin', verifyResult.zeus_pin);
+            localStorage.setItem('registration_email', email);
+            
             // Redirect to profile creation
-            window.location.href = 'create-profile.html';
+            window.location.href = 'profile-create.html';
           } else {
             console.error('❌ OTP verification failed:', verifyResult);
             throw new Error(verifyResult.error || 'OTP verification failed');
           }
         } catch (error) {
-          console.error('OTP verification error:', error);
+          console.error('❌ OTP verification error:', error);
           alert('Error: ' + (error.message || 'OTP verification failed. Please try again.'));
           verifyBtn.disabled = false;
           verifyBtn.textContent = 'Verify';

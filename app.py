@@ -1,674 +1,400 @@
 import os
-import uuid
-import time
-import sqlite3
-import random
-import jwt
-import bcrypt
+import secrets
 import hashlib
-import re
-from flask import Flask, request, jsonify, send_from_directory, session
+import sqlite3
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 
-# ======== DEBUGGING SETUP =========
-import traceback
-import sys
+app = Flask(__name__, static_folder='.')
 
-def print_error(e):
-    print("❌ ERROR:", str(e))
-    traceback.print_exc(file=sys.stdout)
+# ======== CORS CONFIGURATION =========
+CORS(app, 
+    origins=["https://zeuschat1-0.onrender.com", "https://zeuschat.onrender.com", "http://localhost:8888", "http://localhost:5000"],
+    supports_credentials=True,
+    methods=["GET", "POST", "OPTIONS"])
 
-app = Flask(__name__)
-
-# ======== ENVIRONMENT CONFIGURATION =========
-# MUST be set in Render dashboard
-JWT_SECRET = os.environ.get("JWT_SECRET")
-if not JWT_SECRET:
-    print("⚠️  JWT_SECRET not set! Using fallback for testing only.")
-    JWT_SECRET = "fallback_secret_for_testing"
-
-app.secret_key = JWT_SECRET
-
-DEBUG_MODE = os.environ.get("DEBUG_MODE", "false").lower() == "true"
-
-if DEBUG_MODE:
-    app.config.update(
-        SESSION_COOKIE_SECURE=False,
-        SESSION_COOKIE_HTTPONLY=True,
-        SESSION_COOKIE_SAMESITE='Lax',
-    )
-else:
-    app.config.update(
-        SESSION_COOKIE_SECURE=True,
-        SESSION_COOKIE_HTTPONLY=True,
-        SESSION_COOKIE_SAMESITE='None',
-    )
-
-# ======== FRONTEND ORIGIN =========
-# Allow both localhost for development and Render deployment
-cors_origins = [
-    "https://zeuschat.onrender.com",
-    "https://zeuschat1-0.onrender.com",
-    "http://localhost:8888",
-    "http://localhost:5000",
-    "http://127.0.0.1:5000"
-]
-
-# Add custom FRONTEND_URL if provided via environment
-frontend_url = os.environ.get("FRONTEND_URL")
-if frontend_url:
-    cors_origins.append(frontend_url.strip())
-
-try:
-    CORS(app, origins=cors_origins, supports_credentials=True)
-    print(f"✅ CORS initialized for origins: {cors_origins}")
-except Exception as e:
-    print(f"❌ CORS INIT FAILED: {e}")
+print("✅ CORS initialized")
 
 # ======== DATABASE SETUP =========
 os.makedirs('data', exist_ok=True)
 DATABASE_PATH = os.path.join('data', 'zeuschat.db')
 
 def get_db():
-    try:
-        conn = sqlite3.connect(DATABASE_PATH, timeout=20.0)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA foreign_keys = ON")
-        return conn
-    except Exception as e:
-        print_error(e)
-        raise
+    conn = sqlite3.connect(DATABASE_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 def init_db():
-    with get_db() as conn:
-        # Users table
-        conn.execute("""
+    """Initialize database with required schema"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
-            id TEXT PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            public_key TEXT NOT NULL,
-            created_at INTEGER NOT NULL
-        )""")
-        
-        # Profiles table
-        conn.execute("""
-        CREATE TABLE IF NOT EXISTS profiles (
-            id TEXT PRIMARY KEY,
-            user_id TEXT,
             zeus_pin TEXT UNIQUE NOT NULL,
-            display_name TEXT NOT NULL,
-            about TEXT,
-            avatar_url TEXT,
-            email TEXT UNIQUE NOT NULL,
-            created_at INTEGER NOT NULL,
-            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-        )""")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_zeus_pin ON profiles(zeus_pin)")
-        
-        # Contact requests
-        conn.execute("""
-        CREATE TABLE IF NOT EXISTS contact_requests (
-            id TEXT PRIMARY KEY,
-            sender_id TEXT NOT NULL,
-            receiver_id TEXT NOT NULL,
-            status TEXT CHECK(status IN ('pending', 'accepted', 'rejected')) DEFAULT 'pending',
-            created_at INTEGER NOT NULL,
-            FOREIGN KEY(sender_id) REFERENCES users(id) ON DELETE CASCADE,
-            FOREIGN KEY(receiver_id) REFERENCES users(id) ON DELETE CASCADE,
-            UNIQUE(sender_id, receiver_id)
-        )""")
-        
-        # Contacts
-        conn.execute("""
+            password_hash TEXT NOT NULL,
+            full_name TEXT,
+            profile_pic TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS contacts (
-            id TEXT PRIMARY KEY,
-            user_id TEXT NOT NULL,
-            contact_user_id TEXT NOT NULL,
-            initiator_id TEXT NOT NULL,
-            initiator_ready BOOLEAN DEFAULT 0,
-            responder_ready BOOLEAN DEFAULT 0,
-            handshake_complete BOOLEAN DEFAULT 0,
-            nonce TEXT NOT NULL,
-            nonce_hash TEXT,
-            created_at INTEGER NOT NULL,
-            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-            FOREIGN KEY(contact_user_id) REFERENCES users(id) ON DELETE CASCADE,
-            UNIQUE(user_id, contact_user_id)
-        )""")
-        
-        # Messages
-        conn.execute("""
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            contact_user_id INTEGER NOT NULL,
+            status TEXT DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (contact_user_id) REFERENCES users(id)
+        )
+    ''')
+    
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS messages (
-            id TEXT PRIMARY KEY,
-            sender_id TEXT NOT NULL,
-            receiver_id TEXT NOT NULL,
-            encrypted_payload TEXT NOT NULL,
-            created_at INTEGER NOT NULL,
-            FOREIGN KEY(sender_id) REFERENCES users(id) ON DELETE CASCADE,
-            FOREIGN KEY(receiver_id) REFERENCES users(id) ON DELETE CASCADE
-        )""")
-        
-        conn.commit()
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sender_id INTEGER NOT NULL,
+            receiver_id INTEGER NOT NULL,
+            content TEXT NOT NULL,
+            ttl_seconds INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            viewed_at TIMESTAMP,
+            FOREIGN KEY (sender_id) REFERENCES users(id),
+            FOREIGN KEY (receiver_id) REFERENCES users(id)
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
 
+# Initialize DB on startup
 init_db()
+print("✅ Database initialized")
 
-# ======== AUTH MIDDLEWARE =========
-def require_auth(f):
-    def wrapper(*args, **kwargs):
-        token = request.headers.get('Authorization')
-        if not token or not token.startswith('Bearer '):
-            return jsonify({'error': 'Authentication required'}), 401
-        try:
-            payload = jwt.decode(token[7:], JWT_SECRET, algorithms=['HS256'])
-            request.user_id = payload['user_id']
-        except jwt.InvalidTokenError:
-            return jsonify({'error': 'Invalid token'}), 401
-        return f(*args, **kwargs)
-    wrapper.__name__ = f.__name__
-    return wrapper
+# ======== HELPER FUNCTIONS =========
+def generate_zeus_pin():
+    """Generate unique Zeus PIN in format ZT-XXXX-XXXX"""
+    return f"ZT-{secrets.randbelow(9000) + 1000}-{secrets.randbelow(9000) + 1000}"
 
-# ======== ROUTES =========
+def hash_password(password):
+    """Hash password using SHA256"""
+    return hashlib.sha256(password.encode()).hexdigest()
 
+# ======== ROUTES - STATIC FILES =========
 @app.route('/')
 def index():
-    return send_from_directory(os.path.dirname(__file__), 'index.html')
+    return send_from_directory('.', 'index.html')
 
 @app.route('/<path:path>')
 def static_files(path):
-    full_path = os.path.join(os.path.dirname(__file__), path)
-    if os.path.exists(full_path):
-        return send_from_directory(os.path.dirname(__file__), path)
-    else:
-        return "File not found", 404
+    if os.path.exists(path):
+        return send_from_directory('.', path)
+    return send_from_directory('.', 'index.html')
 
-# ======== SIGNUP FLOW =========
+# ======== API ENDPOINTS - REGISTRATION =========
 
-@app.route('/api/start-signup', methods=['POST'])
+@app.route('/api/start-signup', methods=['POST', 'OPTIONS'])
 def start_signup():
+    """Start signup process - email validation only"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     try:
-        data = request.json
-        email = data.get('email')
-        if not email:
-            return jsonify({'error': 'Email required'}), 400
+        data = request.json or {}
+        email = data.get('email', '').lower().strip()
         
-        session['signup_email'] = email
-        session['signup_state'] = 'email_submitted'
-        return jsonify({'message': 'Signup session started'})
+        if not email or '@' not in email:
+            return jsonify({'error': 'Invalid email address'}), 400
+        
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute('SELECT id FROM users WHERE email = ?', (email,))
+        if cursor.fetchone():
+            conn.close()
+            return jsonify({'error': 'Email already registered'}), 409
+        conn.close()
+        
+        print(f"✅ Signup started for email: {email}")
+        return jsonify({
+            'success': True,
+            'message': 'Ready for OTP verification',
+            'email': email
+        }), 200
+        
     except Exception as e:
-        print_error(e)
-        return jsonify({'error': 'Internal server error'}), 500
+        print(f"❌ start_signup error: {e}")
+        return jsonify({'error': str(e)}), 500
 
-@app.route('/api/verify-otp', methods=['POST'])
+@app.route('/api/verify-otp', methods=['POST', 'OPTIONS'])
 def verify_otp():
+    """Verify OTP and generate Zeus PIN"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     try:
-        data = request.get_json(silent=True) or {}
-        otp = data.get('otp')
+        data = request.json or {}
+        email = data.get('email', '').lower().strip()
+        otp = data.get('otp', '').strip()
         
-        if not otp or otp != '123456':
+        if not email or not otp:
+            return jsonify({'error': 'Email and OTP required'}), 400
+        
+        # Test mode: accept 123456
+        if otp != '123456':
             return jsonify({'error': 'Invalid OTP code'}), 400
         
-        if 'signup_email' not in session:
-            return jsonify({'error': 'No signup session found. Please restart.'}), 400
+        # Generate unique Zeus PIN
+        zeus_pin = generate_zeus_pin()
         
-        email = session['signup_email']
-        if not email:
-            return jsonify({'error': 'Invalid signup session. Please restart.'}), 400
+        print(f"✅ OTP verified for {email}, generated PIN: {zeus_pin}")
         
-        session['signup_state'] = 'email_verified'
-        session['verified_email'] = email
-        
-        return jsonify({'message': 'OTP verified'})
-    except Exception as e:
-        print_error(e)
-        return jsonify({'error': 'Internal server error'}), 500
-
-@app.route('/api/create-profile', methods=['POST'])
-def create_profile():
-    try:
-        if request.is_json:
-            data = request.json or {}
-        else:
-            data = request.form.to_dict()
-        
-        display_name = None
-        for field in ['display_name', 'name', 'username', 'full_name']:
-            value = data.get(field)
-            if value and str(value).strip():
-                display_name = str(value).strip()
-                break
-        
-        about = data.get('about', '')
-        avatar_url = data.get('avatar_url', '')
-
-        if not display_name:
-            return jsonify({'error': 'Display name required'}), 400
-
-        if 'signup_state' not in session or session.get('signup_state') != 'email_verified':
-            return jsonify({'error': 'Invalid or expired session. Please restart signup.'}), 400
-
-        if 'verified_email' not in session:
-            return jsonify({'error': 'Email not verified. Please restart signup.'}), 400
-
-        email = session['verified_email']
-        if not email:
-            return jsonify({'error': 'Invalid signup session. Please restart.'}), 400
-
-        with get_db() as conn:
-            existing_profile = conn.execute("SELECT id FROM profiles WHERE email = ?", (email,)).fetchone()
-            if existing_profile:
-                return jsonify({'error': 'Profile already exists for this email'}), 400
-
-            max_attempts = 5
-            for _ in range(max_attempts):
-                zeus_pin = f"ZT-{random.randint(1000,9999)}-{random.randint(1000,9999)}"
-                try:
-                    profile_id = str(uuid.uuid4())
-                    with get_db() as conn_inner:
-                        conn_inner.execute(
-                            "INSERT INTO profiles (id, user_id, zeus_pin, display_name, about, avatar_url, email, created_at) VALUES (?, NULL, ?, ?, ?, ?, ?, ?)",
-                            (profile_id, zeus_pin, display_name, about, avatar_url, email, int(time.time()))
-                        )
-                        conn_inner.commit()
-                    break
-                except sqlite3.IntegrityError:
-                    continue
-            else:
-                return jsonify({'error': 'Failed to generate unique PIN'}), 500
-
         return jsonify({
+            'success': True,
+            'message': 'OTP verified successfully',
             'zeus_pin': zeus_pin,
-            'display_name': display_name,
-            'about': about,
-            'avatar_url': avatar_url
-        })
+            'email': email
+        }), 200
+        
     except Exception as e:
-        print_error(e)
-        return jsonify({'error': 'Internal server error'}), 500
+        print(f"❌ verify_otp error: {e}")
+        return jsonify({'error': str(e)}), 500
 
-@app.route('/register', methods=['POST'])
-def register():
+@app.route('/api/complete-registration', methods=['POST', 'OPTIONS'])
+def complete_registration():
+    """Complete registration - create user account"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     try:
-        data = request.json
-        password = data.get('password')
-        public_key = data.get('public_key')
-        if not password or not public_key:
-            return jsonify({'error': 'Password and public_key required'}), 400
+        data = request.json or {}
+        email = data.get('email', '').lower().strip()
+        zeus_pin = data.get('zeus_pin', '').strip()
+        password = data.get('password', '').strip()
+        full_name = data.get('full_name', '').strip()
         
-        if not public_key.strip():
-            return jsonify({'error': 'Public key cannot be empty'}), 400
-
-        if 'verified_email' not in session:
-            return jsonify({'error': 'No verified email found. Complete profile creation first.'}), 400
-
-        email = session['verified_email']
-        if not email:
-            return jsonify({'error': 'Invalid signup session. Please restart.'}), 400
-
-        with get_db() as conn:
-            existing_user = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
-            if existing_user:
-                return jsonify({'error': 'Email already registered'}), 400
-
-            profile = conn.execute("SELECT id FROM profiles WHERE email = ?", (email,)).fetchone()
-            if not profile:
-                return jsonify({'error': 'Profile not found. Complete profile creation first.'}), 400
-
-            password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-            user_id = str(uuid.uuid4())
+        # Validate all required fields
+        if not all([email, zeus_pin, password, full_name]):
+            return jsonify({'error': 'All fields are required'}), 400
+        
+        if len(password) < 6:
+            return jsonify({'error': 'Password must be at least 6 characters'}), 400
+        
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # Check if email already exists
+        cursor.execute('SELECT id FROM users WHERE email = ?', (email,))
+        if cursor.fetchone():
+            conn.close()
+            return jsonify({'error': 'Email already registered'}), 409
+        
+        try:
+            password_hash = hash_password(password)
+            cursor.execute('''
+                INSERT INTO users (email, zeus_pin, password_hash, full_name)
+                VALUES (?, ?, ?, ?)
+            ''', (email, zeus_pin, password_hash, full_name))
             
-            conn.execute(
-                "INSERT INTO users (id, email, password_hash, public_key, created_at) VALUES (?, ?, ?, ?, ?)",
-                (user_id, email, password_hash, public_key, int(time.time()))
-            )
-            
-            conn.execute(
-                "UPDATE profiles SET user_id = ? WHERE email = ?",
-                (user_id, email)
-            )
             conn.commit()
-
-        session.pop('signup_email', None)
-        session.pop('signup_state', None)
-        session.pop('verified_email', None)
+            user_id = cursor.lastrowid
+            
+            print(f"✅ Registration complete: User {user_id} ({email}) with PIN {zeus_pin}")
+            
+            return jsonify({
+                'success': True,
+                'message': 'Registration successful',
+                'user_id': user_id,
+                'zeus_pin': zeus_pin,
+                'email': email
+            }), 201
+            
+        except sqlite3.IntegrityError as e:
+            conn.close()
+            if 'UNIQUE constraint failed' in str(e):
+                if 'email' in str(e):
+                    return jsonify({'error': 'Email already registered'}), 409
+                else:
+                    return jsonify({'error': 'Zeus PIN already exists'}), 409
+            return jsonify({'error': 'Registration failed'}), 400
+        finally:
+            if conn:
+                conn.close()
         
-        return jsonify({'user_id': user_id})
     except Exception as e:
-        print_error(e)
-        return jsonify({'error': 'Internal server error'}), 500
+        print(f"❌ complete_registration error: {e}")
+        return jsonify({'error': str(e)}), 500
 
-@app.route('/login', methods=['POST'])
+# ======== API ENDPOINTS - LOGIN =========
+
+@app.route('/api/login', methods=['POST', 'OPTIONS'])
 def login():
+    """Login with Zeus PIN and password"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     try:
-        data = request.json
-        zeus_pin = data.get('zeus_pin')
-        password = data.get('password')
+        data = request.json or {}
+        zeus_pin = data.get('zeus_pin', '').strip()
+        password = data.get('password', '').strip()
+        
         if not zeus_pin or not password:
-            return jsonify({'error': 'Zeus-PIN and password required'}), 400
-
-        with get_db() as conn:
-            result = conn.execute("""
-                SELECT u.id, u.password_hash 
-                FROM users u
-                JOIN profiles p ON u.id = p.user_id
-                WHERE p.zeus_pin = ?
-            """, (zeus_pin,)).fetchone()
-            
-        if result and bcrypt.checkpw(password.encode(), result['password_hash'].encode()):
-            token = jwt.encode({'user_id': result['id'], 'exp': int(time.time()) + 86400}, JWT_SECRET, algorithm='HS256')
-            return jsonify({'token': token, 'user_id': result['id'], 'zeus_pin': zeus_pin})
-        else:
-            return jsonify({'error': 'Invalid credentials'}), 401
-    except Exception as e:
-        print_error(e)
-        return jsonify({'error': 'Internal server error'}), 500
-
-# ======== PROFILE MANAGEMENT =========
-@app.route('/api/profile', methods=['GET'])
-@require_auth
-def get_profile():
-    try:
-        user_id = request.user_id
-        with get_db() as conn:
-            profile = conn.execute("""
-                SELECT p.zeus_pin, p.display_name, p.about, p.avatar_url
-                FROM profiles p
-                WHERE p.user_id = ?
-            """, (user_id,)).fetchone()
-        if not profile:
-            return jsonify({'error': 'Profile not found'}), 404
+            return jsonify({'error': 'Zeus PIN and password required'}), 400
+        
+        password_hash = hash_password(password)
+        
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT id, email, full_name, profile_pic 
+            FROM users
+            WHERE zeus_pin = ? AND password_hash = ?
+        ''', (zeus_pin, password_hash))
+        
+        user = cursor.fetchone()
+        conn.close()
+        
+        if not user:
+            return jsonify({'error': 'Invalid Zeus PIN or password'}), 401
+        
+        print(f"✅ Login successful: {user[1]}")
+        
         return jsonify({
-            'zeus_pin': profile['zeus_pin'],
-            'display_name': profile['display_name'],
-            'about': profile['about'],
-            'avatar_url': profile['avatar_url']
-        })
+            'success': True,
+            'message': 'Login successful',
+            'user': {
+                'id': user[0],
+                'email': user[1],
+                'full_name': user[2],
+                'profile_pic': user[3],
+                'zeus_pin': zeus_pin
+            }
+        }), 200
+        
     except Exception as e:
-        print_error(e)
-        return jsonify({'error': 'Internal server error'}), 500
+        print(f"❌ login error: {e}")
+        return jsonify({'error': str(e)}), 500
 
-@app.route('/api/profile', methods=['PUT'])
-@require_auth
-def update_profile():
+# ======== API ENDPOINTS - CONTACTS & MESSAGING =========
+
+@app.route('/api/add-contact', methods=['POST', 'OPTIONS'])
+def add_contact():
+    """Add a contact by Zeus PIN"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     try:
-        user_id = request.user_id
-        data = request.json
-        display_name = data.get('display_name')
-        about = data.get('about', '')
-        avatar_url = data.get('avatar_url', '')
-
-        if not display_name:
-            return jsonify({'error': 'Display name required'}), 400
-
-        with get_db() as conn:
-            conn.execute("""
-                UPDATE profiles 
-                SET display_name = ?, about = ?, avatar_url = ?
-                WHERE user_id = ?
-            """, (display_name, about, avatar_url, user_id))
+        data = request.json or {}
+        requester_pin = data.get('requester_zeus_pin', '').strip()
+        contact_pin = data.get('contact_zeus_pin', '').strip()
+        
+        if not requester_pin or not contact_pin:
+            return jsonify({'error': 'Both Zeus PINs required'}), 400
+        
+        if requester_pin == contact_pin:
+            return jsonify({'error': 'Cannot add yourself as contact'}), 400
+        
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # Find both users
+        cursor.execute('SELECT id FROM users WHERE zeus_pin = ?', (requester_pin,))
+        requester = cursor.fetchone()
+        cursor.execute('SELECT id FROM users WHERE zeus_pin = ?', (contact_pin,))
+        contact = cursor.fetchone()
+        
+        if not requester or not contact:
+            conn.close()
+            return jsonify({'error': 'One or both Zeus PINs not found'}), 404
+        
+        try:
+            cursor.execute('''
+                INSERT INTO contacts (user_id, contact_user_id, status)
+                VALUES (?, ?, 'accepted')
+            ''', (requester[0], contact[0]))
             conn.commit()
-        return jsonify({'message': 'Profile updated'})
-    except Exception as e:
-        print_error(e)
-        return jsonify({'error': 'Internal server error'}), 500
-
-# ======== CONTACTS & MESSAGING =========
-@app.route('/api/contact-request', methods=['POST'])
-@require_auth
-def create_contact_request():
-    try:
-        data = request.json
-        raw_pin = data.get('zeus_pin', '').strip().upper()
-        if not re.match(r'^ZT-\d{4}-\d{4}$', raw_pin):
-            return jsonify({'error': 'Invalid Zeus-PIN format'}), 400
-        target_pin = raw_pin
-        
-        if not target_pin:
-            return jsonify({'error': 'Missing fields'}), 400
-
-        with get_db() as conn:
-            target = conn.execute("SELECT user_id FROM profiles WHERE zeus_pin = ?", (target_pin,)).fetchone()
-            if not target:
-                return jsonify({'error': 'Contact not found'}), 404
-
-            target_id = target['user_id']
-            requester_id = request.user_id
-            if requester_id == target_id:
-                return jsonify({'error': 'Cannot send request to yourself'}), 400
-
-            try:
-                with conn:
-                    existing = conn.execute("""
-                        SELECT status FROM contact_requests 
-                        WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)
-                    """, (requester_id, target_id, target_id, requester_id)).fetchone()
-
-                    if existing:
-                        if existing['status'] == 'accepted':
-                            return jsonify({'message': 'Already connected'}), 200
-                        elif existing['status'] == 'pending':
-                            return jsonify({'message': 'Request already pending'}), 200
-
-                    conn.execute("""
-                        INSERT INTO contact_requests (id, sender_id, receiver_id, created_at)
-                        VALUES (?, ?, ?, ?)
-                    """, (str(uuid.uuid4()), requester_id, target_id, int(time.time())))
-            except sqlite3.IntegrityError:
-                return jsonify({'message': 'Request already pending'}), 200
-
-        return jsonify({'message': 'Connection request sent'})
-    except Exception as e:
-        print_error(e)
-        return jsonify({'error': 'Internal server error'}), 500
-
-@app.route('/api/contact-request/<req_id>/accept', methods=['POST'])
-@require_auth
-def accept_contact_request(req_id):
-    try:
-        acceptor_id = request.user_id
-        
-        with get_db() as conn:
-            req = conn.execute("""
-                SELECT sender_id, receiver_id, status 
-                FROM contact_requests 
-                WHERE id = ?
-            """, (req_id,)).fetchone()
+            print(f"✅ Contact added")
             
-            if not req or req['status'] != 'pending' or acceptor_id != req['receiver_id']:
-                return jsonify({'error': 'Invalid request'}), 400
-
-            initiator_id = req['sender_id']
-            responder_id = acceptor_id
-            nonce = os.urandom(16).hex()
-
-            try:
-                with conn:
-                    conn.execute("""
-                        INSERT INTO contacts (id, user_id, contact_user_id, initiator_id, nonce, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    """, (str(uuid.uuid4()), initiator_id, responder_id, initiator_id, nonce, int(time.time())))
-
-                    conn.execute("""
-                        INSERT INTO contacts (id, user_id, contact_user_id, initiator_id, nonce, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    """, (str(uuid.uuid4()), responder_id, initiator_id, initiator_id, nonce, int(time.time())))
-
-                    conn.execute("UPDATE contact_requests SET status = 'accepted' WHERE id = ?", (req_id,))
-            except sqlite3.IntegrityError:
-                pass
-
+        except sqlite3.IntegrityError:
+            conn.close()
+            return jsonify({'error': 'Contact already exists'}), 409
+        finally:
+            conn.close()
+        
         return jsonify({
-            'message': 'Contact accepted',
-            'nonce': nonce,
-            'initiator_id': initiator_id
-        })
-    except Exception as e:
-        print_error(e)
-        return jsonify({'error': 'Internal server error'}), 500
-
-@app.route('/api/contacts/<contact_id>/keys')
-@require_auth
-def get_contact_keys(contact_id):
-    try:
-        with get_db() as conn:
-            contact = conn.execute("""
-                SELECT u.public_key, c.nonce
-                FROM users u
-                JOIN contacts c ON u.id = c.contact_user_id
-                WHERE c.user_id = ? AND c.contact_user_id = ?
-            """, (request.user_id, contact_id)).fetchone()
-            
-            if not contact:
-                return jsonify({'error': 'Contact not found'}), 404
-                
-        return jsonify({
-            'public_key': contact['public_key'],
-            'nonce': contact['nonce']
-        })
-    except Exception as e:
-        print_error(e)
-        return jsonify({'error': 'Internal server error'}), 500
-
-@app.route('/api/handshake-ready', methods=['POST'])
-@require_auth
-def mark_handshake_ready():
-    try:
-        data = request.json
-        contact_id = data.get('contact_id')
-        encrypted_nonce = data.get('encrypted_nonce')
-        if not contact_id or not encrypted_nonce:
-            return jsonify({'error': 'contact_id and encrypted_nonce required'}), 400
-            
-        nonce_hash = hashlib.sha256(encrypted_nonce.encode()).hexdigest()
+            'success': True,
+            'message': 'Contact added successfully'
+        }), 201
         
-        with get_db() as conn:
-            row = conn.execute("""
-                SELECT user_id, contact_user_id, initiator_id, initiator_ready, responder_ready, 
-                       handshake_complete, nonce, nonce_hash
-                FROM contacts
-                WHERE user_id = ? AND contact_user_id = ?
-            """, (request.user_id, contact_id)).fetchone()
-            
-            if not row:
-                return jsonify({'error': 'Contact not found'}), 404
-            if row['handshake_complete']:
-                return jsonify({'message': 'Handshake already completed'}), 200
-            if row['nonce_hash'] and row['nonce_hash'] != nonce_hash:
-                return jsonify({'error': 'Nonce proof mismatch'}), 400
-
-            is_initiator = (row['user_id'] == row['initiator_id'])
-            current_ready = row['initiator_ready'] if is_initiator else row['responder_ready']
-            if current_ready:
-                return jsonify({'message': 'Already marked ready'}), 200
-
-            try:
-                with conn:
-                    conn.execute("""
-                        UPDATE contacts 
-                        SET nonce_hash = ?, 
-                            {} = 1
-                        WHERE user_id = ? AND contact_user_id = ?
-                    """.format("initiator_ready" if is_initiator else "responder_ready"),
-                        (nonce_hash, request.user_id, contact_id))
-
-                    both_ready = conn.execute("""
-                        SELECT c1.initiator_ready, c1.responder_ready
-                        FROM contacts c1
-                        JOIN contacts c2 ON c1.user_id = c2.contact_user_id AND c1.contact_user_id = c2.user_id
-                        WHERE c1.user_id = ? AND c1.contact_user_id = ?
-                    """, (request.user_id, contact_id)).fetchone()
-
-                    if both_ready and both_ready['initiator_ready'] and both_ready['responder_ready']:
-                        conn.execute("""
-                            UPDATE contacts 
-                            SET handshake_complete = 1
-                            WHERE (user_id = ? AND contact_user_id = ?)
-                               OR (user_id = ? AND contact_user_id = ?)
-                        """, (request.user_id, contact_id, contact_id, request.user_id))
-            except sqlite3.Error:
-                return jsonify({'error': 'Handshake update failed'}), 500
-
-        return jsonify({'message': 'Handshake readiness updated'})
     except Exception as e:
-        print_error(e)
-        return jsonify({'error': 'Internal server error'}), 500
+        print(f"❌ add_contact error: {e}")
+        return jsonify({'error': str(e)}), 500
 
-def verify_contact(sender_id, receiver_id):
-    if sender_id == receiver_id:
-        return False
-
-    with get_db() as conn:
-        row = conn.execute("""
-            SELECT 1
-            FROM contacts c1
-            JOIN contacts c2
-              ON c1.user_id = c2.contact_user_id
-             AND c1.contact_user_id = c2.user_id
-            WHERE c1.user_id = ?
-              AND c1.contact_user_id = ?
-              AND c1.handshake_complete = 1
-              AND c2.handshake_complete = 1
-        """, (sender_id, receiver_id)).fetchone()
-
-        return row is not None
-
-@app.route('/send-message', methods=['POST'])
-@require_auth
+@app.route('/api/send-message', methods=['POST', 'OPTIONS'])
 def send_message():
+    """Send a message to a contact"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     try:
-        data = request.json
-        to_id = data.get('to_id')
-        encrypted_payload = data.get('encrypted_payload')
+        data = request.json or {}
+        sender_pin = data.get('sender_zeus_pin', '').strip()
+        receiver_pin = data.get('receiver_zeus_pin', '').strip()
+        content = data.get('content', '').strip()
+        ttl = int(data.get('ttl_seconds', 3600))
         
-        if not all([to_id, encrypted_payload]):
-            return jsonify({'error': 'Missing fields'}), 400
-            
-        if not verify_contact(request.user_id, to_id):
-            return jsonify({'error': 'Handshake not completed. Both users must exchange keys and verify nonces.'}), 403
-
-        with get_db() as conn:
-            conn.execute("""
-                INSERT INTO messages (id, sender_id, receiver_id, encrypted_payload, created_at)
-                VALUES (?, ?, ?, ?, ?)
-            """, (str(uuid.uuid4()), request.user_id, to_id, encrypted_payload, int(time.time())))
-            conn.commit()
-
-        return jsonify({'message': 'Sent'})
+        if not all([sender_pin, receiver_pin, content]):
+            return jsonify({'error': 'Sender, receiver, and message content required'}), 400
+        
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # Find both users
+        cursor.execute('SELECT id FROM users WHERE zeus_pin = ?', (sender_pin,))
+        sender = cursor.fetchone()
+        cursor.execute('SELECT id FROM users WHERE zeus_pin = ?', (receiver_pin,))
+        receiver = cursor.fetchone()
+        
+        if not sender or not receiver:
+            conn.close()
+            return jsonify({'error': 'Invalid sender or receiver'}), 404
+        
+        # Check if contact exists
+        cursor.execute('''
+            SELECT id FROM contacts 
+            WHERE user_id = ? AND contact_user_id = ?
+        ''', (sender[0], receiver[0]))
+        
+        if not cursor.fetchone():
+            conn.close()
+            return jsonify({'error': 'Not connected with this contact'}), 403
+        
+        # Insert message
+        cursor.execute('''
+            INSERT INTO messages (sender_id, receiver_id, content, ttl_seconds)
+            VALUES (?, ?, ?, ?)
+        ''', (sender[0], receiver[0], content, ttl))
+        
+        conn.commit()
+        conn.close()
+        
+        print(f"✅ Message sent from {sender_pin} to {receiver_pin}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Message sent successfully'
+        }), 201
+        
     except Exception as e:
-        print_error(e)
-        return jsonify({'error': 'Internal server error'}), 500
-
-# ======== ACCOUNT DELETION =========
-@app.route('/api/delete-account', methods=['POST'])
-@require_auth
-def delete_account():
-    try:
-        user_id = request.user_id
-        with get_db() as conn:
-            conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
-            conn.commit()
-        return jsonify({'message': 'Account deleted'})
-    except Exception as e:
-        print_error(e)
-        return jsonify({'error': 'Internal server error'}), 500
-
-# ======== DEBUG ENDPOINTS =========
-if DEBUG_MODE:
-    @app.route("/debug/users")
-    def debug_users():
-        with get_db() as conn:
-            users = conn.execute("SELECT email FROM users").fetchall()
-        return jsonify([u["email"] for u in users])
-
-    @app.route("/debug/profiles")
-    def debug_profiles():
-        with get_db() as conn:
-            profiles = conn.execute("SELECT zeus_pin, display_name, email FROM profiles").fetchall()
-        return jsonify([dict(p) for p in profiles])
+        print(f"❌ send_message error: {e}")
+        return jsonify({'error': str(e)}), 500
 
 # ======== SERVER STARTUP =========
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    debug = os.environ.get('DEBUG_MODE', 'false').lower() == 'true'
-    print(f"🚀 Starting ZeusChat server on port {port}...")
-    app.run(host='0.0.0.0', port=port, debug=debug)
+    print("🚀 Starting ZeusChat 1.0 Backend")
+    print(f"📡 Database: {DATABASE_PATH}")
+    print(f"🌐 Port: {port}")
+    app.run(host='0.0.0.0', port=port, debug=False)

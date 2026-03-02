@@ -149,15 +149,30 @@
   </div>
 
   <script>
-    // Enforce authentication
-    const authToken = localStorage.getItem('auth_token');
-    if (!authToken) {
-      alert('Authentication required. Please log in.');
-      window.location.href = 'emailinput.html';
-    }
+    console.log('=== ADD CONTACT PAGE LOAD ===');
+
+    // Authentication guard using sessionStorage
+    window.addEventListener('DOMContentLoaded', () => {
+      const isLoggedIn = sessionStorage.getItem('user_logged_in') === 'true';
+      const userPin = sessionStorage.getItem('user_zeus_pin');
+      
+      console.log('Session check:', { isLoggedIn, userPin });
+      
+      if (!isLoggedIn || !userPin) {
+        console.log('Not logged in, redirecting to login');
+        sessionStorage.setItem('return_url', 'add-contact.html');
+        window.location.href = 'login.html';
+      }
+    });
 
     function goBack() {
       window.location.href = 'chat.html';
+    }
+
+    function validateZeusPIN(pin) {
+      // Should match format: ZT-XXXX-XXXX
+      const pattern = /^ZT-\d{4}-\d{4}$/;
+      return pattern.test(pin);
     }
 
     async function addContact() {
@@ -169,8 +184,10 @@
       addBtn.disabled = true;
       addBtn.textContent = 'Sending...';
 
-      const zeusPin = zeusPinInput.value.trim();
+      const zeusPin = zeusPinInput.value.trim().toUpperCase();
+      const currentUserPin = sessionStorage.getItem('user_zeus_pin');
 
+      // Validate format
       if (!zeusPin) {
         alert('Please enter a Zeus-PIN.');
         addBtn.disabled = false;
@@ -178,13 +195,27 @@
         return;
       }
 
+      if (!validateZeusPIN(zeusPin)) {
+        alert('Invalid Zeus-PIN format. Use: ZT-XXXX-XXXX');
+        addBtn.disabled = false;
+        addBtn.textContent = 'Send Request';
+        return;
+      }
+
+      // Validate self-check
+      if (zeusPin === currentUserPin) {
+        alert('You cannot add yourself as a contact!');
+        addBtn.disabled = false;
+        addBtn.textContent = 'Send Request';
+        return;
+      }
+
       try {
-        const response = await fetch(`${API_BASE}/api/contact-request`, {
+        const response = await fetch(`${API_BASE}/api/add-contact`, {
           method: 'POST',
           credentials: 'include',
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authToken}`
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({ zeus_pin: zeusPin })
         });
@@ -192,7 +223,8 @@
         const result = await response.json();
 
         if (response.ok) {
-          alert('Contact request sent!');
+          console.log('Contact request sent:', zeusPin);
+          alert('✅ Contact request sent!');
           zeusPinInput.value = '';
           addBtn.disabled = false;
           addBtn.textContent = 'Send Request';
@@ -200,7 +232,7 @@
           throw new Error(result.error || 'Failed to send request');
         }
       } catch (error) {
-        console.error('Error:', error);
+        console.error('Add contact error:', error);
         alert('Error: ' + error.message);
         addBtn.disabled = false;
         addBtn.textContent = 'Send Request';

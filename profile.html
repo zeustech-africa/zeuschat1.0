@@ -63,6 +63,7 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
+      overflow-y: auto;
     }
     .box {
       background: #222;
@@ -78,6 +79,7 @@
       font-weight: 600;
       margin-bottom: 16px;
       color: #fff;
+      text-align: center;
     }
     .input-group {
       margin-bottom: 16px;
@@ -90,6 +92,16 @@
       border: 1px solid #444;
       color: #fff;
       border-radius: 6px;
+      font-size: 14px;
+    }
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+    input:disabled {
+      background: #2a2a2a;
+      color: #aaa;
+      cursor: not-allowed;
     }
     .btn {
       background: #FFD700;
@@ -102,7 +114,16 @@
       cursor: pointer;
       margin-top: 16px;
       width: 100%;
-      max-width: 400px;
+    }
+    .btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+    .btn.secondary {
+      background: #666;
+      width: auto;
+      margin-left: 8px;
     }
     .note {
       background: #1a1a1a;
@@ -112,6 +133,73 @@
       font-size: 13px;
       text-align: left;
       line-height: 1.5;
+    }
+    .profile-pic-section {
+      margin: 16px 0;
+      text-align: center;
+    }
+    .profile-pic-display {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: #333;
+      margin: 0 auto 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: #999;
+      overflow: hidden;
+    }
+    .profile-pic-display img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .file-input-wrapper {
+      position: relative;
+      overflow: hidden;
+      display: inline-block;
+      width: 100%;
+    }
+    .file-input-wrapper input[type=file] {
+      position: absolute;
+      left: -9999px;
+    }
+    .btn-file {
+      display: inline-block;
+      padding: 10px 16px;
+      background: #444;
+      color: #fff;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 8px 0;
+    }
+    .btn-file:hover {
+      background: #555;
+    }
+    .stat-box {
+      margin: 16px 0;
+      padding: 12px;
+      background: #1a1a1a;
+      border-left: 4px solid #d4af37;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .stat-box span {
+      color: #FFD700;
+      font-weight: bold;
+    }
+    .button-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .button-group .btn {
+      flex: 1;
+      margin-top: 0;
     }
   </style>
 </head>
@@ -130,53 +218,175 @@
   <div class="container">
     <div class="box">
       <div class="box-title">Profile</div>
-      <div class="input-group">
-        <input type="text" id="displayName" placeholder="Display Name" />
-        <textarea id="about" placeholder="About you (optional)"></textarea>
-        <input type="text" id="avatarUrl" placeholder="Avatar URL (optional)" />
-      </div>
-      <div style="margin: 16px 0; padding: 12px; background: #1a1a1a; border-left: 4px solid #d4af37;">
-        <div style="display: flex; justify-content: space-between; padding: 4px 0;">
-          <span>Your Zeus-PIN:</span>
-          <span id="zeusPinDisplay" style="color: #FFD700; font-weight: bold;">Loading...</span>
+      
+      <!-- Profile Picture Section -->
+      <div class="profile-pic-section">
+        <div class="profile-pic-display" id="profilePicDisplay">
+          <img id="profilePicImg" style="display:none;">
+          <span id="profilePicPlaceholder">No Photo</span>
+        </div>
+        <div class="file-input-wrapper">
+          <input type="file" id="picUpload" accept="image/*" />
+          <label for="picUpload" class="btn-file">Choose Photo</label>
         </div>
       </div>
-      <button class="btn" id="saveBtn" onclick="saveProfile()">Save Profile</button>
+
+      <!-- Form Fields -->
+      <div class="input-group">
+        <label style="font-size: 12px; color: #999;">Full Name *</label>
+        <input type="text" id="displayName" placeholder="Your full name" />
+        
+        <label style="font-size: 12px; color: #999; margin-top: 12px;">About Me (Optional)</label>
+        <textarea id="about" placeholder="Tell others about yourself"></textarea>
+        
+        <label style="font-size: 12px; color: #999; margin-top: 12px;">Avatar URL (Optional)</label>
+        <input type="text" id="avatarUrl" placeholder="https://example.com/avatar.jpg" />
+      </div>
+
+      <!-- Zeus PIN Display -->
+      <div class="stat-box">
+        <span>Your Zeus-PIN:</span>
+        <span id="zeusPinDisplay">Loading...</span>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="button-group">
+        <button class="btn" id="saveBtn" onclick="saveProfile()">Save Profile</button>
+        <button class="btn secondary" onclick="goBack()">← Back</button>
+      </div>
+
+      <div class="note">
+        ✓ Profile picture helps other users recognize you<br>
+        ✓ Your display name will be shown in conversations<br>
+        ✓ Your Zeus-PIN is your unique identifier (copy-paste to share)
+      </div>
     </div>
   </div>
 
   <script>
-    // Enforce authentication
-    const authToken = localStorage.getItem('auth_token');
-    if (!authToken) {
-      alert('Authentication required. Please log in.');
-      window.location.href = 'login.html';
+    console.log('=== PROFILE PAGE LOAD ===');
+    
+    // Authentication guard
+    window.addEventListener('DOMContentLoaded', () => {
+      const isLoggedIn = sessionStorage.getItem('user_logged_in') === 'true';
+      let userPin = sessionStorage.getItem('user_zeus_pin');
+      
+      console.log('Session check:', { isLoggedIn, userPin });
+      
+      if (!isLoggedIn || !userPin) {
+        console.log('Not logged in, redirecting to login');
+        sessionStorage.setItem('return_url', 'profile.html');
+        window.location.href = 'login.html';
+        return;
+      }
+
+      console.log('Session valid, loading profile');
+      loadUserProfile();
+      loadProfileFromBackend();
+      setupPhotoUpload();
+    });
+
+    // Load from sessionStorage
+    function loadUserProfile() {
+      const userPin = sessionStorage.getItem('user_zeus_pin');
+      const userName = sessionStorage.getItem('user_full_name');
+      const userPic = sessionStorage.getItem('user_profile_pic');
+      const userAbout = sessionStorage.getItem('user_about');
+
+      if (userPin) {
+        document.getElementById('zeusPinDisplay').textContent = userPin;
+      }
+      if (userName) {
+        document.getElementById('displayName').value = userName;
+      }
+      if (userAbout) {
+        document.getElementById('about').value = userAbout;
+      }
+      if (userPic) {
+        displayProfilePic(userPic);
+      }
+      
+      console.log('Loaded from sessionStorage:', { userName, userPic, userAbout });
     }
 
-    async function loadProfile() {
+    // Load full profile from backend
+    async function loadProfileFromBackend() {
       try {
         const API_BASE = window.location.origin;
-        const response = await fetch(`${API_BASE}/api/profile`, {
+        const response = await fetch(`${API_BASE}/api/user/profile`, {
           method: 'GET',
-          credentials: 'include',
-          headers: {
-            'Authorization': `Bearer ${authToken}`
-          }
+          credentials: 'include'
         });
 
         const result = await response.json();
 
-        if (response.ok && result.display_name && result.zeus_pin) {
-          document.getElementById('displayName').value = result.display_name;
-          document.getElementById('about').value = result.about || '';
-          document.getElementById('avatarUrl').value = result.avatar_url || '';
-          document.getElementById('zeusPinDisplay').textContent = result.zeus_pin;
+        if (response.ok && result.user) {
+          const user = result.user;
+          document.getElementById('displayName').value = user.full_name || '';
+          document.getElementById('about').value = user.about || '';
+          document.getElementById('avatarUrl').value = user.avatar_url || (user.profile_pic ? 'User uploaded' : '');
+          document.getElementById('zeusPinDisplay').textContent = user.zeus_pin || 'Error loading PIN';
+          
+          if (user.profile_pic) {
+            displayProfilePic(user.profile_pic);
+          }
+
+          // Sync with sessionStorage
+          sessionStorage.setItem('user_full_name', user.full_name || '');
+          sessionStorage.setItem('user_profile_pic', user.profile_pic || '');
+          sessionStorage.setItem('user_about', user.about || '');
+          sessionStorage.setItem('user_zeus_pin', user.zeus_pin || '');
+          
+          console.log('Loaded from backend:', { full_name: user.full_name, has_pic: !!user.profile_pic, has_about: !!user.about });
         } else {
-          throw new Error(result.error || 'Failed to load profile');
+          console.warn('Profile load returned:', result);
         }
       } catch (error) {
-        console.error('Profile load error:', error);
-        alert('Error: ' + (error.message || 'Failed to load profile. Please try again.'));
+        console.error('Backend profile load error:', error);
+      }
+    }
+
+    // Photo Upload Handler
+    let uploadedPhotoData = null;
+
+    function setupPhotoUpload() {
+      const input = document.getElementById('picUpload');
+      input.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+          alert('Please select an image file.');
+          return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+          alert('Image must be less than 5MB.');
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          uploadedPhotoData = event.target.result; // Base64 data
+          displayProfilePic(uploadedPhotoData);
+          console.log('Photo selected:', file.name);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function displayProfilePic(picData) {
+      const display = document.getElementById('profilePicDisplay');
+      const img = document.getElementById('profilePicImg');
+      const placeholder = document.getElementById('profilePicPlaceholder');
+      
+      if (picData) {
+        img.src = picData;
+        img.style.display = 'block';
+        placeholder.style.display = 'none';
+      } else {
+        img.style.display = 'none';
+        placeholder.style.display = 'block';
       }
     }
 
@@ -190,9 +400,11 @@
       saveBtn.disabled = true;
       saveBtn.textContent = 'Saving...';
 
+      let userPin = sessionStorage.getItem('user_zeus_pin');
       const displayName = displayNameInput.value.trim();
       const about = aboutInput.value.trim();
       const avatarUrl = avatarUrlInput.value.trim();
+      const profilePic = uploadedPhotoData || sessionStorage.getItem('user_profile_pic') || '';
 
       if (!displayName) {
         alert('Please enter your display name.');
@@ -201,40 +413,64 @@
         return;
       }
 
+      if (!userPin) {
+        const pinText = document.getElementById('zeusPinDisplay').textContent || '';
+        userPin = pinText.trim();
+      }
+      
+      console.log('💾 Saving profile:', { userPin, fullName: displayName, about: about.substring(0, 50) });
+
       try {
         const API_BASE = window.location.origin;
-        const response = await fetch(`${API_BASE}/api/profile`, {
-          method: 'PUT',
+        const response = await fetch(`${API_BASE}/api/user/update-profile`, {
+          method: 'POST',
           credentials: 'include',
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authToken}`
+            'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ 
-            display_name: displayName, 
-            about: about, 
-            avatar_url: avatarUrl 
+          body: JSON.stringify({
+            zeus_pin: userPin,
+            full_name: displayName,
+            about: about,
+            avatar_url: avatarUrl,
+            profile_pic: profilePic
           })
         });
 
         const result = await response.json();
+        console.log('📥 Save response:', result);
 
-        if (response.ok) {
-          alert('✅ Profile saved!');
-          window.location.href = 'chat.html';
+        if (response.ok && result.success) {
+          sessionStorage.setItem('user_full_name', displayName);
+          sessionStorage.setItem('user_about', about);
+          if (profilePic) {
+            sessionStorage.setItem('user_profile_pic', profilePic);
+          }
+          uploadedPhotoData = null;
+          
+          console.log('✅ Profile saved to session storage');
+          alert('✅ Profile updated successfully!');
+          
+          setTimeout(() => {
+            location.reload();
+          }, 1000);
         } else {
-          throw new Error(result.error || 'Failed to save profile');
+          console.error('❌ Save failed:', result.error);
+          alert(result.error || 'Failed to update profile');
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save Profile';
         }
       } catch (error) {
-        console.error('Profile save error:', error);
-        alert('Error: ' + (error.message || 'Failed to save profile. Please try again.'));
+        console.error('❌ Profile update error:', error);
+        alert('Failed to connect to server');
         saveBtn.disabled = false;
         saveBtn.textContent = 'Save Profile';
       }
     }
 
-    // Load profile on page load
-    window.addEventListener('DOMContentLoaded', loadProfile);
+    function goBack() {
+      window.location.href = 'chat.html';
+    }
   </script>
 </body>
 </html>

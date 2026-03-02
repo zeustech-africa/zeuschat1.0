@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sound Notification Test</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #fff;
+    }
+    .test-button {
+      background: #FFD700;
+      color: #000;
+      border: none;
+      padding: 15px 30px;
+      font-size: 18px;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 10px 5px;
+      display: inline-block;
+    }
+    .test-button:hover {
+      background: #FFC700;
+    }
+    .result {
+      background: #2a2a2a;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 8px;
+      border-left: 4px solid #FFD700;
+    }
+    .success { border-left-color: #0f0; }
+    .error { border-left-color: #f00; }
+    h1 { color: #FFD700; }
+    code {
+      background: #000;
+      padding: 2px 6px;
+      border-radius: 3px;
+      color: #FFD700;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔔 Sound Notification Diagnostic Test</h1>
+  <p>This page tests if YOUR COMPUTER can play notification sounds at all (independent of ZeusChat).</p>
+
+  <hr>
+
+  <h2>Test 1: Browser Native Notification</h2>
+  <p>Click the button below. You should see a notification popup AND hear your system notification sound.</p>
+  <button class="test-button" onclick="testBrowserNotification()">🔔 Test Native Notification</button>
+  <div id="result1" class="result" style="display:none;"></div>
+
+  <hr>
+
+  <h2>Test 2: Web Audio API Beep</h2>
+  <p>Click the button below. You should hear a 800Hz beep tone.</p>
+  <button class="test-button" onclick="testWebAudio()">🔊 Test Web Audio</button>
+  <div id="result2" class="result" style="display:none;"></div>
+
+  <hr>
+
+  <h2>Test 3: HTML5 Audio Element</h2>
+  <p>Click the button below. You should hear a pre-loaded audio beep.</p>
+  <button class="test-button" onclick="testHTML5Audio()">🎵 Test HTML5 Audio</button>
+  <div id="result3" class="result" style="display:none;"></div>
+
+  <hr>
+
+  <h2>System Information</h2>
+  <div id="system-info" class="result"></div>
+
+  <hr>
+
+  <h2>📊 Results Interpretation</h2>
+  <div class="result">
+    <h3>If ALL tests fail (no sound):</h3>
+    <ul>
+      <li>❌ Your Mac's notification/alert sounds are disabled</li>
+      <li>❌ Check System Preferences → Sound → Alert volume</li>
+      <li>❌ Check Do Not Disturb mode is OFF</li>
+      <li>❌ Check System Preferences → Notifications → [Browser] → "Play sound" enabled</li>
+    </ul>
+
+    <h3>If Test 1 fails but Tests 2-3 work:</h3>
+    <ul>
+      <li>⚠️ Browser notification sounds are disabled</li>
+      <li>⚠️ Check browser notification settings</li>
+      <li>⚠️ Grant notification permission</li>
+    </ul>
+
+    <h3>If all tests work here but ZeusChat doesn't:</h3>
+    <ul>
+      <li>✅ Your system is fine!</li>
+      <li>✅ Check ZeusChat console logs (F12) for errors</li>
+      <li>✅ Make sure notification permission granted to ZeusChat</li>
+      <li>✅ Hard refresh ZeusChat page (Cmd+Shift+R)</li>
+    </ul>
+  </div>
+
+  <script>
+    // Display system info
+    function showSystemInfo() {
+      const info = document.getElementById('system-info');
+      info.innerHTML = `
+        <h3>Browser & System Info:</h3>
+        <ul>
+          <li><strong>Browser:</strong> ${navigator.userAgent}</li>
+          <li><strong>Notification Support:</strong> ${'Notification' in window ? '✅ Yes' : '❌ No'}</li>
+          <li><strong>Notification Permission:</strong> ${Notification?.permission || 'Not available'}</li>
+          <li><strong>Web Audio API:</strong> ${window.AudioContext || window.webkitAudioContext ? '✅ Yes' : '❌ No'}</li>
+          <li><strong>HTML5 Audio:</strong> ${typeof Audio !== 'undefined' ? '✅ Yes' : '❌ No'}</li>
+        </ul>
+      `;
+    }
+
+    // Test 1: Browser Native Notification
+    async function testBrowserNotification() {
+      const result = document.getElementById('result1');
+      result.style.display = 'block';
+      result.innerHTML = '⏳ Testing...';
+
+      if (!('Notification' in window)) {
+        result.className = 'result error';
+        result.innerHTML = '❌ FAIL: Browser does not support notifications';
+        return;
+      }
+
+      let permission = Notification.permission;
+
+      if (permission === 'default') {
+        result.innerHTML = '🔔 Requesting permission...';
+        permission = await Notification.requestPermission();
+      }
+
+      if (permission === 'granted') {
+        result.innerHTML = '✅ Permission granted. Sending test notification...';
+        
+        try {
+          const notification = new Notification('🔔 TEST NOTIFICATION', {
+            body: 'If you hear a sound, your system notifications work!',
+            silent: false,
+            requireInteraction: false
+          });
+
+          setTimeout(() => notification.close(), 5000);
+
+          result.className = 'result success';
+          result.innerHTML = `
+            <strong>✅ SUCCESS!</strong><br>
+            If you heard a sound, native notifications work on your system.<br>
+            If you saw notification but NO SOUND, check:<br>
+            • System Preferences → Notifications → ${getBrowserName()} → "Play sound for notifications"<br>
+            • System Preferences → Sound → Alert volume is not 0<br>
+            • Do Not Disturb mode is OFF
+          `;
+        } catch (error) {
+          result.className = 'result error';
+          result.innerHTML = `❌ FAIL: ${error.message}`;
+        }
+      } else {
+        result.className = 'result error';
+        result.innerHTML = '❌ FAIL: Permission denied. Check browser settings to allow notifications.';
+      }
+    }
+
+    // Test 2: Web Audio API
+    function testWebAudio() {
+      const result = document.getElementById('result2');
+      result.style.display = 'block';
+      result.innerHTML = '⏳ Testing...';
+
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        
+        if (!AudioContext) {
+          throw new Error('Web Audio API not supported');
+        }
+
+        const ctx = new AudioContext();
+        
+        if (ctx.state === 'suspended') {
+          ctx.resume();
+        }
+
+        const oscillator = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+
+        oscillator.type = 'sine';
+        oscillator.frequency.value = 800; // 800Hz beep
+        gainNode.gain.value = 0.3;
+
+        oscillator.connect(gainNode);
+        gainNode.connect(ctx.destination);
+
+        oscillator.start();
+        oscillator.stop(ctx.currentTime + 0.3); // 300ms beep
+
+        setTimeout(() => {
+          ctx.close();
+          result.className = 'result success';
+          result.innerHTML = `
+            <strong>✅ SUCCESS!</strong><br>
+            Web Audio API works. AudioContext state: <code>${ctx.state}</code><br>
+            If you heard an 800Hz beep, Web Audio is functional on your system.
+          `;
+        }, 500);
+
+      } catch (error) {
+        result.className = 'result error';
+        result.innerHTML = `❌ FAIL: ${error.message}<br>Web Audio API may be blocked or unsupported.`;
+      }
+    }
+
+    // Test 3: HTML5 Audio
+    function testHTML5Audio() {
+      const result = document.getElementById('result3');
+      result.style.display = 'block';
+      result.innerHTML = '⏳ Testing...';
+
+      try {
+        // Short beep as base64 MP3
+        const beepDataURL = 'data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQwAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAASAAAeMwAUFBQUFCIiIiIiIjAwMDAwPj4+Pj4+TExMTExZWVlZWVlnZ2dnZ3V1dXV1dYODg4ODkZGRkZGRn5+fn5+frKysrKy6urq6urrIyMjIyNbW1tbW1uTk5OTk8vLy8vLy//////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAQKAAAAAAAAHjOZTf9/AAAAAAAAAAAAAAAAAAAAAP/7UMQAAAGkAiRAlAIANYBViaAAAjNZaKSgFBEAMBOmzcECAAEgQKAABjWe9////+oBBBwQYAAABHAwwMUVFRUVFQDI4ODg4ODg4n/+7UMQIAABAABMAAAACAJSVgAAAAgA3QRUVFRUVFQDg4ODg4ODg4n/+7UMQIAABAABPAAAACAOwRVgAAAAgOC';
+        
+        const audio = new Audio(beepDataURL);
+        audio.volume = 0.8;
+
+        audio.play().then(() => {
+          result.className = 'result success';
+          result.innerHTML = `
+            <strong>✅ SUCCESS!</strong><br>
+            HTML5 Audio works. Audio ready state: <code>${audio.readyState}</code><br>
+            If you heard a beep, HTML5 Audio is functional.
+          `;
+        }).catch(error => {
+          result.className = 'result error';
+          result.innerHTML = `
+            ❌ FAIL: Audio playback blocked<br>
+            Error: ${error.message}<br>
+            Browser may be blocking autoplay. Try clicking the button again.
+          `;
+        });
+
+      } catch (error) {
+        result.className = 'result error';
+        result.innerHTML = `❌ FAIL: ${error.message}`;
+      }
+    }
+
+    function getBrowserName() {
+      const ua = navigator.userAgent;
+      if (ua.includes('Chrome')) return 'Google Chrome';
+      if (ua.includes('Safari') && !ua.includes('Chrome')) return 'Safari';
+      if (ua.includes('Firefox')) return 'Firefox';
+      if (ua.includes('Edge')) return 'Microsoft Edge';
+      return 'Your Browser';
+    }
+
+    // Initialize on load
+    showSystemInfo();
+  </script>
+</body>
+</html>

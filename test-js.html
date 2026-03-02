@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>JS Test</title>
+</head>
+<body>
+  <h1 id="status">Testing...</h1>
+  <button id="test-btn" onclick="testClick()">Click Me (inline)</button>
+  <button id="test-btn-2">Click Me (addEventListener)</button>
+  
+  <script>
+    console.log('JavaScript is loading...');
+    
+    function testClick() {
+      document.getElementById('status').textContent = 'Inline onclick works! ✅';
+      console.log('Inline onclick fired');
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('DOMContentLoaded fired');
+      document.getElementById('status').textContent = 'JavaScript loaded ✅';
+      
+      const btn2 = document.getElementById('test-btn-2');
+      if (btn2) {
+        btn2.addEventListener('click', () => {
+          document.getElementById('status').textContent = 'addEventListener works! ✅';
+          console.log('addEventListener fired');
+        });
+      }
+    });
+  </script>
+</body>
+</html>

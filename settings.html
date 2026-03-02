@@ -142,43 +142,90 @@
           <option value="disabled">Disabled</option>
         </select>
       </div>
+    </div>
+    
+    <!-- 🔔 NOTIFICATION SETTINGS SECTION -->
+    <div class="section">
+      <div class="section-title">🔔 Notifications</div>
       <div class="setting">
-        <div class="setting-label">Two-step verification</div>
-        <select class="setting-value" onchange="saveSetting('twoStep', this.value)">
-          <option value="enabled">Enabled</option>
-          <option value="disabled">Disabled</option>
+        <div class="setting-label">Notification Type</div>
+        <select id="notification-type" class="setting-value" onchange="saveNotificationSetting()">
+          <option value="both">Sound + Vibration</option>
+          <option value="sound">Sound Only</option>
+          <option value="vibrate">Vibration Only</option>
+          <option value="none">Silent (No Notifications)</option>
         </select>
       </div>
       <div class="setting">
-        <div class="setting-label">Auto-delete messages</div>
-        <select class="setting-value" onchange="saveSetting('autoDelete', this.value)">
-          <option value="off">Off</option>
-          <option value="5s">5 seconds</option>
-          <option value="30s">30 seconds</option>
-          <option value="5min">5 minutes</option>
-        </select>
+        <div class="setting-label">
+          <input type="checkbox" id="online-status" onchange="toggleOnlineStatus()" style="margin-right: 8px;">
+          Show Online Status
+        </div>
+        <div style="font-size: 0.85em; color: #888; margin-top: 5px;">
+          When disabled, you appear offline to contacts
+        </div>
+      </div>
+    </div>
+    
+    <!-- 🔐 PIN-TO-VIEW MESSAGE SECURITY -->
+    <div class="section">
+      <div class="section-title">🔐 Message Security</div>
+      <div class="setting">
+        <div class="setting-label">
+          <input type="checkbox" id="pin-view-toggle" onchange="togglePinView()" style="margin-right: 8px;">
+          Require password to view messages
+        </div>
+        <div style="font-size: 0.85em; color: #888; margin-top: 5px;">
+          When enabled, every incoming message is locked and requires your password to open. Wrong password keeps the message locked.
+        </div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">🚫 Blocked Contacts</div>
+      <div id="blocked-contacts-container" style="padding: 12px;">
+        <div id="blocked-list" style="max-height: 250px; overflow-y: auto;">
+          <!-- Populated by JavaScript -->
+        </div>
+        <div id="blocked-empty" style="text-align: center; color: #888; padding: 20px;">
+          No blocked contacts
+        </div>
       </div>
     </div>
     <div class="section">
-      <div class="section-title">Blocked Contacts</div>
-      <div class="setting">
-        <div class="setting-label">Manage blocked Zeus-PINs</div>
-        <div class="setting-value">0 blocked</div>
-      </div>
-    </div>
-    <div class="section">
-      <div class="section-title">Help & Feedback</div>
-      <div class="setting">
-        <div class="setting-label">Email</div>
-        <div class="setting-value">info@zeustechafrica.com</div>
-      </div>
-      <div class="setting">
-        <div class="setting-label">Call</div>
-        <div class="setting-value">+27 79 628 8382</div>
-      </div>
-      <div class="setting">
-        <div class="setting-label">Website</div>
-        <div class="setting-value">zeustechafrica.com</div>
+      <div class="section-title">💬 Help & Feedback</div>
+      <div style="padding: 12px;">
+        <p style="color: #888; font-size: 13px; margin-bottom: 12px;">
+          Need help or have feedback? Share your thoughts with our team.
+        </p>
+        
+        <div style="margin-bottom: 12px;">
+          <label style="display: block; font-size: 13px; margin-bottom: 6px; color: #d4af37;">Feedback Type</label>
+          <select id="feedback-type" style="background: #222; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 6px 8px; width: 100%; font-size: 13px; box-sizing: border-box;">
+            <option value="bug">Bug Report</option>
+            <option value="feature">Feature Request</option>
+            <option value="general">General Feedback</option>
+            <option value="security">Security Issue</option>
+          </select>
+        </div>
+        
+        <div style="margin-bottom: 12px;">
+          <label style="display: block; font-size: 13px; margin-bottom: 6px; color: #d4af37;">Your Message (5-1000 characters)</label>
+          <textarea id="feedback-message" placeholder="Tell us what you think..." style="background: #222; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 8px; width: 100%; font-size: 13px; font-family: inherit; resize: vertical; min-height: 80px; box-sizing: border-box;" maxlength="1000"></textarea>
+          <div style="font-size: 11px; color: #888; margin-top: 4px; text-align: right;">
+            <span id="char-count">0</span>/1000 characters
+          </div>
+        </div>
+        
+        <button class="btn" style="background: #d4af37; color: #000; border: none; padding: 10px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; width: 100%;" onclick="submitFeedback()">Submit Feedback</button>
+        
+        <hr style="border: none; border-top: 1px solid #333; margin: 16px 0;">
+        
+        <div style="font-size: 12px; color: #888;">
+          <div style="margin-bottom: 8px;">📧 <strong>Email:</strong> <a href="mailto:info@zeustechafrica.com" style="color: #d4af37; text-decoration: none;">info@zeustechafrica.com</a></div>
+          <div style="margin-bottom: 8px;">📞 <strong>Call:</strong> <a href="tel:+27796288382" style="color: #d4af37; text-decoration: none;">+27 79 628 8382</a></div>
+          <div>🌐 <strong>Website:</strong> <a href="https://zeustechafrica.com" target="_blank" style="color: #d4af37; text-decoration: none;">zeustechafrica.com</a></div>
+        </div>
       </div>
     </div>
 
@@ -197,8 +244,11 @@
   </div>
 
   <script>
-    // Authentication guard - added per requirements
-    if (!localStorage.getItem('auth_token')) {
+    // Authentication guard
+    const isLoggedIn = sessionStorage.getItem('user_logged_in') === 'true';
+    const userPin = sessionStorage.getItem('user_zeus_pin');
+    if (!isLoggedIn || !userPin) {
+      sessionStorage.setItem('return_url', 'settings.html');
       window.location.href = 'login.html';
     }
 
@@ -211,8 +261,34 @@
       document.querySelector('select[onchange*="status"]').value = settings.status || 'myContacts';
       document.querySelector('select[onchange*="groups"]').value = settings.groups || 'everyone';
       document.querySelector('select[onchange*="pinToView"]').value = settings.pinToView || 'enabled';
-      document.querySelector('select[onchange*="twoStep"]').value = settings.twoStep || 'disabled';
-      document.querySelector('select[onchange*="autoDelete"]').value = settings.autoDelete || 'off';
+      
+      // Load notification settings from localStorage or sessionStorage
+      let notificationSetting = sessionStorage.getItem('notification_setting') || localStorage.getItem('notification_setting') || 'both';
+      document.getElementById('notification-type').value = notificationSetting;
+      // Ensure both storages are synced
+      sessionStorage.setItem('notification_setting', notificationSetting);
+      localStorage.setItem('notification_setting', notificationSetting);
+      
+      const onlineStatus = sessionStorage.getItem('show_online_status') !== 'false';
+      document.getElementById('online-status').checked = onlineStatus;
+      
+      // Load PIN-to-view setting
+      const pinViewEnabled = sessionStorage.getItem('pin_view_enabled') === 'true';
+      const pinViewToggle = document.getElementById('pin-view-toggle');
+      if (pinViewToggle) {
+        pinViewToggle.checked = pinViewEnabled;
+      }
+      
+      // Load blocked contacts list
+      loadBlockedContacts();
+      
+      // Set up character counter for feedback
+      const feedbackMessage = document.getElementById('feedback-message');
+      if (feedbackMessage) {
+        feedbackMessage.addEventListener('input', () => {
+          document.getElementById('char-count').textContent = feedbackMessage.value.length;
+        });
+      }
     });
 
     function saveSetting(key, value) {
@@ -220,61 +296,256 @@
       settings[key] = value;
       localStorage.setItem('settings', JSON.stringify(settings));
     }
+    
+    function saveNotificationSetting() {
+      const select = document.getElementById('notification-type');
+      const value = select.value;
+      
+      // Save to both sessionStorage and localStorage
+      sessionStorage.setItem('notification_setting', value);
+      localStorage.setItem('notification_setting', value);
+      
+      const messages = {
+        'both': 'Notifications: Sound + Vibration enabled',
+        'sound': 'Notifications: Sound only',
+        'vibrate': 'Notifications: Vibration only',
+        'none': 'Notifications: Silent mode'
+      };
+      
+      alert(messages[value] + ' ✅');
+      console.log(`🔔 Notification setting saved to localStorage and sessionStorage: ${value}`);
+    }
+    
+    function toggleOnlineStatus() {
+      const checkbox = document.getElementById('online-status');
+      const isOnline = checkbox.checked;
+      
+      sessionStorage.setItem('show_online_status', isOnline);
+      
+      const API_BASE = window.location.origin;
+      const userPin = sessionStorage.getItem('user_zeus_pin');
+      
+      fetch(`${API_BASE}/api/update-online-status`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          zeus_pin: userPin,
+          is_online: isOnline
+        })
+      }).catch(e => console.error('Update status error:', e));
+      
+      alert(isOnline ? 'You are now visible as online' : 'You now appear offline');
+    }
+    
+    // Toggle PIN-to-view messages
+    function togglePinView() {
+      const checkbox = document.getElementById('pin-view-toggle');
+      const enabled = checkbox.checked;
+      
+      sessionStorage.setItem('pin_view_enabled', enabled);
+      
+      if (enabled) {
+        alert('✅ PIN protection enabled\n\nEvery incoming message is now locked.\nYou must enter your password each time you open an incoming message.\n\nWrong password = message stays locked.');
+      } else {
+        alert('❌ PIN protection disabled\n\nAll messages will display without password verification.');
+      }
+    }
 
     function saveAllSettings() {
-      alert('✅ Settings saved!');
-      window.location.href = 'chat.html';
+      // Collect all settings values
+      const settings = {
+        last_seen_visibility: document.querySelector('select[onchange*="lastSeen"]').value,
+        profile_photo_visibility: document.querySelector('select[onchange*="profilePhoto"]').value,
+        about_visibility: document.querySelector('select[onchange*="about"]').value,
+        status_visibility: document.querySelector('select[onchange*="status"]').value,
+        groups_visibility: document.querySelector('select[onchange*="groups"]').value,
+        pin_to_view_enabled: document.getElementById('pin-view-toggle').checked,
+        notification_type: document.getElementById('notification-type').value,
+        show_online_status: document.getElementById('online-status').checked
+      };
+      
+      // Also save to backend
+      
+      const API_BASE = window.location.origin;
+      const userPin = sessionStorage.getItem('user_zeus_pin');
+      
+      fetch(`${API_BASE}/api/save-user-settings`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings)
+      }).then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            console.log('✅ Settings saved to server');
+            alert('✅ Settings saved!');
+            window.location.href = 'chat.html';
+          } else {
+            alert('⚠️ Settings saved locally but server sync failed: ' + (data.error || 'Unknown error'));
+            window.location.href = 'chat.html';
+          }
+        })
+        .catch(error => {
+          console.error('Error saving settings:', error);
+          alert('⚠️ Settings saved locally but could not sync with server');
+          window.location.href = 'chat.html';
+        });
     }
 
     function logout() {
-      if (confirm("🔐 Log Out\n\n• Session ends\n• Status set to offline\n• All data (profile, contacts, chats, settings) is preserved\n\nLog back in anytime with Zeus-PIN + password.")) {
-        // Clear session but keep account
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('user_id');
-        localStorage.removeItem('currentSession');
-        alert("✅ Logged out.\nYour data is safe.");
+      if (confirm('Are you sure you want to logout?')) {
+        sessionStorage.clear();
         window.location.href = 'login.html';
       }
     }
 
     async function deleteAccount() {
-      if (confirm("⚠️ Delete Account Permanently?\n\nALL data will be erased:\n• Profile & Zeus-PIN\n• Messages & contacts\n• Settings & preferences\n\nThis cannot be undone.")) {
-        if (prompt("Type DELETE to confirm") === "DELETE") {
-          const authToken = localStorage.getItem('auth_token');
-          if (!authToken) {
-            alert('Authentication required.');
-            return;
-          }
+      const currentUserPin = sessionStorage.getItem('user_zeus_pin');
+      const password = prompt('Enter your password to confirm deletion:');
 
-          try {
-            // Call backend delete endpoint (if exists)
-            const API_BASE = window.location.origin;
-            const response = await fetch(`${API_BASE}/api/delete-account`, {
-              method: 'POST',
-              credentials: 'include',
-              headers: {
-                'Authorization': `Bearer ${authToken}`,
-                'Content-Type': 'application/json'
-              }
-            });
+      if (!password) return;
 
-            // Clear local data regardless of backend response
-            localStorage.clear();
-            
-            if (response.ok) {
-              alert("🗑️ Account deleted permanently.");
-            } else {
-              alert("⚠️ Local data cleared. Backend delete may require manual admin action.");
-            }
-            
-            window.location.href = 'index.html';
-          } catch (error) {
-            console.error('Delete error:', error);
-            localStorage.clear();
-            alert("🗑️ Local data cleared. Backend delete may require manual admin action.");
-            window.location.href = 'index.html';
-          }
+      const confirmDelete = prompt(`Type "DELETE" to confirm account deletion for ${currentUserPin}:`);
+      if (confirmDelete !== 'DELETE') {
+        alert('Account deletion cancelled.');
+        return;
+      }
+
+      try {
+        const API_BASE = window.location.origin;
+        const response = await fetch(`${API_BASE}/api/delete-account`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            zeus_pin: currentUserPin,
+            password: password
+          })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+          alert('Account deleted successfully.');
+          sessionStorage.clear();
+          window.location.href = 'index.html';
+        } else {
+          alert(result.error || 'Failed to delete account');
         }
+      } catch (error) {
+        console.error('Delete account error:', error);
+        alert('Failed to connect to server');
+      }
+    }
+
+    // Load and display blocked contacts
+    async function loadBlockedContacts() {
+      const API_BASE = window.location.origin;
+      try {
+        const response = await fetch(`${API_BASE}/api/get-blocked-contacts`, {
+          method: 'GET',
+          credentials: 'include'
+        });
+
+        const data = await response.json();
+        
+        if (data.success && data.blocked_contacts.length > 0) {
+          const blockedList = document.getElementById('blocked-list');
+          const blockedEmpty = document.getElementById('blocked-empty');
+          
+          blockedList.innerHTML = '';
+          blockedEmpty.style.display = 'none';
+          
+          data.blocked_contacts.forEach(contact => {
+            const div = document.createElement('div');
+            div.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #222; font-size: 13px;';
+            div.innerHTML = `
+              <div>
+                <div style="color: #fff; font-weight: 500;">${contact.full_name}</div>
+                <div style="color: #888; font-size: 11px;">${contact.zeus_pin}</div>
+              </div>
+              <button onclick="unblockContact('${contact.zeus_pin}')" style="background: #d4af37; color: #000; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 12px; font-weight: 600;">Unblock</button>
+            `;
+            blockedList.appendChild(div);
+          });
+        } else {
+          document.getElementById('blocked-empty').style.display = 'block';
+          document.getElementById('blocked-list').innerHTML = '';
+        }
+      } catch (error) {
+        console.error('Error loading blocked contacts:', error);
+      }
+    }
+
+    // Unblock a contact
+    async function unblockContact(contactPin) {
+      if (!confirm(`Unblock ${contactPin}? They will be able to send you messages again.`)) {
+        return;
+      }
+
+      const API_BASE = window.location.origin;
+      try {
+        const response = await fetch(`${API_BASE}/api/unblock-from-settings`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contact_pin: contactPin })
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+          alert(`✅ ${contactPin} has been unblocked`);
+          loadBlockedContacts(); // Refresh the list
+        } else {
+          alert('⚠️ Error unblocking contact: ' + (data.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Error unblocking contact:', error);
+        alert('Failed to unblock contact');
+      }
+    }
+
+    // Submit feedback
+    async function submitFeedback() {
+      const feedbackType = document.getElementById('feedback-type').value;
+      const message = document.getElementById('feedback-message').value.trim();
+
+      if (!message) {
+        alert('Please enter your feedback message');
+        return;
+      }
+
+      if (message.length < 5) {
+        alert('Message must be at least 5 characters');
+        return;
+      }
+
+      const API_BASE = window.location.origin;
+      try {
+        const response = await fetch(`${API_BASE}/api/submit-feedback`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            feedback_type: feedbackType,
+            message: message
+          })
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+          alert('✅ Thank you! Your feedback has been sent to our team.');
+          document.getElementById('feedback-message').value = '';
+          document.getElementById('char-count').textContent = '0';
+          document.getElementById('feedback-type').value = 'general';
+        } else {
+          alert('⚠️ Error submitting feedback: ' + (data.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Error submitting feedback:', error);
+        alert('Failed to submit feedback');
       }
     }
   </script>

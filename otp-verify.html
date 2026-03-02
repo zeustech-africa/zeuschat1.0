@@ -210,7 +210,7 @@
       try {
         console.log('🔐 Verifying OTP...');
         console.log('📧 Email:', email);
-        console.log('🔑 OTP:', otp);
+        // OTP not logged for security
 
         // Call /api/verify-otp endpoint
         const response = await fetch(`${API_BASE}/api/verify-otp`, {

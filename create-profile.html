@@ -200,8 +200,8 @@
           localStorage.setItem('profile_display_name', displayName);
           localStorage.setItem('profile_about', about);
 
-          // Redirect to password creation
-          window.location.href = 'password-create.html';
+          // Redirect to chat interface
+          window.location.href = 'chat.html';
         } else {
           console.error('❌ Profile creation failed:', result);
           throw new Error(result.error || 'Failed to create profile');

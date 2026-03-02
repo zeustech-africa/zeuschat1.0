@@ -1,5 +1,7 @@
 # Database files (local development only)
 zeuschat.db
+zeuschat.db-wal
+zeuschat.db-shm
 
 # Environment files
 backend/.env
@@ -18,3 +20,4 @@ __pycache__/
 # Large video folders (but allow root mp4 files for deployment)
 videos/
 static/videos/
+.secret_key

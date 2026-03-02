@@ -295,10 +295,18 @@
                     // Store user info for later
                     localStorage.setItem('user_full_name', fullName);
                     localStorage.setItem('registration_full_name', fullName);
+                    localStorage.setItem('user_zeus_pin', zeusPin);
+                    localStorage.setItem('user_profile_pic', profilePic);
+                    localStorage.setItem('user_logged_in', 'true');
+
+                    sessionStorage.setItem('user_full_name', fullName);
+                    sessionStorage.setItem('user_zeus_pin', zeusPin);
+                    sessionStorage.setItem('user_profile_pic', profilePic);
+                    sessionStorage.setItem('user_logged_in', 'true');
                     
-                    console.log('🎉 Redirecting to password creation...');
-                    // Redirect to password creation
-                    window.location.href = 'password-create.html';
+                    console.log('🎉 Redirecting to chat...');
+                    // Redirect to chat interface
+                    window.location.href = 'chat.html';
                 } else {
                     throw new Error(data.error || 'Registration failed');
                 }

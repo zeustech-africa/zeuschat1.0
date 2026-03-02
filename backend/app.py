@@ -256,9 +256,9 @@ def get_contacts():
                 (c.contact_pin = u.zeus_pin AND c.user_pin = ?)
             WHERE c.status = 'accepted'
         """, (user_pin, user_pin))
-        contacts = [{'name': row[0] or 'User', 'zeus_pin': row[1], 'profile_pic': row[2]} for row in c.fetchall()]
+        contacts = [{'full_name': row[0] or 'User', 'zeus_pin': row[1], 'profile_pic': row[2]} for row in c.fetchall()]
 
-    return jsonify({'contacts': contacts})
+    return jsonify({'success': True, 'contacts': contacts})
 
 @app.route('/send-message', methods=['POST'])
 @retry_on_locked(max_retries=3, delay=0.5)

@@ -303,10 +303,17 @@
                     sessionStorage.setItem('user_zeus_pin', zeusPin);
                     sessionStorage.setItem('user_profile_pic', profilePic);
                     sessionStorage.setItem('user_logged_in', 'true');
-                    
-                    console.log('🎉 Redirecting to chat...');
-                    // Redirect to chat interface
-                    window.location.href = 'chat.html';
+
+                    if (data.approved === false) {
+                        console.log('⏳ Registration pending approval, redirecting to /pending-approval...');
+                        window.location.href = data.redirect || '/pending-approval';
+                    } else if (data.approved === true) {
+                        console.log('🎉 Registration approved, redirecting to chat...');
+                        window.location.href = data.redirect || '/chat.html';
+                    } else {
+                        console.log('⚠️ Approval flag missing, using backend redirect or safe fallback...');
+                        window.location.href = data.redirect || '/pending-approval';
+                    }
                 } else {
                     throw new Error(data.error || 'Registration failed');
                 }

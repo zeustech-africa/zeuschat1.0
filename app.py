@@ -1338,9 +1338,8 @@ def complete_registration():
             'success': True,
             'message': 'Registration successful. Account pending admin approval.',
             'redirect': '/pending-approval',
-            'pending_approval': True,
             'user_id': user_id,
-            'zeus_pin': zeus_pin
+            'approved': False
         }), 201
         
     except sqlite3.IntegrityError as e:

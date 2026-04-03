@@ -1,0 +1,130 @@
+:root {
+  --bg1: #0f1f3f;
+  --bg2: #274878;
+  --card: #ffffff;
+  --text: #13233d;
+  --muted: #5d6f8b;
+  --warn: #ef6c00;
+  --primary: #1f4ed8;
+  --danger: #c62828;
+  --border: #dbe3ef;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--text);
+  background: linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 100%);
+  min-height: 100vh;
+}
+
+.wrap {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.top {
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  padding: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.badge {
+  background: #fff3e0;
+  color: var(--warn);
+  border: 1px solid #ffd7a8;
+  border-radius: 999px;
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+.btn {
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.btn.logout { background: var(--danger); color: #fff; }
+.btn.pay { background: var(--primary); color: #fff; margin-top: 8px; }
+
+.card {
+  margin-top: 16px;
+  background: var(--card);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  padding: 16px;
+}
+
+.timeline {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+.step {
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  text-align: center;
+  font-size: 12px;
+}
+.step.active { border-color: #ffe2b5; background: #fffaf2; }
+
+.msg-box {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.msg-log {
+  min-height: 220px;
+  max-height: 320px;
+  overflow: auto;
+  padding: 10px;
+  background: #f8fbff;
+}
+.msg {
+  max-width: 80%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  background: #fff;
+}
+.msg.user { margin-left: auto; background: #e8f1ff; }
+.msg small { color: var(--muted); display: block; margin-top: 4px; }
+
+.msg-input {
+  display: flex;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding: 10px;
+  background: #fff;
+}
+.msg-input textarea {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.upgrades {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+.upgrade {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  background: #f4f8ff;
+}
+
+@media (max-width: 720px) {
+  .timeline { grid-template-columns: 1fr; }
+}

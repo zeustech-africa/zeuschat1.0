@@ -1,0 +1,128 @@
+import sqlite3
+import json
+import os
+from functools import wraps
+from flask import session, jsonify, request
+from datetime import datetime
+
+DATABASE_PATH = os.environ.get('DATABASE_PATH', 'zeuschat.db')
+
+def get_db_connection():
+    """Get database connection"""
+    conn = sqlite3.connect(DATABASE_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def admin_required(f):
+    """Decorator: Require admin authentication"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'admin_id' not in session:
+            return jsonify({'error': 'Admin authentication required'}), 401
+        
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT id FROM admin_users WHERE id = ?', (session['admin_id'],))
+            if not cursor.fetchone():
+                session.clear()
+                return jsonify({'error': 'Admin account not found'}), 401
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
+def require_approved_user(f):
+    """Decorator: Block access if user account not admin-approved"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'Not authenticated'}), 401
+        
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT status FROM user_approvals WHERE user_id = ?
+            ''', (user_id,))
+            approval = cursor.fetchone()
+            
+            if not approval or approval['status'] != 'approved':
+                return jsonify({
+                    'error': 'Account pending approval',
+                    'message': 'Please message admin for assistance',
+                    'redirect': '/pending-approval'
+                }), 403
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
+def require_feature_unlock(feature_name):
+    """Decorator: Block access if user hasn't unlocked specific feature"""
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            user_id = session.get('user_id')
+            if not user_id:
+                return jsonify({'error': 'Not authenticated'}), 401
+            
+            if not user_has_unlock(user_id, feature_name):
+                return jsonify({
+                    'error': 'Feature locked',
+                    'feature': feature_name,
+                    'unlock_options': get_unlock_options(feature_name)
+                }), 403
+            
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+def user_has_unlock(user_id, feature_name):
+    """Check if user has unlocked a specific feature"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT id, expires_at FROM user_unlocks
+            WHERE user_id = ? AND feature_name = ?
+        ''', (user_id, feature_name))
+        unlock = cursor.fetchone()
+        
+        if not unlock:
+            return False
+        
+        if unlock['expires_at']:
+            expires_at = datetime.fromisoformat(unlock['expires_at'].replace(' ', 'T') if ' ' in unlock['expires_at'] else unlock['expires_at'])
+            if datetime.now() > expires_at:
+                return False
+        
+        return True
+
+def get_unlock_options(feature_name):
+    """Return available ways to unlock a feature"""
+    unlock_options = {
+        'profile_picture': {
+            'one_off_payment': {'amount': 29.00, 'currency': 'ZAR', 'endpoint': '/api/user/request-profile-picture'},
+            'subscription': {'tier': 'pro', 'amount': 89.00, 'currency': 'ZAR', 'endpoint': '/api/subscribe'}
+        },
+        'custom_ttl': {
+            'one_off_payment': {'amount': 39.00, 'currency': 'ZAR', 'endpoint': '/api/user/request-extended-ttl'},
+            'subscription': {'tier': 'pro', 'amount': 89.00, 'currency': 'ZAR', 'endpoint': '/api/subscribe'}
+        },
+        'pin_retention': {
+            'one_off_payment': {'amount': 49.00, 'currency': 'ZAR', 'endpoint': '/api/user/request-pin-retention'}
+        },
+        'file_sharing': {
+            'one_off_payment': {'amount': 59.00, 'currency': 'ZAR', 'endpoint': '/api/user/request-file-sharing'},
+            'subscription': {'tier': 'pro', 'amount': 89.00, 'currency': 'ZAR', 'endpoint': '/api/subscribe'}
+        }
+    }
+    return unlock_options.get(feature_name, {})
+
+def log_admin_action(admin_id, action, target_user_id=None, target_payment_id=None, details=None, ip_address=None):
+    """Log admin action to audit log"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO admin_audit_log (admin_id, action, target_user_id, target_payment_id, details, ip_address)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (admin_id, action, target_user_id, target_payment_id, 
+              json.dumps(details) if details else None, ip_address))
+        conn.commit()

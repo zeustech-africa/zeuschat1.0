@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ZeusChat - Pending Approval</title>
+  <link rel="stylesheet" href="/static/pending-approval.css" />
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <h2 style="margin:0;">ZeusChat</h2>
+      <div>
+        <span class="badge">Pending Approval</span>
+        <button class="btn logout" id="logout-btn">Logout</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0;">Account Under Review</h3>
+      <p>Your account is registered and waiting for admin approval.</p>
+
+      <div class="timeline">
+        <div class="step">1. Registration complete</div>
+        <div class="step active">2. Admin review in progress</div>
+        <div class="step">3. Full access enabled</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0;">Message Admin</h3>
+      <div class="msg-box">
+        <div id="msg-log" class="msg-log"></div>
+        <div class="msg-input">
+          <textarea id="msg-input" rows="2" placeholder="Type a message to admin..."></textarea>
+          <button id="msg-send" class="btn pay">Send</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0;">Optional One-Off Unlocks</h3>
+      <div class="upgrades">
+        <div class="upgrade">
+          <strong>Profile Picture</strong>
+          <div>R29 one-off</div>
+          <button class="btn pay" onclick="requestUnlock('profile_picture')">Unlock</button>
+        </div>
+        <div class="upgrade">
+          <strong>Extended TTL</strong>
+          <div>R39 one-off</div>
+          <button class="btn pay" onclick="requestUnlock('extended_ttl')">Unlock</button>
+        </div>
+        <div class="upgrade">
+          <strong>PIN Retention</strong>
+          <div>R49 one-off</div>
+          <button class="btn pay" onclick="requestUnlock('pin_retention')">Unlock</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function esc(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    async function loadMessages() {
+      try {
+        const response = await fetch('/api/user/admin-messages');
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!data.success) return;
+
+        const html = data.messages.map((m) => `
+          <div class="msg ${m.is_from_admin ? 'admin' : 'user'}">
+            ${esc(m.message)}
+            <small>${new Date(m.created_at).toLocaleString()}</small>
+          </div>
+        `).join('');
+
+        const log = document.getElementById('msg-log');
+        log.innerHTML = html || '<div>No messages yet.</div>';
+        log.scrollTop = log.scrollHeight;
+      } catch (_err) {
+      }
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('msg-input');
+      const message = input.value.trim();
+      if (!message) return;
+
+      const response = await fetch('/api/user/admin-messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message }),
+      });
+
+      if (response.ok) {
+        input.value = '';
+        loadMessages();
+      }
+    }
+
+    async function checkStatus() {
+      const response = await fetch('/api/user/approval-status');
+      if (!response.ok) return;
+      const data = await response.json();
+      if (data.success && data.is_approved) {
+        window.location.href = '/chat.html';
+      }
+    }
+
+    function requestUnlock(feature) {
+      let endpoint = '';
+      if (feature === 'profile_picture') endpoint = '/api/user/request-profile-picture';
+      if (feature === 'extended_ttl') endpoint = '/api/user/request-extended-ttl';
+      if (feature === 'pin_retention') endpoint = '/api/user/request-pin-retention';
+      if (!endpoint) return;
+
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = endpoint;
+      document.body.appendChild(form);
+      form.submit();
+    }
+
+    async function logout() {
+      await fetch('/api/logout', { method: 'POST' });
+      window.location.href = '/login.html';
+    }
+
+    document.getElementById('msg-send').addEventListener('click', sendMessage);
+    document.getElementById('logout-btn').addEventListener('click', logout);
+
+    loadMessages();
+    checkStatus();
+    setInterval(() => {
+      loadMessages();
+      checkStatus();
+    }, 5000);
+  </script>
+</body>
+</html>

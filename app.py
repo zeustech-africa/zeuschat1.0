@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_from_directory, session
+from flask import Flask, request, jsonify, send_from_directory, session, render_template, redirect
 from flask_cors import CORS
 from flask_socketio import SocketIO, join_room, emit
 from flask_compress import Compress
@@ -15,6 +15,9 @@ from functools import wraps
 import time
 import gzip
 import base64
+from admin_middleware import require_approved_user, user_has_unlock, get_db_connection as admin_get_db
+from admin_routes import admin_bp
+from payment_routes import payment_bp
 
 # Startup logging for deployment verification
 print("="*60)
@@ -24,6 +27,7 @@ print(f"📦 Flask Version: {flask.__version__}")
 print("="*60)
 
 app = Flask(__name__, static_folder='.', static_url_path='')
+DATABASE_PATH = os.environ.get('DATABASE_PATH', 'zeuschat.db')
 
 # ============ LOW-BANDWIDTH OPTIMIZATION ============
 # Enable gzip compression for all responses
@@ -438,7 +442,7 @@ def get_db_connection():
     conn = None
     try:
         # Enable WAL mode for better concurrency
-        conn = sqlite3.connect('zeuschat.db', timeout=30.0)
+        conn = sqlite3.connect(DATABASE_PATH, timeout=30.0)
         conn.execute('PRAGMA journal_mode=WAL')
         conn.execute('PRAGMA busy_timeout=30000')
         conn.row_factory = sqlite3.Row
@@ -747,6 +751,121 @@ def init_db():
                 FOREIGN KEY (created_by) REFERENCES users(id)
             )
         ''')
+
+        # Admin control room tables (non-breaking additive migration)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS user_approvals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL UNIQUE,
+                status TEXT NOT NULL DEFAULT 'pending',
+                reviewed_by INTEGER,
+                reviewed_at TIMESTAMP,
+                rejection_reason TEXT,
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )
+        ''')
+
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS admin_users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                email TEXT UNIQUE NOT NULL,
+                role TEXT NOT NULL DEFAULT 'moderator',
+                permissions TEXT,
+                last_login TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS admin_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                admin_id INTEGER,
+                message TEXT NOT NULL,
+                is_from_admin INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                read_at TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                FOREIGN KEY (admin_id) REFERENCES admin_users(id)
+            )
+        ''')
+
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS one_off_payments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                payment_type TEXT NOT NULL,
+                amount REAL NOT NULL,
+                currency TEXT DEFAULT 'ZAR',
+                payfast_payment_id TEXT,
+                payfast_token TEXT,
+                status TEXT NOT NULL DEFAULT 'pending_approval',
+                approved_by INTEGER,
+                approved_at TIMESTAMP,
+                rejection_reason TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                FOREIGN KEY (approved_by) REFERENCES admin_users(id)
+            )
+        ''')
+
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS user_unlocks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                feature_name TEXT NOT NULL,
+                unlock_type TEXT NOT NULL,
+                payment_id INTEGER,
+                expires_at TIMESTAMP,
+                granted_by INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                FOREIGN KEY (payment_id) REFERENCES one_off_payments(id),
+                FOREIGN KEY (granted_by) REFERENCES admin_users(id),
+                UNIQUE(user_id, feature_name)
+            )
+        ''')
+
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS admin_audit_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                admin_id INTEGER,
+                action TEXT NOT NULL,
+                target_user_id INTEGER,
+                target_payment_id INTEGER,
+                details TEXT,
+                ip_address TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (admin_id) REFERENCES admin_users(id)
+            )
+        ''')
+
+        cursor.execute('''
+            INSERT OR IGNORE INTO admin_users (username, password_hash, email, role, permissions)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (
+            'superadmin',
+            '142787a065bc8eaf6bedf5e1221cce84dd759fb1e9503c375927bb0028ecc9c4',
+            'admin@zeuschat.co.za',
+            'super_admin',
+            '{"can_approve_users": true, "can_ban_users": true, "can_approve_payments": true, "can_manage_admins": true, "can_view_logs": true}'
+        ))
+
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_user_approvals_status ON user_approvals(status)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_user_approvals_user_id ON user_approvals(user_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_admin_messages_user_id ON admin_messages(user_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_one_off_payments_status ON one_off_payments(status)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_user_unlocks_user_id ON user_unlocks(user_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_admin_audit_log_created_at ON admin_audit_log(created_at)')
+
+        cursor.execute('''
+            INSERT OR IGNORE INTO user_approvals (user_id, status, reviewed_at)
+            SELECT id, 'approved', CURRENT_TIMESTAMP FROM users
+        ''')
         
         print("✅ Privacy settings table initialized")
         print("✅ Message queue table initialized (offline delivery system)")
@@ -758,6 +877,151 @@ def init_db():
 
 # Initialize DB on startup
 init_db()
+
+def run_admin_migrations():
+    """Auto-create admin tables on app startup (for free tier deployment)"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+
+        # Check if admin_users table exists
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='admin_users'")
+        if cursor.fetchone():
+            print("✅ Admin tables already exist")
+            return
+
+        print("🔄 Running admin migrations...")
+
+        # Create user_approvals table
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS user_approvals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL UNIQUE,
+            status TEXT NOT NULL DEFAULT 'pending',
+            reviewed_by INTEGER,
+            reviewed_at TIMESTAMP,
+            rejection_reason TEXT,
+            notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+        ''')
+
+        # Create admin_users table
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS admin_users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            role TEXT NOT NULL DEFAULT 'moderator',
+            permissions TEXT,
+            last_login TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        ''')
+
+        # Create admin_messages table
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS admin_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            admin_id INTEGER,
+            message TEXT NOT NULL,
+            is_from_admin INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            read_at TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (admin_id) REFERENCES admin_users(id)
+        )
+        ''')
+
+        # Create one_off_payments table
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS one_off_payments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            payment_type TEXT NOT NULL,
+            amount REAL NOT NULL,
+            currency TEXT DEFAULT 'ZAR',
+            payfast_payment_id TEXT,
+            payfast_token TEXT,
+            status TEXT NOT NULL DEFAULT 'pending_approval',
+            approved_by INTEGER,
+            approved_at TIMESTAMP,
+            rejection_reason TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (approved_by) REFERENCES admin_users(id)
+        )
+        ''')
+
+        # Create user_unlocks table
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS user_unlocks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            feature_name TEXT NOT NULL,
+            unlock_type TEXT NOT NULL,
+            payment_id INTEGER,
+            expires_at TIMESTAMP,
+            granted_by INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (payment_id) REFERENCES one_off_payments(id),
+            FOREIGN KEY (granted_by) REFERENCES admin_users(id),
+            UNIQUE(user_id, feature_name)
+        )
+        ''')
+
+        # Create admin_audit_log table
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS admin_audit_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            admin_id INTEGER,
+            action TEXT NOT NULL,
+            target_user_id INTEGER,
+            target_payment_id INTEGER,
+            details TEXT,
+            ip_address TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (admin_id) REFERENCES admin_users(id)
+        )
+        ''')
+
+        # Create indexes
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_user_approvals_status ON user_approvals(status)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_user_approvals_user_id ON user_approvals(user_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_admin_messages_user_id ON admin_messages(user_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_one_off_payments_status ON one_off_payments(status)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_user_unlocks_user_id ON user_unlocks(user_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_admin_audit_log_created_at ON admin_audit_log(created_at)')
+
+        # Create default super admin (password: ZeusAdmin2026!)
+        import hashlib
+        default_password_hash = hashlib.sha256('ZeusAdmin2026!'.encode()).hexdigest()
+
+        cursor.execute('''
+        INSERT OR IGNORE INTO admin_users (username, password_hash, email, role, permissions)
+        VALUES (?, ?, ?, ?, ?)
+        ''', ('superadmin', default_password_hash, 'admin@zeuschat.co.za', 'super_admin',
+              '{"can_approve_users": true, "can_ban_users": true, "can_approve_payments": true, "can_manage_admins": true, "can_view_logs": true}'))
+
+        # Migrate existing users to approved status
+        cursor.execute('''
+        INSERT OR IGNORE INTO user_approvals (user_id, status, reviewed_at)
+        SELECT id, 'approved', CURRENT_TIMESTAMP FROM users
+        ''')
+
+        conn.commit()
+        print("✅ Admin migrations completed successfully!")
+
+# Call the function
+run_admin_migrations()
+
+# Register additive blueprints (no existing route removal)
+app.register_blueprint(admin_bp)
+app.register_blueprint(payment_bp)
+print("✅ Admin and payment routes registered")
 
 # Helper functions
 def generate_zeus_pin():
@@ -1016,6 +1280,7 @@ def verify_otp():
         print(f"❌ verify-otp error: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/register', methods=['POST', 'OPTIONS'])
 @app.route('/api/complete-registration', methods=['POST', 'OPTIONS'])
 @retry_on_locked(max_retries=3, delay=0.5)
 def complete_registration():
@@ -1053,6 +1318,14 @@ def complete_registration():
                 VALUES (?, ?, ?, ?, ?)
             ''', (email, zeus_pin, password_hash, full_name, profile_pic))
             user_id = cursor.lastrowid
+
+        with admin_get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT OR IGNORE INTO user_approvals (user_id, status)
+                VALUES (?, 'pending')
+            ''', (user_id,))
+            conn.commit()
         
         # Set session for newly registered user - automatically logs them in
         session['user_id'] = user_id
@@ -1063,7 +1336,9 @@ def complete_registration():
         
         return jsonify({
             'success': True,
-            'message': 'Registration successful',
+            'message': 'Registration successful. Account pending admin approval.',
+            'redirect': '/pending-approval',
+            'pending_approval': True,
             'user_id': user_id,
             'zeus_pin': zeus_pin
         }), 201
@@ -1110,12 +1385,42 @@ def login():
         # Set session
         session['user_id'] = user[0]
         session['zeus_pin'] = zeus_pin
+        session['user_email'] = user[1]
+        session['user_full_name'] = user[2]
         session['user_password'] = password  # Store for PIN-to-view verification
+
+        with admin_get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT status FROM user_approvals WHERE user_id = ?', (user[0],))
+            approval = cursor.fetchone()
+            approval_status = approval['status'] if approval else 'pending'
         
         print(f"✅ User logged in: {user[1]}")
+
+        if approval_status != 'approved':
+            return jsonify({
+                'success': True,
+                'message': 'Account pending approval',
+                'redirect': '/pending-approval',
+                'approved': False,
+                'approval_status': approval_status,
+                'pending_approval': True,
+                'user': {
+                    'id': user[0],
+                    'email': user[1],
+                    'full_name': user[2],
+                    'profile_pic': user[3],
+                    'zeus_pin': zeus_pin
+                }
+            }), 200
         
         return jsonify({
             'success': True,
+            'message': 'Login successful',
+            'redirect': '/dashboard',
+            'approved': True,
+            'approval_status': approval_status,
+            'pending_approval': False,
             'user': {
                 'id': user[0],
                 'email': user[1],
@@ -1137,6 +1442,131 @@ def logout():
     
     session.clear()
     return jsonify({'success': True, 'message': 'Logged out successfully'}), 200
+
+
+@app.route('/login')
+def login_redirect():
+    """Compatibility route for app redirects expecting /login."""
+    return redirect('/login.html')
+
+
+@app.route('/dashboard')
+def dashboard_redirect():
+    """Compatibility route for app redirects expecting /dashboard."""
+    if 'user_id' not in session:
+        return redirect('/login')
+    return redirect('/chat.html')
+
+
+@app.route('/pending-approval')
+def pending_approval():
+    """Show pending approval page for unapproved users"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect('/login')
+
+    with admin_get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT status FROM user_approvals WHERE user_id = ?', (user_id,))
+        approval = cursor.fetchone()
+
+        if approval and approval['status'] == 'approved':
+            return redirect('/dashboard')
+
+    return render_template('pending-approval.html')
+
+
+@app.route('/api/user/approval-status', methods=['GET'])
+def get_approval_status():
+    """Check current user's approval status"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    with admin_get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT status, reviewed_at, rejection_reason
+            FROM user_approvals WHERE user_id = ?
+        ''', (user_id,))
+        approval = cursor.fetchone()
+
+        if not approval:
+            status = 'pending'
+            reviewed_at = None
+            rejection_reason = None
+        else:
+            status = approval['status']
+            reviewed_at = approval['reviewed_at']
+            rejection_reason = approval['rejection_reason']
+
+        return jsonify({
+            'success': True,
+            'status': status,
+            'reviewed_at': reviewed_at,
+            'rejection_reason': rejection_reason,
+            'is_approved': status == 'approved'
+        }), 200
+
+
+@app.route('/api/user/admin-messages', methods=['GET', 'POST'])
+def user_admin_messages():
+    """User sends/receives messages to/from admin (works even for pending users)"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    if request.method == 'GET':
+        with admin_get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT id, message, is_from_admin, created_at, read_at
+                FROM admin_messages
+                WHERE user_id = ?
+                ORDER BY created_at ASC
+            ''', (user_id,))
+            messages = cursor.fetchall()
+
+            # Mark unread admin messages as read
+            cursor.execute('''
+                UPDATE admin_messages SET read_at = CURRENT_TIMESTAMP
+                WHERE user_id = ? AND is_from_admin = 1 AND read_at IS NULL
+            ''', (user_id,))
+            conn.commit()
+
+            return jsonify({
+                'success': True,
+                'messages': [
+                    {
+                        'id': m['id'],
+                        'message': m['message'],
+                        'is_from_admin': bool(m['is_from_admin']),
+                        'created_at': m['created_at'],
+                        'read_at': m['read_at']
+                    }
+                    for m in messages
+                ]
+            }), 200
+
+    elif request.method == 'POST':
+        data = request.get_json() or {}
+        message = data.get('message', '').strip()
+
+        if not message:
+            return jsonify({'error': 'Message cannot be empty'}), 400
+
+        with admin_get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO admin_messages (user_id, message, is_from_admin)
+                VALUES (?, ?, 0)
+            ''', (user_id, message))
+            conn.commit()
+
+            return jsonify({
+                'success': True,
+                'message': 'Message sent to admin'
+            }), 201
 
 @app.route('/api/delete-account', methods=['POST', 'OPTIONS'])
 @retry_on_locked(max_retries=3, delay=0.5)
@@ -1337,6 +1767,7 @@ def update_profile():
 # ============ MESSAGING SYSTEM ENDPOINTS ============
 
 @app.route('/api/send-message', methods=['POST', 'OPTIONS'])
+@require_approved_user
 @retry_on_locked(max_retries=3, delay=0.5)
 def send_message():
     """Send a message to a contact (requires accepted handshake)"""
@@ -1445,6 +1876,7 @@ def send_message():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/get-messages', methods=['GET'])
+@require_approved_user
 @retry_on_locked(max_retries=3, delay=0.5)
 def get_messages():
     """Get messages between current user and a specific contact (auto-delete expired)"""
@@ -1634,6 +2066,7 @@ def get_messages():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/get-unread-counts', methods=['GET'])
+@require_approved_user
 @retry_on_locked(max_retries=3, delay=0.5)
 def get_unread_counts():
     """Get unread message counts for all contacts"""
@@ -1683,6 +2116,7 @@ def get_unread_counts():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/mark-message-viewed', methods=['POST', 'OPTIONS'])
+@require_approved_user
 @retry_on_locked(max_retries=3, delay=0.5)
 def mark_message_viewed():
     """Mark specific messages as viewed by the user"""
@@ -2165,6 +2599,7 @@ def notify_delivery_failed():
 # ============ CONTACT MANAGEMENT SYSTEM ENDPOINTS ============
 
 @app.route('/api/add-contact', methods=['POST', 'OPTIONS'])
+@require_approved_user
 @retry_on_locked(max_retries=3, delay=0.5)
 def add_contact():
     """Send contact request to another user"""
@@ -2234,6 +2669,7 @@ def add_contact():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/get-contact-requests', methods=['GET'])
+@require_approved_user
 @retry_on_locked(max_retries=3, delay=0.5)
 def get_contact_requests():
     """Get pending contact requests for current user"""
@@ -2277,6 +2713,7 @@ def get_contact_requests():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/accept-contact', methods=['POST', 'OPTIONS'])
+@require_approved_user
 @retry_on_locked(max_retries=3, delay=0.5)
 def accept_contact():
     """Accept a contact request (complete handshake)"""
@@ -2354,6 +2791,7 @@ def accept_contact():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/decline-contact', methods=['POST', 'OPTIONS'])
+@require_approved_user
 @retry_on_locked(max_retries=3, delay=0.5)
 def decline_contact():
     """Decline/reject a contact request or Ignore it (BBM Feature)"""
@@ -2626,6 +3064,7 @@ def unblock_contact():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/get-contacts', methods=['GET'])
+@require_approved_user
 @retry_on_locked(max_retries=3, delay=0.5)
 def get_contacts():
     """Get list of accepted contacts"""

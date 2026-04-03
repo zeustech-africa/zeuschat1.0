@@ -199,17 +199,24 @@
           // Clear return URL to prevent loops
           sessionStorage.removeItem('return_url');
 
-          console.log('6. Redirecting to chat.html...');
-          alert('✅ Welcome back! Your chats, contacts, and settings are restored.');
-          
-          // Force redirect to chat
-          window.location.href = '/chat.html';
+          if (result.approved === true) {
+            console.log('6. Approved user, redirecting to /dashboard...');
+            alert('✅ Welcome back! Your chats, contacts, and settings are restored.');
+            window.location.href = '/dashboard';
+          } else if (result.approved === false) {
+            console.log('6. Account pending approval, redirecting to /pending-approval...');
+            alert('⏳ Your account is pending admin approval.');
+            window.location.href = '/pending-approval';
+          } else {
+            console.log('6. Approval flag missing, using fallback redirect to /chat.html...');
+            window.location.href = '/chat.html';
+          }
         } else {
-          alert("❌ Invalid Zeus-PIN or password.\nPlease try again or create a new account.");
+          alert(result.error || 'Login failed');
         }
       } catch (error) {
         console.error('Login error:', error);
-        alert("Network error. Please try again.");
+        alert('Network error. Please try again.');
       }
     }
   </script>

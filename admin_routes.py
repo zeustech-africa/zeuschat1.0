@@ -607,13 +607,18 @@ def get_users_with_messages():
         cursor = conn.cursor()
         cursor.execute(
             '''
-            SELECT DISTINCT u.id, u.zeus_pin, u.email, u.full_name,
-                   (SELECT COUNT(*) FROM admin_messages
-                    WHERE user_id = u.id AND read_at IS NULL AND is_from_admin = 0) AS unread_count,
-                   (SELECT MAX(created_at) FROM admin_messages WHERE user_id = u.id) AS last_message_at
+            SELECT u.id, u.zeus_pin, u.email, u.full_name,
+                   COALESCE((SELECT COUNT(*) FROM admin_messages
+                             WHERE user_id = u.id AND read_at IS NULL AND is_from_admin = 0), 0) AS unread_count,
+                   (SELECT MAX(created_at) FROM admin_messages WHERE user_id = u.id) AS last_message_at,
+                   COALESCE(ua.status, 'pending') AS approval_status
             FROM users u
-            INNER JOIN admin_messages am ON u.id = am.user_id
-            ORDER BY last_message_at DESC
+            LEFT JOIN admin_messages am ON u.id = am.user_id
+            LEFT JOIN user_approvals ua ON u.id = ua.user_id
+            GROUP BY u.id
+            ORDER BY
+                CASE WHEN ua.status = 'pending' THEN 0 ELSE 1 END,
+                last_message_at DESC NULLS LAST
             '''
         )
         users = cursor.fetchall()
@@ -629,6 +634,7 @@ def get_users_with_messages():
                     'full_name': u['full_name'] or 'Anonymous',
                     'unread_count': u['unread_count'] or 0,
                     'last_message_at': u['last_message_at'],
+                    'approval_status': u['approval_status'],
                 }
                 for u in users
             ],

@@ -820,6 +820,7 @@
                         <div class="user-item" onclick="loadUserMessages(${user.user_id}, '${escapeHtml(user.full_name)}')">
                             <div class="user-name">
                                 ${escapeHtml(user.full_name)}
+                                ${user.approval_status === 'pending' ? '<span class="status-badge status-pending" style="font-size:10px; margin-left:8px;">Pending</span>' : ''}
                                 ${user.unread_count > 0 ? `<span class="unread-badge">${user.unread_count}</span>` : ''}
                             </div>
                             <div class="user-pin">${user.zeus_pin}</div>

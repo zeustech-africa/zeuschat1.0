@@ -477,6 +477,7 @@
             <div class="nav-item active" data-tab="dashboard">📊 Dashboard</div>
             <div class="nav-item" data-tab="users">👥 Users</div>
             <div class="nav-item" data-tab="approvals">✅ Approvals <span class="nav-badge" id="pendingApprovalsBadge" style="display:none">0</span></div>
+            <div class="nav-item" data-tab="kyc">🪪 KYC Review <span class="nav-badge" id="kycPendingBadge" style="display:none">0</span></div>
             <div class="nav-item" data-tab="payments">💰 Payments <span class="nav-badge" id="pendingPaymentsBadge" style="display:none">0</span></div>
             <div class="nav-item" data-tab="messages">💬 Messages <span class="nav-badge" id="unreadMessagesBadge" style="display:none">0</span></div>
         </div>
@@ -526,6 +527,15 @@
                 <p>Review new user registrations</p>
             </div>
             <div id="approvalsList"><div class="loading">Loading...</div></div>
+        </div>
+
+        <!-- KYC Review Tab -->
+        <div id="tab-kyc" class="tab-content">
+            <div class="page-header">
+                <h1>🪪 KYC Document Review</h1>
+                <p>Verify user identity by comparing ID documents and selfies</p>
+            </div>
+            <div id="kycList"><div class="loading">Loading KYC requests...</div></div>
         </div>
 
         <!-- Payments Tab -->
@@ -596,6 +606,12 @@
                         paymentsBadge.textContent = data.stats.pending_payments;
                         paymentsBadge.style.display = 'inline-block';
                     } else paymentsBadge.style.display = 'none';
+
+                    const kycBadge = document.getElementById('kycPendingBadge');
+                    if (data.stats.pending_kyc > 0) {
+                        kycBadge.textContent = data.stats.pending_kyc;
+                        kycBadge.style.display = 'inline-block';
+                    } else kycBadge.style.display = 'none';
 
                     const unreadBadge = document.getElementById('unreadMessagesBadge');
                     if (data.stats.unread_messages > 0) {
@@ -669,6 +685,101 @@
                     document.getElementById('approvalsList').innerHTML = '<div style="background:white; border-radius:12px; padding:40px; text-align:center; color:#94a3b8;">No pending approvals</div>';
                 }
             } catch (error) { document.getElementById('approvalsList').innerHTML = '<div class="loading">Error loading approvals</div>'; }
+        }
+
+        // Load pending KYC
+        async function loadPendingKYC() {
+            try {
+                const response = await fetch('/admin/api/kyc/pending');
+                const data = await response.json();
+                if (data.success && data.kyc_requests.length > 0) {
+                    const kycHtml = data.kyc_requests.map(kyc => `
+                        <div style="background:white; border-radius:12px; padding:20px; margin-bottom:20px; border:1px solid #e2e8f0;">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap;">
+                                <div>
+                                    <strong>User: ${escapeHtml(kyc.full_name)}</strong><br>
+                                    <span>PIN: ${escapeHtml(kyc.zeus_pin)}</span><br>
+                                    <span>Email: ${escapeHtml(kyc.email)}</span><br>
+                                    <span>Document: ${escapeHtml(kyc.document_type)}</span><br>
+                                    <span>Face Match: ${kyc.face_match_score !== null ? Number(kyc.face_match_score).toFixed(1) + '%' : 'N/A'}</span><br>
+                                    <span class="status-badge ${kyc.auto_verified ? 'status-approved' : 'status-pending'}">
+                                        ${kyc.auto_verified ? 'Auto-Verified Signal' : 'Manual Review Required'}
+                                    </span>
+                                </div>
+                                <div style="display:flex; gap:20px; flex-wrap:wrap;">
+                                    <div>
+                                        <strong>ID Document</strong><br>
+                                        <img src="/${kyc.id_document_path}" alt="ID Document" style="max-width:220px; max-height:180px; border-radius:8px; border:1px solid #ddd; margin-top:6px; object-fit:cover;">
+                                    </div>
+                                    <div>
+                                        <strong>Selfie</strong><br>
+                                        <img src="/${kyc.selfie_path}" alt="Selfie" style="max-width:220px; max-height:180px; border-radius:8px; border:1px solid #ddd; margin-top:6px; object-fit:cover;">
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="margin-top:14px; display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+                                <textarea id="notes_${kyc.id}" placeholder="Add notes (optional)" style="flex:1; min-height:42px; padding:8px; border:1px solid #ddd; border-radius:8px;"></textarea>
+                                <button class="btn-approve" onclick="approveKYC(${kyc.id})">Approve &amp; Activate</button>
+                                <button class="btn-reject" onclick="rejectKYC(${kyc.id})">Reject</button>
+                            </div>
+                        </div>
+                    `).join('');
+                    document.getElementById('kycList').innerHTML = kycHtml;
+
+                    const badge = document.getElementById('kycPendingBadge');
+                    badge.textContent = data.kyc_requests.length;
+                    badge.style.display = 'inline-block';
+                } else {
+                    document.getElementById('kycList').innerHTML = '<div style="background:white; border-radius:12px; padding:40px; text-align:center; color:#94a3b8;">No pending KYC requests</div>';
+                    document.getElementById('kycPendingBadge').style.display = 'none';
+                }
+            } catch (error) {
+                document.getElementById('kycList').innerHTML = '<div class="loading">Error loading KYC requests</div>';
+            }
+        }
+
+        // Approve KYC
+        async function approveKYC(kycId) {
+            const notes = document.getElementById(`notes_${kycId}`)?.value || '';
+            if (!confirm('Approve this KYC and activate user?')) return;
+            try {
+                const response = await fetch(`/admin/api/kyc/${kycId}/approve`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ notes })
+                });
+                if (response.ok) {
+                    loadPendingKYC();
+                    loadStats();
+                    loadPendingApprovals();
+                } else {
+                    alert('Failed to approve KYC');
+                }
+            } catch (error) {
+                alert('Failed to approve KYC');
+            }
+        }
+
+        // Reject KYC
+        async function rejectKYC(kycId) {
+            const reason = prompt('Enter rejection reason (sent to user):');
+            if (!reason) return;
+            try {
+                const response = await fetch(`/admin/api/kyc/${kycId}/reject`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason })
+                });
+                if (response.ok) {
+                    loadPendingKYC();
+                    loadStats();
+                    loadPendingApprovals();
+                } else {
+                    alert('Failed to reject KYC');
+                }
+            } catch (error) {
+                alert('Failed to reject KYC');
+            }
         }
 
         // Load pending payments
@@ -837,6 +948,7 @@
                 if (tab === 'dashboard') loadStats();
                 else if (tab === 'users') loadUsers();
                 else if (tab === 'approvals') loadPendingApprovals();
+                else if (tab === 'kyc') loadPendingKYC();
                 else if (tab === 'payments') loadPendingPayments();
                 else if (tab === 'messages') loadMessagingUsers();
             });

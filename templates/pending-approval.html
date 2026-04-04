@@ -116,7 +116,7 @@
 
     function requestUnlock(feature) {
       let endpoint = '';
-      if (feature === 'profile_picture') endpoint = '/api/user/request-profile-picture';
+      if (feature === 'profile_picture') endpoint = '/api/user/request-profile-picture-change';
       if (feature === 'extended_ttl') endpoint = '/api/user/request-extended-ttl';
       if (feature === 'pin_retention') endpoint = '/api/user/request-pin-retention';
       if (!endpoint) return;

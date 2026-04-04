@@ -137,6 +137,103 @@ def request_pin_retention():
     )
 
 
+@payment_bp.route('/api/user/request-profile-picture-change', methods=['POST'])
+@require_approved_user
+def request_profile_picture_change():
+    """Free tier users request a one-off profile picture change payment."""
+    user_id = session['user_id']
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            'SELECT subscription_tier, is_locked, remaining_changes FROM profile_picture_locks WHERE user_id = ?',
+            (user_id,),
+        )
+        lock = cursor.fetchone()
+
+        if not lock:
+            cursor.execute(
+                '''
+                INSERT INTO profile_picture_locks (user_id, is_locked, remaining_changes, subscription_tier)
+                VALUES (?, 1, 0, 'free')
+                ''',
+                (user_id,),
+            )
+            conn.commit()
+            lock = {'subscription_tier': 'free', 'is_locked': 1, 'remaining_changes': 0}
+
+        if lock['subscription_tier'] != 'free':
+            return jsonify({'error': 'Subscribers can change profile picture without one-off payment'}), 400
+
+        if lock['is_locked'] == 0 and lock['remaining_changes'] > 0:
+            return jsonify(
+                {
+                    'success': True,
+                    'message': 'You already have an approved profile picture change available.',
+                    'can_change': True,
+                }
+            ), 200
+
+        amount = 29.00
+        cursor.execute(
+            '''
+            INSERT INTO one_off_payments (user_id, payment_type, amount, status)
+            VALUES (?, 'profile_picture_change', ?, 'pending')
+            ''',
+            (user_id, amount),
+        )
+        conn.commit()
+        payment_id = cursor.lastrowid
+
+        cursor.execute(
+            '''
+            INSERT INTO profile_pic_payments (user_id, payment_id, status)
+            VALUES (?, ?, 'pending_approval')
+            ''',
+            (user_id, payment_id),
+        )
+        conn.commit()
+
+    base_url = _base_url()
+    pf_data = {
+        'merchant_id': PAYFAST_MERCHANT_ID,
+        'merchant_key': PAYFAST_MERCHANT_KEY,
+        'return_url': f'{base_url}/payment/success',
+        'cancel_url': f'{base_url}/payment/cancel',
+        'notify_url': f'{base_url}/api/payfast-itn',
+        'name_first': session.get('user_full_name', 'User'),
+        'email_address': session.get('user_email', ''),
+        'm_payment_id': f'profile_pic_{payment_id}_{user_id}',
+        'amount': f'{amount:.2f}',
+        'item_name': 'ZeusChat Profile Picture Change',
+        'item_description': 'One-off payment to change your profile picture',
+    }
+    pf_data['signature'] = generate_payfast_signature(pf_data)
+
+    form_html = [
+        '<!DOCTYPE html>',
+        '<html><head><title>Redirecting to PayFast</title>',
+        '<meta name="viewport" content="width=device-width, initial-scale=1" />',
+        '<style>body{font-family:Arial,sans-serif;text-align:center;padding:40px;} .loader{margin:20px auto;}</style>',
+        '</head><body>',
+        '<h2>Redirecting to PayFast...</h2>',
+        '<p>Please wait while we open the secure checkout.</p>',
+        f'<form id="payfast-form" method="POST" action="{PAYFAST_URL}">',
+    ]
+
+    for key, value in pf_data.items():
+        safe_value = str(value).replace('"', '&quot;')
+        form_html.append(f'<input type="hidden" name="{key}" value="{safe_value}" />')
+
+    form_html.extend([
+        '</form>',
+        '<script>document.getElementById("payfast-form").submit();</script>',
+        '</body></html>',
+    ])
+
+    return render_template_string(''.join(form_html))
+
+
 @payment_bp.route('/api/payfast-itn', methods=['POST'])
 def payfast_itn():
     pf_data = request.form.to_dict()
@@ -154,8 +251,8 @@ def payfast_itn():
         return 'Invalid payment reference', 400
 
     try:
-        payment_id = int(parts[1])
-        user_id = int(parts[2])
+        payment_id = int(parts[-2])
+        user_id = int(parts[-1])
     except ValueError:
         return 'Invalid payment reference', 400
 

@@ -473,6 +473,7 @@ def approve_payment(payment_id):
 
         feature_map = {
             'profile_picture': 'profile_picture',
+            'profile_picture_change': 'profile_picture',
             'pin_retention': 'pin_retention',
             'extended_ttl': 'custom_ttl',
             'file_sharing_basic': 'file_sharing',
@@ -500,6 +501,46 @@ def approve_payment(payment_id):
             ''',
             (payment['user_id'], feature_name, payment_id, admin_id),
         )
+
+        if payment['payment_type'] == 'profile_picture_change':
+            cursor.execute(
+                '''
+                INSERT OR IGNORE INTO profile_picture_locks (user_id, is_locked, remaining_changes, subscription_tier)
+                VALUES (?, 1, 0, 'free')
+                ''',
+                (payment['user_id'],),
+            )
+            cursor.execute(
+                '''
+                UPDATE profile_picture_locks
+                SET is_locked = 0,
+                    remaining_changes = 1,
+                    last_change_at = CURRENT_TIMESTAMP
+                WHERE user_id = ?
+                ''',
+                (payment['user_id'],),
+            )
+            cursor.execute(
+                '''
+                UPDATE profile_pic_payments
+                SET status = 'approved', approved_by = ?, approved_at = CURRENT_TIMESTAMP
+                WHERE payment_id = ?
+                ''',
+                (admin_id, payment_id),
+            )
+
+            cursor.execute(
+                '''
+                INSERT INTO admin_messages (user_id, admin_id, message, is_from_admin)
+                VALUES (?, ?, ?, 1)
+                ''',
+                (
+                    payment['user_id'],
+                    admin_id,
+                    'Your profile picture change payment was approved. You can now upload one new profile picture.',
+                ),
+            )
+
         conn.commit()
 
     log_admin_action(
@@ -523,6 +564,11 @@ def reject_payment(payment_id):
 
     with get_db_connection() as conn:
         cursor = conn.cursor()
+        cursor.execute('SELECT payment_type FROM one_off_payments WHERE id = ?', (payment_id,))
+        payment = cursor.fetchone()
+        if not payment:
+            return jsonify({'error': 'Payment not found'}), 404
+
         cursor.execute(
             '''
             UPDATE one_off_payments
@@ -531,6 +577,16 @@ def reject_payment(payment_id):
             ''',
             (admin_id, reason, payment_id),
         )
+
+        if payment['payment_type'] == 'profile_picture_change':
+            cursor.execute(
+                '''
+                UPDATE profile_pic_payments
+                SET status = 'rejected', approved_by = ?, approved_at = CURRENT_TIMESTAMP
+                WHERE payment_id = ?
+                ''',
+                (admin_id, payment_id),
+            )
         conn.commit()
 
     log_admin_action(
@@ -736,6 +792,12 @@ def get_system_stats():
         cursor.execute("SELECT COUNT(*) AS count FROM one_off_payments WHERE status = 'pending_approval'")
         pending_payments = cursor.fetchone()['count']
 
+        cursor.execute("SELECT COUNT(*) AS count FROM kyc_documents WHERE admin_review_status = 'pending'")
+        pending_kyc = cursor.fetchone()['count']
+
+        cursor.execute("SELECT COUNT(*) AS count FROM profile_pic_payments WHERE status = 'pending_approval'")
+        pending_profile_pic_requests = cursor.fetchone()['count']
+
         cursor.execute('SELECT COUNT(*) AS count FROM users')
         total_users = cursor.fetchone()['count']
 
@@ -781,6 +843,8 @@ def get_system_stats():
                 'pending_approvals': pending_approvals,
                 'active_users': active_users,
                 'pending_payments': pending_payments,
+                'pending_kyc': pending_kyc,
+                'pending_profile_pic_requests': pending_profile_pic_requests,
                 'total_users': total_users,
                 'revenue_today': float(revenue_today),
                 'total_revenue': float(total_revenue),
@@ -798,3 +862,288 @@ def get_system_stats():
             ],
         }
     ), 200
+
+
+@admin_bp.route('/api/kyc/pending', methods=['GET'])
+@admin_required
+def get_pending_kyc():
+    """Get all pending KYC reviews."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            SELECT kyc.id, kyc.user_id, kyc.id_document_path, kyc.selfie_path,
+                   kyc.document_type, kyc.face_match_score, kyc.auto_verified,
+                   kyc.created_at, u.zeus_pin, u.email, u.full_name
+            FROM kyc_documents kyc
+            JOIN users u ON kyc.user_id = u.id
+            LEFT JOIN user_approvals ua ON ua.user_id = u.id
+            WHERE kyc.admin_review_status = 'pending'
+              AND (ua.status IS NULL OR ua.status = 'pending')
+            ORDER BY kyc.created_at ASC
+            '''
+        )
+        pending = cursor.fetchall()
+
+    return jsonify(
+        {
+            'success': True,
+            'kyc_requests': [
+                {
+                    'id': row['id'],
+                    'user_id': row['user_id'],
+                    'zeus_pin': row['zeus_pin'],
+                    'full_name': row['full_name'],
+                    'email': row['email'],
+                    'id_document_path': row['id_document_path'],
+                    'selfie_path': row['selfie_path'],
+                    'document_type': row['document_type'],
+                    'face_match_score': row['face_match_score'],
+                    'auto_verified': bool(row['auto_verified']),
+                    'created_at': row['created_at'],
+                }
+                for row in pending
+            ],
+        }
+    ), 200
+
+
+@admin_bp.route('/api/kyc/<int:kyc_id>/approve', methods=['PUT'])
+@admin_required
+def approve_kyc(kyc_id):
+    """Approve KYC and activate user account."""
+    admin_id = session['admin_id']
+    data = request.get_json() or {}
+    notes = (data.get('notes') or '').strip()
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            SELECT k.user_id, u.zeus_pin
+            FROM kyc_documents k
+            JOIN users u ON u.id = k.user_id
+            WHERE k.id = ?
+            ''',
+            (kyc_id,),
+        )
+        result = cursor.fetchone()
+        if not result:
+            return jsonify({'error': 'KYC record not found'}), 404
+
+        user_id = result['user_id']
+
+        cursor.execute(
+            '''
+            UPDATE kyc_documents
+            SET admin_review_status = 'approved',
+                reviewed_by = ?,
+                reviewed_at = CURRENT_TIMESTAMP,
+                admin_review_notes = ?
+            WHERE id = ?
+            ''',
+            (admin_id, notes, kyc_id),
+        )
+
+        cursor.execute(
+            '''
+            INSERT INTO user_approvals (user_id, status, reviewed_by, reviewed_at, notes)
+            VALUES (?, 'approved', ?, CURRENT_TIMESTAMP, ?)
+            ON CONFLICT(user_id) DO UPDATE SET
+                status = 'approved',
+                reviewed_by = excluded.reviewed_by,
+                reviewed_at = CURRENT_TIMESTAMP,
+                notes = excluded.notes
+            ''',
+            (user_id, admin_id, f'KYC Approved: {notes}' if notes else 'KYC Approved'),
+        )
+
+        approval_message = (
+            'Your ZeusChat account has been approved. '
+            f'Your PIN {result["zeus_pin"]} is now active and ready to use.'
+        )
+        cursor.execute(
+            '''
+            INSERT INTO admin_messages (user_id, message, is_from_admin, admin_id)
+            VALUES (?, ?, 1, ?)
+            ''',
+            (user_id, approval_message, admin_id),
+        )
+
+        conn.commit()
+
+    log_admin_action(
+        admin_id,
+        'kyc_approved',
+        target_user_id=user_id,
+        details={'kyc_id': kyc_id, 'notes': notes},
+        ip_address=request.remote_addr,
+    )
+
+    return jsonify({'success': True, 'message': 'KYC approved - user activated'}), 200
+
+
+@admin_bp.route('/api/kyc/<int:kyc_id>/reject', methods=['PUT'])
+@admin_required
+def reject_kyc(kyc_id):
+    """Reject KYC and keep account deactivated."""
+    admin_id = session['admin_id']
+    data = request.get_json() or {}
+    reason = (data.get('reason') or 'No reason provided').strip()
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT user_id FROM kyc_documents WHERE id = ?', (kyc_id,))
+        result = cursor.fetchone()
+        if not result:
+            return jsonify({'error': 'KYC record not found'}), 404
+
+        user_id = result['user_id']
+
+        cursor.execute(
+            '''
+            UPDATE kyc_documents
+            SET admin_review_status = 'rejected',
+                reviewed_by = ?,
+                reviewed_at = CURRENT_TIMESTAMP,
+                admin_review_notes = ?
+            WHERE id = ?
+            ''',
+            (admin_id, reason, kyc_id),
+        )
+
+        cursor.execute(
+            '''
+            INSERT INTO user_approvals (user_id, status, reviewed_by, reviewed_at, rejection_reason, notes)
+            VALUES (?, 'rejected', ?, CURRENT_TIMESTAMP, ?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET
+                status = 'rejected',
+                reviewed_by = excluded.reviewed_by,
+                reviewed_at = CURRENT_TIMESTAMP,
+                rejection_reason = excluded.rejection_reason,
+                notes = excluded.notes
+            ''',
+            (user_id, admin_id, reason, 'KYC rejected'),
+        )
+
+        rejection_message = f'Your ZeusChat KYC verification was rejected. Reason: {reason}'
+        cursor.execute(
+            '''
+            INSERT INTO admin_messages (user_id, message, is_from_admin, admin_id)
+            VALUES (?, ?, 1, ?)
+            ''',
+            (user_id, rejection_message, admin_id),
+        )
+
+        conn.commit()
+
+    log_admin_action(
+        admin_id,
+        'kyc_rejected',
+        target_user_id=user_id,
+        details={'kyc_id': kyc_id, 'reason': reason},
+        ip_address=request.remote_addr,
+    )
+
+    return jsonify({'success': True, 'message': 'KYC rejected - user remains inactive'}), 200
+
+
+@admin_bp.route('/api/profile-pic/requests', methods=['GET'])
+@admin_required
+def get_profile_pic_requests():
+    """Get pending profile picture change requests."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            SELECT ppp.id, ppp.user_id, ppp.created_at,
+                   oop.amount, oop.currency, oop.payfast_payment_id,
+                   u.zeus_pin, u.email, u.full_name
+            FROM profile_pic_payments ppp
+            JOIN one_off_payments oop ON ppp.payment_id = oop.id
+            JOIN users u ON ppp.user_id = u.id
+            WHERE ppp.status = 'pending_approval'
+            ORDER BY ppp.created_at DESC
+            '''
+        )
+        rows = cursor.fetchall()
+
+    return jsonify(
+        {
+            'success': True,
+            'requests': [
+                {
+                    'id': row['id'],
+                    'user_id': row['user_id'],
+                    'zeus_pin': row['zeus_pin'],
+                    'full_name': row['full_name'],
+                    'email': row['email'],
+                    'amount': row['amount'],
+                    'currency': row['currency'],
+                    'payfast_payment_id': row['payfast_payment_id'],
+                    'created_at': row['created_at'],
+                }
+                for row in rows
+            ],
+        }
+    ), 200
+
+
+@admin_bp.route('/api/profile-pic/<int:request_id>/approve', methods=['PUT'])
+@admin_required
+def approve_profile_pic_change(request_id):
+    """Approve profile picture change request and grant one unlock."""
+    admin_id = session['admin_id']
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT user_id FROM profile_pic_payments WHERE id = ?', (request_id,))
+        result = cursor.fetchone()
+        if not result:
+            return jsonify({'error': 'Request not found'}), 404
+
+        user_id = result['user_id']
+
+        cursor.execute(
+            '''
+            UPDATE profile_pic_payments
+            SET status = 'approved', approved_by = ?, approved_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            ''',
+            (admin_id, request_id),
+        )
+
+        cursor.execute(
+            '''
+            UPDATE profile_picture_locks
+            SET is_locked = 0,
+                remaining_changes = 1,
+                last_change_at = CURRENT_TIMESTAMP
+            WHERE user_id = ?
+            ''',
+            (user_id,),
+        )
+
+        notification = (
+            'Your profile picture change request has been approved. '
+            'You now have one profile picture change available.'
+        )
+        cursor.execute(
+            '''
+            INSERT INTO admin_messages (user_id, message, is_from_admin, admin_id)
+            VALUES (?, ?, 1, ?)
+            ''',
+            (user_id, notification, admin_id),
+        )
+
+        conn.commit()
+
+    log_admin_action(
+        admin_id,
+        'profile_pic_change_approved',
+        target_user_id=user_id,
+        details={'request_id': request_id},
+        ip_address=request.remote_addr,
+    )
+
+    return jsonify({'success': True, 'message': 'Profile picture change approved'}), 200

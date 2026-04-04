@@ -15,7 +15,8 @@ from functools import wraps
 import time
 import gzip
 import base64
-from admin_middleware import require_approved_user, user_has_unlock, get_db_connection as admin_get_db
+from werkzeug.utils import secure_filename
+from admin_middleware import require_approved_user, user_has_unlock, log_admin_action, get_db_connection as admin_get_db
 from admin_routes import admin_bp
 from payment_routes import payment_bp
 
@@ -885,11 +886,11 @@ def run_admin_migrations():
 
         # Check if admin_users table exists
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='admin_users'")
-        if cursor.fetchone():
-            print("✅ Admin tables already exist")
-            return
-
-        print("🔄 Running admin migrations...")
+        admin_users_exists = bool(cursor.fetchone())
+        if admin_users_exists:
+            print("✅ Admin tables already exist - ensuring latest schema...")
+        else:
+            print("🔄 Running admin migrations...")
 
         # Create user_approvals table
         cursor.execute('''
@@ -988,6 +989,55 @@ def run_admin_migrations():
         )
         ''')
 
+        # Create kyc_documents table
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS kyc_documents (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL UNIQUE,
+            id_document_path TEXT NOT NULL,
+            selfie_path TEXT NOT NULL,
+            document_type TEXT NOT NULL,
+            face_match_score REAL,
+            auto_verified INTEGER DEFAULT 0,
+            admin_review_status TEXT DEFAULT 'pending',
+            admin_review_notes TEXT,
+            reviewed_by INTEGER,
+            reviewed_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (reviewed_by) REFERENCES admin_users(id)
+        )
+        ''')
+
+        # Create profile_picture_locks table
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS profile_picture_locks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL UNIQUE,
+            is_locked INTEGER DEFAULT 1,
+            remaining_changes INTEGER DEFAULT 0,
+            subscription_tier TEXT DEFAULT 'free',
+            last_change_at TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+        ''')
+
+        # Create profile_pic_payments table
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS profile_pic_payments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            payment_id INTEGER NOT NULL,
+            status TEXT DEFAULT 'pending_approval',
+            approved_by INTEGER,
+            approved_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (payment_id) REFERENCES one_off_payments(id),
+            FOREIGN KEY (approved_by) REFERENCES admin_users(id)
+        )
+        ''')
+
         # Create indexes
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_user_approvals_status ON user_approvals(status)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_user_approvals_user_id ON user_approvals(user_id)')
@@ -995,6 +1045,9 @@ def run_admin_migrations():
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_one_off_payments_status ON one_off_payments(status)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_user_unlocks_user_id ON user_unlocks(user_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_admin_audit_log_created_at ON admin_audit_log(created_at)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_kyc_documents_review_status ON kyc_documents(admin_review_status)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_profile_pic_payments_status ON profile_pic_payments(status)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_profile_picture_locks_user_id ON profile_picture_locks(user_id)')
 
         # Create default super admin (password: ZeusAdmin2026!)
         import hashlib
@@ -1010,6 +1063,12 @@ def run_admin_migrations():
         cursor.execute('''
         INSERT OR IGNORE INTO user_approvals (user_id, status, reviewed_at)
         SELECT id, 'approved', CURRENT_TIMESTAMP FROM users
+        ''')
+
+        # Existing users remain unlocked for profile picture changes
+        cursor.execute('''
+        INSERT OR IGNORE INTO profile_picture_locks (user_id, is_locked, subscription_tier)
+        SELECT id, 0, 'free' FROM users
         ''')
 
         conn.commit()
@@ -1347,6 +1406,147 @@ def complete_registration():
         return jsonify({'error': 'Email or PIN already exists'}), 409
     except Exception as e:
         print(f"❌ complete-registration error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/complete-registration-with-kyc', methods=['POST'])
+@retry_on_locked(max_retries=3, delay=0.5)
+def complete_registration_with_kyc():
+    """Handle registration with KYC document upload and face-match metadata."""
+    try:
+        full_name = (request.form.get('full_name') or '').strip()
+        email = (request.form.get('email') or '').lower().strip()
+        zeus_pin = (request.form.get('zeus_pin') or '').strip()
+        password = request.form.get('password') or ''
+        profile_pic = request.form.get('profile_pic', '')
+        face_match_score = request.form.get('face_match_score')
+        auto_verified = request.form.get('auto_verified', '0')
+        document_type = (request.form.get('document_type') or 'national_id').strip().lower()
+
+        id_document = request.files.get('id_document')
+        selfie = request.files.get('selfie')
+
+        if not all([full_name, email, zeus_pin, password, id_document, selfie]):
+            return jsonify({'error': 'All fields and KYC documents are required'}), 400
+
+        if len(password) < 6:
+            return jsonify({'error': 'Password must be at least 6 characters'}), 400
+
+        if document_type not in ('passport', 'national_id'):
+            document_type = 'national_id'
+
+        password_hash = hash_password(password)
+
+        with admin_get_db() as conn:
+            cursor = conn.cursor()
+
+            cursor.execute('SELECT id FROM users WHERE email = ? OR zeus_pin = ?', (email, zeus_pin))
+            if cursor.fetchone():
+                return jsonify({'error': 'Email or PIN already exists'}), 409
+
+            cursor.execute(
+                '''
+                INSERT INTO users (email, zeus_pin, password_hash, full_name, profile_pic)
+                VALUES (?, ?, ?, ?, ?)
+                ''',
+                (email, zeus_pin, password_hash, full_name, profile_pic),
+            )
+            user_id = cursor.lastrowid
+
+            os.makedirs('uploads/kyc', exist_ok=True)
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+
+            id_ext = os.path.splitext(secure_filename(id_document.filename or 'id_document'))[1] or '.bin'
+            id_filename = f'user_{user_id}_id_{timestamp}{id_ext}'
+            id_path = os.path.join('uploads', 'kyc', id_filename)
+            id_document.save(id_path)
+
+            selfie_ext = os.path.splitext(secure_filename(selfie.filename or 'selfie.jpg'))[1] or '.jpg'
+            selfie_filename = f'user_{user_id}_selfie_{timestamp}{selfie_ext}'
+            selfie_path = os.path.join('uploads', 'kyc', selfie_filename)
+            selfie.save(selfie_path)
+
+            parsed_score = None
+            if face_match_score not in (None, ''):
+                try:
+                    parsed_score = float(face_match_score)
+                except (TypeError, ValueError):
+                    parsed_score = None
+
+            cursor.execute(
+                '''
+                INSERT INTO kyc_documents (
+                    user_id, id_document_path, selfie_path, document_type,
+                    face_match_score, auto_verified, admin_review_status
+                )
+                VALUES (?, ?, ?, ?, ?, ?, 'pending')
+                ''',
+                (user_id, id_path, selfie_path, document_type, parsed_score, 1 if str(auto_verified) == '1' else 0),
+            )
+
+            cursor.execute(
+                '''
+                INSERT OR IGNORE INTO user_approvals (user_id, status)
+                VALUES (?, 'pending')
+                ''',
+                (user_id,),
+            )
+
+            cursor.execute(
+                '''
+                INSERT OR IGNORE INTO profile_picture_locks (user_id, is_locked, remaining_changes, subscription_tier)
+                VALUES (?, 1, 0, 'free')
+                ''',
+                (user_id,),
+            )
+
+            welcome_message = (
+                "Welcome to ZeusChat!\n\n"
+                "Your registration is pending admin approval while we review your KYC documents.\n"
+                "We will notify you as soon as your account is approved."
+            )
+            cursor.execute(
+                '''
+                INSERT INTO admin_messages (user_id, message, is_from_admin, admin_id)
+                VALUES (?, ?, 1, (SELECT id FROM admin_users WHERE role = 'super_admin' LIMIT 1))
+                ''',
+                (user_id, welcome_message),
+            )
+
+            conn.commit()
+
+        session.clear()
+        session['user_id'] = user_id
+        session['zeus_pin'] = zeus_pin
+        session['user_email'] = email
+        session['user_full_name'] = full_name
+        session['user_password'] = password
+
+        log_admin_action(
+            None,
+            'user_registered_with_kyc',
+            target_user_id=user_id,
+            details={
+                'document_type': document_type,
+                'face_match_score': face_match_score,
+                'auto_verified': str(auto_verified) == '1',
+            },
+            ip_address=request.remote_addr,
+        )
+
+        return jsonify(
+            {
+                'success': True,
+                'message': 'Registration successful. Account pending admin approval.',
+                'redirect': '/pending-approval',
+                'user_id': user_id,
+                'approved': False,
+            }
+        ), 201
+    except sqlite3.IntegrityError:
+        return jsonify({'error': 'Email or PIN already exists'}), 409
+    except Exception as e:
+        print(f"❌ complete-registration-with-kyc error: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/login', methods=['POST', 'OPTIONS'])
@@ -1708,7 +1908,7 @@ def update_profile():
             
             # First check if user exists
             print(f"🔍 Checking if user exists with PIN: {zeus_pin}")
-            cursor.execute('SELECT id, full_name FROM users WHERE zeus_pin = ?', (zeus_pin,))
+            cursor.execute('SELECT id, full_name, profile_pic FROM users WHERE zeus_pin = ?', (zeus_pin,))
             user_row = cursor.fetchone()
             
             if not user_row:
@@ -1717,6 +1917,41 @@ def update_profile():
             
             user_id = user_row[0]
             print(f"✅ User found: ID={user_id}, Current Name={user_row[1]}")
+
+            current_profile_pic = user_row[2] or ''
+            profile_pic_changed = bool(profile_pic) and profile_pic != current_profile_pic
+
+            if profile_pic_changed:
+                cursor.execute(
+                    '''
+                    SELECT is_locked, remaining_changes, subscription_tier
+                    FROM profile_picture_locks
+                    WHERE user_id = ?
+                    ''',
+                    (user_id,),
+                )
+                lock_row = cursor.fetchone()
+
+                if not lock_row:
+                    cursor.execute(
+                        '''
+                        INSERT INTO profile_picture_locks (user_id, is_locked, remaining_changes, subscription_tier)
+                        VALUES (?, 1, 0, 'free')
+                        ''',
+                        (user_id,),
+                    )
+                    lock_row = (1, 0, 'free')
+
+                is_locked = int(lock_row[0] or 0)
+                remaining_changes = int(lock_row[1] or 0)
+                subscription_tier = (lock_row[2] or 'free').lower()
+
+                if subscription_tier == 'free' and is_locked == 1 and remaining_changes <= 0:
+                    return jsonify({
+                        'error': 'Profile picture is locked for free users. Request one-off change approval first.',
+                        'requires_payment': True,
+                        'payment_endpoint': '/api/user/request-profile-picture-change',
+                    }), 403
             
             # Update ALL fields including 'about' and 'avatar_url'
             print(f"📝 Executing UPDATE for user {user_id}...")
@@ -1731,6 +1966,47 @@ def update_profile():
             
             rows_affected = cursor.rowcount
             print(f"✅ UPDATE executed: {rows_affected} row(s) affected")
+
+            if profile_pic_changed:
+                cursor.execute(
+                    '''
+                    SELECT remaining_changes, subscription_tier
+                    FROM profile_picture_locks
+                    WHERE user_id = ?
+                    ''',
+                    (user_id,),
+                )
+                lock_after = cursor.fetchone()
+                if lock_after:
+                    remaining_changes = int(lock_after[0] or 0)
+                    subscription_tier = (lock_after[1] or 'free').lower()
+                    if subscription_tier == 'free':
+                        if remaining_changes > 0:
+                            cursor.execute(
+                                '''
+                                UPDATE profile_picture_locks
+                                SET remaining_changes = remaining_changes - 1,
+                                    is_locked = 1,
+                                    last_change_at = CURRENT_TIMESTAMP
+                                WHERE user_id = ?
+                                ''',
+                                (user_id,),
+                            )
+                        else:
+                            cursor.execute(
+                                '''
+                                UPDATE profile_picture_locks
+                                SET is_locked = 1,
+                                    last_change_at = CURRENT_TIMESTAMP
+                                WHERE user_id = ?
+                                ''',
+                                (user_id,),
+                            )
+                    else:
+                        cursor.execute(
+                            'UPDATE profile_picture_locks SET last_change_at = CURRENT_TIMESTAMP WHERE user_id = ?',
+                            (user_id,),
+                        )
             
             conn.commit()
             print(f"✅ Database committed successfully")

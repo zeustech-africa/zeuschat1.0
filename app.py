@@ -2023,13 +2023,6 @@ def has_feature(feature_name):
     if not user_id:
         return jsonify({'error': 'Not authenticated'}), 401
 
-@app.route('/api/user/has-feature/<feature_name>', methods=['GET'])
-def has_feature(feature_name):
-    """Check if current user has access to a named feature."""
-    user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'error': 'Not authenticated'}), 401
-
     has_access = user_has_feature_access(user_id, feature_name)
     return jsonify({'success': True, 'feature': feature_name, 'has_access': bool(has_access)}), 200
 

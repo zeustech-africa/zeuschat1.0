@@ -1549,6 +1549,104 @@ def complete_registration_with_kyc():
         print(f"❌ complete-registration-with-kyc error: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+
+@app.route('/api/complete-kyc', methods=['POST'])
+@retry_on_locked(max_retries=3, delay=0.5)
+def complete_kyc():
+    """Handle KYC submission after profile creation."""
+    try:
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'Not authenticated'}), 401
+
+        zeus_pin = (request.form.get('zeus_pin') or '').strip()
+        session_pin = (session.get('zeus_pin') or '').strip()
+        if not zeus_pin or zeus_pin != session_pin:
+            return jsonify({'error': 'Invalid PIN context'}), 400
+
+        face_match_score = request.form.get('face_match_score')
+        auto_verified = request.form.get('auto_verified', '0')
+        document_type = (request.form.get('document_type') or 'national_id').strip().lower()
+        if document_type not in ('passport', 'national_id'):
+            document_type = 'national_id'
+
+        id_document = request.files.get('id_document')
+        selfie = request.files.get('selfie')
+        if not id_document or not selfie:
+            return jsonify({'error': 'Documents required'}), 400
+
+        os.makedirs('uploads/kyc', exist_ok=True)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+
+        id_ext = os.path.splitext(secure_filename(id_document.filename or 'id_document'))[1] or '.bin'
+        id_filename = f'user_{user_id}_id_{timestamp}{id_ext}'
+        id_path = os.path.join('uploads', 'kyc', id_filename)
+        id_document.save(id_path)
+
+        selfie_ext = os.path.splitext(secure_filename(selfie.filename or 'selfie.jpg'))[1] or '.jpg'
+        selfie_filename = f'user_{user_id}_selfie_{timestamp}{selfie_ext}'
+        selfie_path = os.path.join('uploads', 'kyc', selfie_filename)
+        selfie.save(selfie_path)
+
+        parsed_score = None
+        if face_match_score not in (None, ''):
+            try:
+                parsed_score = float(face_match_score)
+            except (TypeError, ValueError):
+                parsed_score = None
+
+        with admin_get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT id FROM kyc_documents WHERE user_id = ?', (user_id,))
+            if cursor.fetchone():
+                cursor.execute(
+                    '''
+                    UPDATE kyc_documents
+                    SET id_document_path = ?,
+                        selfie_path = ?,
+                        document_type = ?,
+                        face_match_score = ?,
+                        auto_verified = ?,
+                        admin_review_status = 'pending',
+                        admin_review_notes = NULL,
+                        reviewed_by = NULL,
+                        reviewed_at = NULL,
+                        created_at = CURRENT_TIMESTAMP
+                    WHERE user_id = ?
+                    ''',
+                    (id_path, selfie_path, document_type, parsed_score, 1 if str(auto_verified) == '1' else 0, user_id),
+                )
+            else:
+                cursor.execute(
+                    '''
+                    INSERT INTO kyc_documents (
+                        user_id, id_document_path, selfie_path, document_type,
+                        face_match_score, auto_verified, admin_review_status
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, 'pending')
+                    ''',
+                    (user_id, id_path, selfie_path, document_type, parsed_score, 1 if str(auto_verified) == '1' else 0),
+                )
+
+            cursor.execute(
+                '''
+                INSERT INTO user_approvals (user_id, status, reviewed_by, reviewed_at, notes)
+                VALUES (?, 'pending', NULL, NULL, 'Awaiting KYC review')
+                ON CONFLICT(user_id) DO UPDATE SET
+                    status = 'pending',
+                    reviewed_by = NULL,
+                    reviewed_at = NULL,
+                    notes = 'Awaiting KYC review'
+                ''',
+                (user_id,),
+            )
+            conn.commit()
+
+        return jsonify({'success': True, 'message': 'KYC submitted for review'}), 200
+    except Exception as e:
+        print(f"❌ complete-kyc error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/login', methods=['POST', 'OPTIONS'])
 @retry_on_locked(max_retries=3, delay=0.5)
 def login():
@@ -1673,6 +1771,14 @@ def pending_approval():
             return redirect('/dashboard')
 
     return render_template('pending-approval.html')
+
+
+@app.route('/kyc-upload')
+def kyc_upload():
+    """Show dedicated KYC upload page."""
+    if 'user_id' not in session:
+        return redirect('/login')
+    return render_template('kyc-upload.html')
 
 
 @app.route('/api/user/approval-status', methods=['GET'])

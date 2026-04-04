@@ -4,14 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Profile - ZeusChat</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.15.0/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-detection@0.0.2/dist/face-detection.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: Arial, sans-serif;
-            overflow: hidden;
+            overflow-y: auto !important;
+            height: auto !important;
+            min-height: 100vh;
         }
         .video-background {
             position: fixed;
@@ -32,21 +31,25 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.7);
             z-index: -1;
+            background: rgba(0, 0, 0, 0.7);
         }
-        .container {
+        .profile-container {
             display: flex;
             justify-content: center;
-            align-items: center;
-            min-height: 100vh;
+            align-items: flex-start;
             color: #fff;
             padding: 20px;
+            max-height: none !important;
+            overflow-y: visible !important;
+            padding-bottom: 40px;
+            min-height: 100vh;
         }
-        .form-box {
+        .profile-form {
             background: rgba(0, 0, 0, 0.85);
             padding: 40px;
             border-radius: 20px;
+            margin: 30px 0;
             max-width: 500px;
             width: 100%;
             border: 2px solid #FFD700;
@@ -157,109 +160,26 @@
             text-align: center;
             color: #FFD700;
         }
-        .kyc-section {
-            margin-top: 28px;
-            padding-top: 20px;
-            border-top: 1px solid rgba(255, 215, 0, 0.35);
-        }
-        .kyc-section h3 {
-            color: #FFD700;
-            margin-bottom: 8px;
-        }
-        .kyc-section p {
-            font-size: 13px;
-            color: #d1d5db;
-            margin-bottom: 12px;
-        }
-        .upload-area {
-            margin-bottom: 16px;
-            padding: 14px;
-            background: #111827;
-            border-radius: 12px;
-            border: 1px solid rgba(255, 215, 0, 0.25);
-        }
-        .upload-area label {
-            display: block;
-            font-size: 13px;
-            margin-bottom: 8px;
-            color: #f3f4f6;
-        }
-        .hint {
-            font-size: 12px;
-            color: #94a3b8;
-            margin-top: 8px;
-        }
-        .selfie-options {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-            margin: 10px 0;
-            flex-wrap: wrap;
-        }
-        .btn-secondary {
-            background: #475569;
-            color: #fff;
-            padding: 8px 14px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 13px;
-        }
-        .btn-secondary:hover {
-            background: #334155;
-        }
-        .match-result {
-            padding: 12px;
-            border-radius: 10px;
-            margin-top: 12px;
-            font-size: 13px;
-        }
-        .match-result.passed {
-            background: #064e3b;
-            color: #d1fae5;
-        }
-        .match-result.failed {
-            background: #7f1d1d;
-            color: #fecaca;
-        }
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.72);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-        .spinner {
-            width: 48px;
-            height: 48px;
-            border: 4px solid #e5e7eb;
-            border-top: 4px solid #FFD700;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 12px;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+
+        @media (max-height: 700px) {
+            .profile-form {
+                max-height: calc(100vh - 100px);
+                overflow-y: auto;
+                padding-right: 10px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="video-background">
-        <video autoplay muted loop playsinline">
+        <video autoplay muted loop playsinline>
             <source src="zeuschat-profile.mp4" type="video/mp4">
         </video>
     </div>
     <div class="overlay"></div>
     
-    <div class="container">
-        <div class="form-box">
+    <div class="profile-container">
+        <div class="profile-form">
             <h1>🔐 Create Your Profile</h1>
             <div class="zeus-pin" id="zeusPin">ZT-XXXX-XXXX</div>
             <p class="info-text">⚠️ Save your Zeus PIN. You need it to login.</p>
@@ -278,50 +198,13 @@
             <input type="password" id="password" placeholder="Password (min 6 chars)" required autocomplete="off">
             <input type="password" id="confirmPassword" placeholder="Confirm Password" required autocomplete="off">
 
-            <div class="kyc-section">
-                <h3>Identity Verification</h3>
-                <p>Upload your ID document and selfie. ZeusChat uses this for account security review.</p>
-
-                <div class="upload-area" id="idUploadArea">
-                    <label for="documentType">Document Type</label>
-                    <select id="documentType" style="width:100%; padding:10px; border-radius:8px; background:#0b1220; color:#fff; border:1px solid #334155; margin-bottom:10px;">
-                        <option value="national_id">National ID</option>
-                        <option value="passport">Passport</option>
-                    </select>
-
-                    <label for="idDocument">Select ID Document (Passport or National ID)</label>
-                    <input type="file" id="idDocument" accept="image/jpeg,image/png,application/pdf" required>
-                    <div id="idPreview"></div>
-                    <p class="hint">Supported: JPG, PNG, PDF. Max 5MB.</p>
-                </div>
-
-                <div class="upload-area" id="selfieArea">
-                    <label>Take a Selfie (for face matching)</label>
-                    <div class="selfie-options">
-                        <button type="button" id="openCameraBtn" class="btn-secondary">Open Camera</button>
-                        <span style="font-size:12px; color:#94a3b8;">or upload</span>
-                        <input type="file" id="selfieUpload" accept="image/jpeg,image/png">
-                    </div>
-                    <video id="cameraPreview" autoplay playsinline style="display:none; width:100%; max-width:300px; margin-top:10px; border-radius:8px;"></video>
-                    <button type="button" id="captureBtn" style="display:none; margin-top:10px;" class="btn-secondary">Capture Photo</button>
-                    <canvas id="selfieCanvas" style="display:none;"></canvas>
-                    <div id="selfiePreview"></div>
-                </div>
-
-                <div id="faceMatchResult" style="display:none;" class="match-result">
-                    <div id="matchScore"></div>
-                    <div id="matchStatus" style="margin-top:6px;"></div>
-                </div>
-            </div>
+            <p class="info-text" style="margin-top: 18px; color: #cbd5e1;">
+                Next step: after saving your profile, you will upload your ID and selfie on a separate verification page.
+            </p>
             
             <button class="btn" id="submitBtn" onclick="completeRegistration()">✅ Save & Continue</button>
             <div class="loading" id="loading">⏳ Creating account...</div>
         </div>
-    </div>
-
-    <div id="verificationLoading" style="display:none;" class="loading-overlay">
-        <div class="spinner"></div>
-        <p style="color:#fff;">Verifying your identity...</p>
     </div>
     
     <script>
@@ -360,134 +243,6 @@
                 reader.readAsDataURL(file);
             });
         }
-
-        let stream = null;
-        let faceModelsLoaded = false;
-        window.idImageData = '';
-        window.selfieImageData = '';
-        window.idImageElement = null;
-        window.selfieImageElement = null;
-
-        async function loadFaceModels() {
-            if (faceModelsLoaded) return true;
-            const loadingDiv = document.getElementById('verificationLoading');
-            loadingDiv.style.display = 'flex';
-            try {
-                await faceapi.nets.tinyFaceDetector.loadFromUri('/static/models');
-                await faceapi.nets.faceLandmark68Net.loadFromUri('/static/models');
-                await faceapi.nets.faceRecognitionNet.loadFromUri('/static/models');
-                faceModelsLoaded = true;
-                return true;
-            } catch (error) {
-                console.error('Failed to load face models:', error);
-                return false;
-            } finally {
-                loadingDiv.style.display = 'none';
-            }
-        }
-
-        async function compareFaces(idImageElement, selfieImageElement) {
-            try {
-                const idDetection = await faceapi.detectSingleFace(idImageElement, new faceapi.TinyFaceDetectorOptions())
-                    .withFaceLandmarks()
-                    .withFaceDescriptor();
-
-                const selfieDetection = await faceapi.detectSingleFace(selfieImageElement, new faceapi.TinyFaceDetectorOptions())
-                    .withFaceLandmarks()
-                    .withFaceDescriptor();
-
-                if (!idDetection || !selfieDetection) {
-                    return { score: null, error: 'Face not detected in one or both images' };
-                }
-
-                const distance = faceapi.euclideanDistance(idDetection.descriptor, selfieDetection.descriptor);
-                const similarityScore = Math.max(0, Math.min(100, (1 - distance) * 100));
-                return { score: similarityScore, error: null };
-            } catch (error) {
-                console.error('Face comparison error:', error);
-                return { score: null, error: error.message };
-            }
-        }
-
-        document.getElementById('idDocument').addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            if (file.size > 5 * 1024 * 1024) {
-                alert('ID document must be 5MB or smaller.');
-                event.target.value = '';
-                return;
-            }
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const preview = document.getElementById('idPreview');
-                if (file.type.startsWith('image/')) {
-                    preview.innerHTML = `<img src="${e.target.result}" style="max-width:200px; margin-top:10px; border-radius:8px; border:1px solid #334155;">`;
-                    window.idImageData = e.target.result;
-                    window.idImageElement = new Image();
-                    window.idImageElement.src = e.target.result;
-                } else {
-                    preview.innerHTML = `<div style="margin-top:10px;">Document selected: ${file.name}</div>`;
-                    window.idImageData = '';
-                    window.idImageElement = null;
-                }
-            };
-            reader.readAsDataURL(file);
-        });
-
-        document.getElementById('openCameraBtn').addEventListener('click', async function() {
-            const video = document.getElementById('cameraPreview');
-            const captureBtn = document.getElementById('captureBtn');
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                video.srcObject = stream;
-                video.style.display = 'block';
-                captureBtn.style.display = 'inline-block';
-                this.style.display = 'none';
-            } catch (error) {
-                alert('Camera access denied. Please upload a selfie image.');
-            }
-        });
-
-        document.getElementById('captureBtn').addEventListener('click', function() {
-            const video = document.getElementById('cameraPreview');
-            const canvas = document.getElementById('selfieCanvas');
-            const ctx = canvas.getContext('2d');
-            if (!video.videoWidth || !video.videoHeight) return;
-
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            const selfieDataUrl = canvas.toDataURL('image/jpeg', 0.9);
-            document.getElementById('selfiePreview').innerHTML = `<img src="${selfieDataUrl}" style="max-width:200px; margin-top:10px; border-radius:8px; border:1px solid #334155;">`;
-
-            window.selfieImageData = selfieDataUrl;
-            window.selfieImageElement = new Image();
-            window.selfieImageElement.src = selfieDataUrl;
-
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-                stream = null;
-            }
-            document.getElementById('cameraPreview').style.display = 'none';
-            document.getElementById('captureBtn').style.display = 'none';
-        });
-
-        document.getElementById('selfieUpload').addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                document.getElementById('selfiePreview').innerHTML = `<img src="${e.target.result}" style="max-width:200px; margin-top:10px; border-radius:8px; border:1px solid #334155;">`;
-                window.selfieImageData = e.target.result;
-                window.selfieImageElement = new Image();
-                window.selfieImageElement.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
-        });
         
         async function completeRegistration() {
             const fullName = document.getElementById('fullName').value.trim();
@@ -496,10 +251,8 @@
             const email = localStorage.getItem('registration_email');
             const zeusPin = localStorage.getItem('my_zeus_pin');
             const profilePicInput = document.getElementById('profilePic');
-            const idDocumentInput = document.getElementById('idDocument');
             const submitBtn = document.getElementById('submitBtn');
             const loading = document.getElementById('loading');
-            const verificationLoading = document.getElementById('verificationLoading');
             
             if (!fullName || !password || !confirmPassword) {
                 alert('❌ Please fill all required fields');
@@ -513,12 +266,6 @@
             
             if (password !== confirmPassword) {
                 alert('❌ Passwords do not match');
-                return;
-            }
-
-            const idFile = idDocumentInput.files[0];
-            if (!idFile || !window.selfieImageData) {
-                alert('❌ Please upload your ID document and provide a selfie.');
                 return;
             }
             
@@ -543,54 +290,17 @@
                 console.log('👤 Name:', fullName);
                 console.log('🔐 Zeus PIN:', zeusPin);
                 
-                let faceMatchScore = null;
-                let autoVerified = false;
-
-                if (window.idImageElement && window.selfieImageElement) {
-                    const modelsLoaded = await loadFaceModels();
-                    if (modelsLoaded) {
-                        const result = await compareFaces(window.idImageElement, window.selfieImageElement);
-                        if (result.score !== null) {
-                            faceMatchScore = result.score;
-                            autoVerified = result.score >= 60;
-
-                            const resultDiv = document.getElementById('faceMatchResult');
-                            const scoreDiv = document.getElementById('matchScore');
-                            const statusDiv = document.getElementById('matchStatus');
-
-                            resultDiv.style.display = 'block';
-                            scoreDiv.textContent = `Face Match Score: ${result.score.toFixed(1)}%`;
-                            if (autoVerified) {
-                                resultDiv.className = 'match-result passed';
-                                statusDiv.textContent = 'Auto-verified signal generated. Admin will do final review.';
-                            } else {
-                                resultDiv.className = 'match-result failed';
-                                statusDiv.textContent = 'Manual review required. Admin will inspect your documents.';
-                            }
-                        }
-                    }
-                }
-
-                verificationLoading.style.display = 'flex';
-
-                const formData = new FormData();
-                formData.append('email', email);
-                formData.append('zeus_pin', zeusPin);
-                formData.append('password', password);
-                formData.append('full_name', fullName);
-                formData.append('profile_pic', profilePic);
-                formData.append('document_type', document.getElementById('documentType').value || 'national_id');
-                formData.append('id_document', idFile);
-
-                const selfieBlob = await fetch(window.selfieImageData).then(r => r.blob());
-                formData.append('selfie', selfieBlob, 'selfie.jpg');
-                formData.append('face_match_score', faceMatchScore !== null ? String(faceMatchScore) : '');
-                formData.append('auto_verified', autoVerified ? '1' : '0');
-
-                const response = await fetch(`${API_BASE}/api/complete-registration-with-kyc`, {
+                const response = await fetch(`${API_BASE}/api/complete-registration`, {
                     method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: formData
+                    body: JSON.stringify({
+                        email: email,
+                        zeus_pin: zeusPin,
+                        password: password,
+                        full_name: fullName,
+                        profile_pic: profilePic
+                    })
                 });
                 
                 console.log('📡 Response status:', response.status);
@@ -613,14 +323,13 @@
                     sessionStorage.setItem('user_logged_in', 'true');
 
                     if (data.approved === false) {
-                        console.log('⏳ Registration pending approval, redirecting to /pending-approval...');
-                        window.location.href = data.redirect || '/pending-approval';
+                        localStorage.setItem('temp_zeus_pin', zeusPin);
+                        window.location.href = '/kyc-upload?pin=' + encodeURIComponent(zeusPin);
                     } else if (data.approved === true) {
-                        console.log('🎉 Registration approved, redirecting to chat...');
-                        window.location.href = data.redirect || '/chat.html';
+                        window.location.href = '/chat.html';
                     } else {
-                        console.log('⚠️ Approval flag missing, using backend redirect or safe fallback...');
-                        window.location.href = data.redirect || '/pending-approval';
+                        localStorage.setItem('temp_zeus_pin', zeusPin);
+                        window.location.href = '/kyc-upload?pin=' + encodeURIComponent(zeusPin);
                     }
                 } else {
                     throw new Error(data.error || 'Registration failed');
@@ -630,9 +339,6 @@
                 alert('❌ ' + (error.message || 'Failed to create profile'));
                 submitBtn.disabled = false;
                 loading.style.display = 'none';
-                verificationLoading.style.display = 'none';
-            } finally {
-                verificationLoading.style.display = 'none';
             }
         }
         

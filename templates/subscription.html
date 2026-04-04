@@ -87,7 +87,23 @@
     </style>
 </head>
 <body>
-    <div class="container">
+    <header style="position: fixed; top: 0; left: 0; right: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); padding: 15px 20px; z-index: 100;">
+        <div style="max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 24px;">🛡️</span>
+                <span style="color: white; font-weight: bold; font-size: 18px;">ZeusChat</span>
+            </div>
+            <div style="display: flex; gap: 20px;">
+                <a href="/chat.html" style="color: white; text-decoration: none;">💬 Chats</a>
+                <a href="/profile.html" style="color: white; text-decoration: none;">👤 Profile</a>
+                <a href="/settings.html" style="color: white; text-decoration: none;">⚙️ Settings</a>
+                <a href="/subscription" style="color: #667eea; text-decoration: none; font-weight: bold;">💎 Upgrade</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container" style="padding-top: 80px;">
+        <a href="/chat.html" style="display: inline-block; margin-bottom: 20px; color: #667eea; text-decoration: none;">&larr; Back to Chats</a>
         <h1>Choose Your ZeusChat Plan</h1>
 
         <div class="pricing-grid" id="pricingGrid">

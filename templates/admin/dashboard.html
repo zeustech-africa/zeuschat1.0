@@ -650,7 +650,10 @@
                                     <td>${new Date(user.registered_at).toLocaleDateString()}</td>
                                     <td>
                                         <button class="btn-view" onclick="viewUserDetails(${user.id})">View</button>
+                                        <button class="btn-view" style="background:#6366f1;" onclick="openUserMessaging(${user.id})">Message</button>
                                         ${user.approval_status === 'pending' ? `<button class="btn-approve" onclick="approveUser(${user.id})">Approve</button>` : ''}
+                                        ${user.approval_status !== 'banned' ? `<button class="btn-reject" style="background:#f97316;" onclick="suspendUser(${user.id})">Suspend</button>` : ''}
+                                        ${user.approval_status !== 'banned' ? `<button class="btn-reject" onclick="banUser(${user.id})">Ban</button>` : ''}
                                     </td>
                                 </tr>`).join('')}</tbody>
                         </table>`;
@@ -891,6 +894,45 @@
             } catch (error) { alert('Failed to reject user'); }
         }
 
+        // Suspend user
+        async function suspendUser(userId) {
+            const reason = prompt('Enter suspension reason:');
+            if (!reason) return;
+            const durationInput = prompt('Suspend for how many days?', '7');
+            const durationDays = Number(durationInput || 7);
+            if (!Number.isFinite(durationDays) || durationDays <= 0) {
+                alert('Invalid suspension duration');
+                return;
+            }
+            try {
+                await fetch(`/admin/api/users/${userId}/suspend`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason, duration_days: durationDays })
+                });
+                loadStats(); loadUsers(); loadPendingApprovals();
+            } catch (error) {
+                alert('Failed to suspend user');
+            }
+        }
+
+        // Ban user
+        async function banUser(userId) {
+            const reason = prompt('Enter ban reason:');
+            if (!reason) return;
+            if (!confirm('Ban this user account? This should only be used for serious violations.')) return;
+            try {
+                await fetch(`/admin/api/users/${userId}/ban`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason })
+                });
+                loadStats(); loadUsers(); loadPendingApprovals();
+            } catch (error) {
+                alert('Failed to ban user');
+            }
+        }
+
         // Approve payment
         async function approvePayment(paymentId) {
             if (!confirm('Approve this payment and unlock feature?')) return;
@@ -920,9 +962,44 @@
                 const response = await fetch(`/admin/api/users/${userId}/details`);
                 const data = await response.json();
                 if (data.success) {
-                    alert(`User: ${data.user.full_name}\nPIN: ${data.user.zeus_pin}\nEmail: ${data.user.email}\nStatus: ${data.user.approval_status}\nUnlocks: ${data.unlocks.map(u => u.feature).join(', ') || 'None'}`);
+                    const unlocks = data.unlocks.map(u => `${u.feature} (${u.type})`).join(', ') || 'None';
+                    const payments = data.payments.length;
+                    const notes = data.user.notes || 'None';
+                    const rejectionReason = data.user.rejection_reason || 'None';
+                    alert(
+`User: ${data.user.full_name}
+PIN: ${data.user.zeus_pin}
+Email: ${data.user.email}
+Status: ${data.user.approval_status}
+Registered: ${new Date(data.user.registered_at).toLocaleString()}
+Notes: ${notes}
+Rejection Reason: ${rejectionReason}
+Unlocks: ${unlocks}
+Payments: ${payments}
+Message Stats: ${data.message_stats.total} total / ${data.message_stats.user_messages} from user`
+                    );
                 }
             } catch (error) { alert('Failed to load details'); }
+        }
+
+        // Open selected user in messaging tab
+        async function openUserMessaging(userId) {
+            try {
+                const response = await fetch(`/admin/api/users/${userId}/details`);
+                const data = await response.json();
+                if (!data.success) {
+                    alert('Failed to load user for messaging');
+                    return;
+                }
+
+                const messagesNav = document.querySelector('.nav-item[data-tab="messages"]');
+                if (messagesNav) messagesNav.click();
+
+                await loadMessagingUsers();
+                await loadUserMessages(userId, data.user.full_name || 'Anonymous');
+            } catch (error) {
+                alert('Failed to open messaging for user');
+            }
         }
 
         // Logout

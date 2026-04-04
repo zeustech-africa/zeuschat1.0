@@ -214,6 +214,125 @@
     .new-chat:hover {
       background: #c9a02a;
     }
+    .admin-inbox-btn {
+      margin: 0 16px 12px;
+      padding: 10px 14px;
+      background: rgba(212, 175, 55, 0.15);
+      color: #f4d977;
+      border: 1px solid rgba(212, 175, 55, 0.45);
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .admin-inbox-btn:hover {
+      background: rgba(212, 175, 55, 0.3);
+      color: #fff3bf;
+    }
+    .admin-inbox-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 10020;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .admin-inbox-modal.visible {
+      display: flex;
+    }
+    .admin-inbox-panel {
+      width: min(720px, 100%);
+      height: min(640px, 88vh);
+      background: rgba(10, 10, 10, 0.92);
+      border: 1px solid rgba(212, 175, 55, 0.3);
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(8px);
+    }
+    .admin-inbox-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+      color: #f7e39a;
+      font-weight: 700;
+    }
+    .admin-inbox-close {
+      background: transparent;
+      border: 1px solid rgba(212, 175, 55, 0.5);
+      color: #f7e39a;
+      border-radius: 8px;
+      padding: 6px 10px;
+      cursor: pointer;
+    }
+    .admin-inbox-log {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .admin-inbox-msg {
+      max-width: 78%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.35;
+      word-break: break-word;
+    }
+    .admin-inbox-msg.admin {
+      align-self: flex-start;
+      background: rgba(212, 175, 55, 0.15);
+      color: #fff3bf;
+      border: 1px solid rgba(212, 175, 55, 0.35);
+    }
+    .admin-inbox-msg.user {
+      align-self: flex-end;
+      background: #ffd700;
+      color: #111;
+    }
+    .admin-inbox-time {
+      display: block;
+      margin-top: 6px;
+      opacity: 0.7;
+      font-size: 11px;
+    }
+    .admin-inbox-input {
+      border-top: 1px solid rgba(212, 175, 55, 0.2);
+      padding: 12px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+    .admin-inbox-input textarea {
+      flex: 1;
+      min-height: 46px;
+      max-height: 120px;
+      resize: vertical;
+      border-radius: 10px;
+      border: 1px solid rgba(212, 175, 55, 0.25);
+      background: rgba(20, 20, 20, 0.9);
+      color: #f0f0f0;
+      padding: 10px;
+      font-size: 14px;
+      outline: none;
+    }
+    .admin-inbox-send {
+      border: none;
+      background: #d4af37;
+      color: #111;
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
     .main {
       flex: 1;
       display: flex;
@@ -550,6 +669,7 @@
         <button id="test-sound-btn" onclick="testNotificationSound()" title="Test Notification Sound" style="background:transparent;border:1px solid #FFD700;color:#FFD700;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:12px;margin-left:8px;">🔊</button>
       </div>
       <input class="search" placeholder="Search or start new chat"/>
+      <button class="admin-inbox-btn" id="admin-inbox-btn" onclick="openAdminInbox()">ZeusChat Admin Inbox</button>
       <div class="chat-list" id="chat-list">
         <!-- Chats loaded from localStorage -->
       </div>
@@ -1252,6 +1372,22 @@
         </div>
       </div>
     </main>
+  </div>
+
+  <div class="admin-inbox-modal" id="admin-inbox-modal" aria-hidden="true">
+    <div class="admin-inbox-panel">
+      <div class="admin-inbox-header">
+        <span>ZeusChat Admin Messages</span>
+        <button class="admin-inbox-close" onclick="closeAdminInbox()">Close</button>
+      </div>
+      <div class="admin-inbox-log" id="admin-inbox-log">
+        <div style="color:#a3a3a3; text-align:center; padding-top:24px;">Loading messages...</div>
+      </div>
+      <div class="admin-inbox-input">
+        <textarea id="admin-inbox-input" placeholder="Reply to admin..."></textarea>
+        <button class="admin-inbox-send" onclick="sendAdminInboxMessage()">Send</button>
+      </div>
+    </div>
   </div>
   <div class="footer">
     <div onclick="try { console.log('📡 Updates clicked'); alert('🚀 Coming Soon in ZeusChat 1.1'); } catch(e) { console.error('Error:', e); }">
@@ -4251,6 +4387,101 @@
         });
       }, 500);
     }
+
+    // Admin inbox for approved and pending users.
+    let adminInboxPoll = null;
+
+    function escapeAdminInboxHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
+
+    async function loadAdminInboxMessages() {
+      const log = document.getElementById('admin-inbox-log');
+      if (!log) return;
+
+      try {
+        const response = await fetch('/api/user/admin-messages', { credentials: 'include' });
+        if (!response.ok) {
+          log.innerHTML = '<div style="color:#ef4444;text-align:center;padding-top:24px;">Failed to load admin messages.</div>';
+          return;
+        }
+
+        const data = await response.json();
+        if (!data.success) {
+          log.innerHTML = '<div style="color:#ef4444;text-align:center;padding-top:24px;">Unable to load messages.</div>';
+          return;
+        }
+
+        const html = data.messages.map((m) => `
+          <div class="admin-inbox-msg ${m.is_from_admin ? 'admin' : 'user'}">
+            ${escapeAdminInboxHtml(m.message)}
+            <small class="admin-inbox-time">${new Date(m.created_at).toLocaleString()}</small>
+          </div>
+        `).join('');
+
+        log.innerHTML = html || '<div style="color:#a3a3a3;text-align:center;padding-top:24px;">No messages yet.</div>';
+        log.scrollTop = log.scrollHeight;
+      } catch (_error) {
+        log.innerHTML = '<div style="color:#ef4444;text-align:center;padding-top:24px;">Network error loading messages.</div>';
+      }
+    }
+
+    function openAdminInbox() {
+      const modal = document.getElementById('admin-inbox-modal');
+      if (!modal) return;
+      modal.classList.add('visible');
+      modal.setAttribute('aria-hidden', 'false');
+      loadAdminInboxMessages();
+
+      if (adminInboxPoll) clearInterval(adminInboxPoll);
+      adminInboxPoll = setInterval(loadAdminInboxMessages, 10000);
+    }
+
+    function closeAdminInbox() {
+      const modal = document.getElementById('admin-inbox-modal');
+      if (!modal) return;
+      modal.classList.remove('visible');
+      modal.setAttribute('aria-hidden', 'true');
+
+      if (adminInboxPoll) {
+        clearInterval(adminInboxPoll);
+        adminInboxPoll = null;
+      }
+    }
+
+    async function sendAdminInboxMessage() {
+      const input = document.getElementById('admin-inbox-input');
+      if (!input) return;
+      const message = input.value.trim();
+      if (!message) return;
+
+      try {
+        const response = await fetch('/api/user/admin-messages', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message })
+        });
+
+        if (!response.ok) {
+          alert('Failed to send message to admin');
+          return;
+        }
+
+        input.value = '';
+        loadAdminInboxMessages();
+      } catch (_error) {
+        alert('Network error sending admin message');
+      }
+    }
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        closeAdminInbox();
+      }
+    });
 
     // ============ BBM FEATURES IMPLEMENTATION ============
     

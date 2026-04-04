@@ -180,6 +180,46 @@ def get_users():
     ), 200
 
 
+@admin_bp.route('/api/subscriptions', methods=['GET'])
+@admin_required
+def get_subscriptions():
+    """Get all active or pending subscriptions for admin reporting."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            SELECT s.*, u.zeus_pin, u.email, u.full_name,
+                   (SELECT SUM(amount) FROM subscription_payments WHERE subscription_id = s.id) AS total_revenue
+            FROM subscriptions s
+            JOIN users u ON s.user_id = u.id
+            WHERE s.status != 'cancelled'
+            ORDER BY s.created_at DESC
+            '''
+        )
+        subs = cursor.fetchall()
+
+    return jsonify(
+        {
+            'success': True,
+            'subscriptions': [
+                {
+                    'id': s['id'],
+                    'user_id': s['user_id'],
+                    'zeus_pin': s['zeus_pin'],
+                    'user_name': s['full_name'] or 'Anonymous',
+                    'email': s['email'],
+                    'tier': s['tier'],
+                    'status': s['status'],
+                    'current_period_start': s['current_period_start'],
+                    'current_period_end': s['current_period_end'],
+                    'total_revenue': float(s['total_revenue'] or 0),
+                }
+                for s in subs
+            ],
+        }
+    ), 200
+
+
 @admin_bp.route('/api/users/<int:user_id>/details', methods=['GET'])
 @admin_required
 def get_user_details(user_id):

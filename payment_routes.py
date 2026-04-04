@@ -3,6 +3,7 @@ import hashlib
 import urllib.parse
 import os
 import json
+from datetime import datetime
 from admin_middleware import get_db_connection, require_approved_user, user_has_unlock
 
 payment_bp = Blueprint('payment', __name__)
@@ -13,6 +14,7 @@ PAYFAST_PASSPHRASE = os.environ.get('PAYFAST_PASSPHRASE', '')
 PAYFAST_TEST_MODE = os.environ.get('PAYFAST_TEST_MODE', 'true').lower() == 'true'
 
 PAYFAST_URL = 'https://sandbox.payfast.co.za/eng/process' if PAYFAST_TEST_MODE else 'https://www.payfast.co.za/eng/process'
+PAYFAST_SUBSCRIPTION_URL = 'https://sandbox.payfast.co.za/eng/process' if PAYFAST_TEST_MODE else 'https://www.payfast.co.za/eng/process'
 
 
 def generate_payfast_signature(data):
@@ -31,6 +33,32 @@ def generate_payfast_signature(data):
 
 def _base_url():
     return os.environ.get('BASE_URL', 'https://zeuschat1-0-ixax.onrender.com').rstrip('/')
+
+
+def render_payfast_form(pf_data, action_url=PAYFAST_URL):
+    """Render and auto-submit a hidden PayFast form."""
+    form_html = [
+        '<!DOCTYPE html>',
+        '<html><head><title>Redirecting to PayFast</title>',
+        '<meta name="viewport" content="width=device-width, initial-scale=1" />',
+        '<style>body{font-family:Arial,sans-serif;text-align:center;padding:40px;} .loader{margin:20px auto;}</style>',
+        '</head><body>',
+        '<h2>Redirecting to PayFast...</h2>',
+        '<p>Please wait while we open the secure checkout.</p>',
+        f'<form id="payfast-form" method="POST" action="{action_url}">',
+    ]
+
+    for key, value in pf_data.items():
+        safe_value = str(value).replace('"', '&quot;')
+        form_html.append(f'<input type="hidden" name="{key}" value="{safe_value}" />')
+
+    form_html.extend([
+        '</form>',
+        '<script>document.getElementById("payfast-form").submit();</script>',
+        '</body></html>',
+    ])
+
+    return render_template_string(''.join(form_html))
 
 
 def _create_payment_and_redirect(user_id, payment_type, amount, item_name, item_description):
@@ -350,3 +378,159 @@ def payment_cancel():
         </html>
         '''
     )
+
+
+@payment_bp.route('/api/user/subscribe/<tier>', methods=['POST'])
+@require_approved_user
+def initiate_subscription(tier):
+    """Start subscription process for a user."""
+    user_id = session['user_id']
+    user_email = session.get('user_email', '')
+    user_name = session.get('user_full_name', 'User')
+
+    pricing = {
+        'pro': 89.00,
+        'teams': 179.00,
+    }
+
+    if tier not in pricing:
+        return jsonify({'error': 'Invalid subscription tier'}), 400
+
+    amount = pricing[tier]
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT id, status FROM subscriptions WHERE user_id = ?', (user_id,))
+        existing = cursor.fetchone()
+
+        if existing and existing['status'] == 'active':
+            return jsonify({'error': 'You already have an active subscription'}), 400
+
+        if existing:
+            cursor.execute(
+                '''
+                UPDATE subscriptions
+                SET tier = ?, status = 'pending', updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = ?
+                ''',
+                (tier, user_id),
+            )
+            sub_id = existing['id']
+        else:
+            cursor.execute(
+                '''
+                INSERT INTO subscriptions (user_id, tier, status)
+                VALUES (?, ?, 'pending')
+                ''',
+                (user_id, tier),
+            )
+            sub_id = cursor.lastrowid
+
+        conn.commit()
+
+    base_url = _base_url()
+    pf_data = {
+        'merchant_id': PAYFAST_MERCHANT_ID,
+        'merchant_key': PAYFAST_MERCHANT_KEY,
+        'return_url': f'{base_url}/subscription/success',
+        'cancel_url': f'{base_url}/subscription/cancel',
+        'notify_url': f'{base_url}/api/payfast-subscription-itn',
+        'name_first': user_name,
+        'email_address': user_email,
+        'm_payment_id': f'sub_{sub_id}_{user_id}',
+        'amount': f'{amount:.2f}',
+        'item_name': f'ZeusChat {tier.capitalize()} Subscription',
+        'item_description': f'Monthly subscription for ZeusChat {tier.capitalize()} tier',
+        'subscription_type': '1',
+        'billing_date': datetime.utcnow().date().isoformat(),
+        'recurring_amount': f'{amount:.2f}',
+        'frequency': '3',
+        'cycles': '0',
+    }
+
+    pf_data['signature'] = generate_payfast_signature(pf_data)
+    return render_payfast_form(pf_data, action_url=PAYFAST_SUBSCRIPTION_URL)
+
+
+@payment_bp.route('/api/payfast-subscription-itn', methods=['POST'])
+def payfast_subscription_itn():
+    """Handle PayFast subscription ITN webhook."""
+    pf_data = request.form.to_dict()
+
+    validation_data = dict(pf_data)
+    validation_data.pop('signature', None)
+    calculated_signature = generate_payfast_signature(validation_data)
+    if calculated_signature != pf_data.get('signature'):
+        print('❌ Invalid subscription ITN signature')
+        return 'Invalid signature', 400
+
+    payment_status = pf_data.get('payment_status')
+    m_payment_id = pf_data.get('m_payment_id', '')
+
+    parts = m_payment_id.split('_')
+    if len(parts) < 3:
+        return 'Invalid payment ID format', 400
+
+    try:
+        sub_id = int(parts[1])
+        user_id = int(parts[2])
+    except ValueError:
+        return 'Invalid payment ID format', 400
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+
+        if payment_status == 'COMPLETE':
+            from datetime import datetime, timedelta
+
+            period_end = datetime.utcnow() + timedelta(days=30)
+            amount = float(pf_data.get('amount') or 0)
+
+            cursor.execute(
+                '''
+                UPDATE subscriptions
+                SET status = 'active',
+                    payfast_subscription_id = ?,
+                    current_period_start = CURRENT_TIMESTAMP,
+                    current_period_end = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                ''',
+                (pf_data.get('subscription_id', ''), period_end.isoformat(), sub_id),
+            )
+
+            cursor.execute(
+                '''
+                INSERT INTO subscription_payments (user_id, subscription_id, amount, payfast_payment_id)
+                VALUES (?, ?, ?, ?)
+                ''',
+                (user_id, sub_id, amount, pf_data.get('pf_payment_id')),
+            )
+
+            cursor.execute(
+                '''
+                INSERT INTO profile_picture_locks (user_id, is_locked, subscription_tier)
+                VALUES (?, 0, (SELECT tier FROM subscriptions WHERE id = ?))
+                ON CONFLICT(user_id) DO UPDATE SET
+                    is_locked = 0,
+                    subscription_tier = excluded.subscription_tier
+                ''',
+                (user_id, sub_id),
+            )
+
+            print(f'✅ Subscription activated: User {user_id}, Sub {sub_id}')
+
+        elif payment_status == 'CANCELLED':
+            cursor.execute(
+                '''
+                UPDATE subscriptions
+                SET status = 'cancelled', cancelled_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                ''',
+                (sub_id,),
+            )
+            print(f'❌ Subscription cancelled: User {user_id}')
+
+        conn.commit()
+
+    return 'OK', 200

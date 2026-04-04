@@ -480,6 +480,7 @@
             <div class="nav-item" data-tab="kyc">🪪 KYC Review <span class="nav-badge" id="kycPendingBadge" style="display:none">0</span></div>
             <div class="nav-item" data-tab="payments">💰 Payments <span class="nav-badge" id="pendingPaymentsBadge" style="display:none">0</span></div>
             <div class="nav-item" data-tab="messages">💬 Messages <span class="nav-badge" id="unreadMessagesBadge" style="display:none">0</span></div>
+            <div class="nav-item" data-tab="subscriptions">📅 Subscriptions</div>
         </div>
         <button class="logout-btn" onclick="logout()">🚪 Logout</button>
     </div>
@@ -563,6 +564,15 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Subscriptions Tab -->
+        <div id="tab-subscriptions" class="tab-content">
+            <div class="page-header">
+                <h1>📅 Subscriptions</h1>
+                <p>Monitor free, pro, and teams billing lifecycle</p>
+            </div>
+            <div id="subscriptionsList"><div class="loading">Loading subscriptions...</div></div>
         </div>
     </div>
 
@@ -813,6 +823,34 @@
             } catch (error) { document.getElementById('paymentsList').innerHTML = '<div class="loading">Error loading payments</div>'; }
         }
 
+        // Load subscriptions
+        async function loadSubscriptions() {
+            try {
+                const response = await fetch('/admin/api/subscriptions');
+                const data = await response.json();
+                if (data.success) {
+                    const subsHtml = `
+                        <table class="admin-table">
+                            <thead><tr><th>User</th><th>Tier</th><th>Status</th><th>Start Date</th><th>End Date</th><th>Revenue</th></tr></thead>
+                            <tbody>${data.subscriptions.map(sub => `
+                                <tr>
+                                    <td>${escapeHtml(sub.user_name)} (${escapeHtml(sub.zeus_pin)})</td>
+                                    <td><span class="status-badge status-approved">${escapeHtml(sub.tier)}</span></td>
+                                    <td>${escapeHtml(sub.status)}</td>
+                                    <td>${sub.current_period_start ? new Date(sub.current_period_start).toLocaleDateString() : '-'}</td>
+                                    <td>${sub.current_period_end ? new Date(sub.current_period_end).toLocaleDateString() : '-'}</td>
+                                    <td>R${Number(sub.total_revenue || 0).toFixed(2)}</td>
+                                </tr>
+                            `).join('')}</tbody>
+                        </table>
+                    `;
+                    document.getElementById('subscriptionsList').innerHTML = subsHtml;
+                }
+            } catch (error) {
+                document.getElementById('subscriptionsList').innerHTML = '<div class="loading">Error loading subscriptions</div>';
+            }
+        }
+
         // Load messaging users
         async function loadMessagingUsers() {
             try {
@@ -1029,6 +1067,7 @@ Message Stats: ${data.message_stats.total} total / ${data.message_stats.user_mes
                 else if (tab === 'kyc') loadPendingKYC();
                 else if (tab === 'payments') loadPendingPayments();
                 else if (tab === 'messages') loadMessagingUsers();
+                else if (tab === 'subscriptions') loadSubscriptions();
             });
         });
 

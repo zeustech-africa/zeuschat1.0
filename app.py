@@ -1038,6 +1038,50 @@ def run_admin_migrations():
         )
         ''')
 
+        # Create subscriptions table
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS subscriptions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL UNIQUE,
+            tier TEXT NOT NULL DEFAULT 'free',
+            status TEXT NOT NULL DEFAULT 'active',
+            payfast_subscription_id TEXT,
+            current_period_start TIMESTAMP,
+            current_period_end TIMESTAMP,
+            cancelled_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+        ''')
+
+        # Create subscription payment history table
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS subscription_payments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            subscription_id INTEGER NOT NULL,
+            amount REAL NOT NULL,
+            currency TEXT DEFAULT 'ZAR',
+            payfast_payment_id TEXT,
+            payment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            status TEXT DEFAULT 'success',
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (subscription_id) REFERENCES subscriptions(id)
+        )
+        ''')
+
+        # Create feature mapping table for subscription tiers
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS subscription_features (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tier TEXT NOT NULL,
+            feature_name TEXT NOT NULL,
+            is_enabled INTEGER DEFAULT 1,
+            UNIQUE(tier, feature_name)
+        )
+        ''')
+
         # Create indexes
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_user_approvals_status ON user_approvals(status)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_user_approvals_user_id ON user_approvals(user_id)')
@@ -1048,6 +1092,9 @@ def run_admin_migrations():
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_kyc_documents_review_status ON kyc_documents(admin_review_status)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_profile_pic_payments_status ON profile_pic_payments(status)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_profile_picture_locks_user_id ON profile_picture_locks(user_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_subscription_payments_subscription_id ON subscription_payments(subscription_id)')
 
         # Create default super admin (password: ZeusAdmin2026!)
         import hashlib
@@ -1070,6 +1117,54 @@ def run_admin_migrations():
         INSERT OR IGNORE INTO profile_picture_locks (user_id, is_locked, subscription_tier)
         SELECT id, 0, 'free' FROM users
         ''')
+
+        # Default feature mappings: free tier
+        cursor.executemany(
+            '''
+            INSERT OR IGNORE INTO subscription_features (tier, feature_name, is_enabled)
+            VALUES (?, ?, ?)
+            ''',
+            [
+                ('free', 'messaging', 1),
+                ('free', 'basic_ttl_1hour', 1),
+                ('free', 'pin_to_view', 1),
+                ('free', 'blocking', 1),
+                ('free', 'delete_everywhere', 1),
+                ('free', 'profile_name_bio', 1),
+            ],
+        )
+
+        # Default feature mappings: pro tier
+        cursor.executemany(
+            '''
+            INSERT OR IGNORE INTO subscription_features (tier, feature_name, is_enabled)
+            VALUES (?, ?, ?)
+            ''',
+            [
+                ('pro', 'custom_ttl', 1),
+                ('pro', 'profile_picture_unlimited', 1),
+                ('pro', 'cloud_backup_10gb', 1),
+                ('pro', 'export_chat_history', 1),
+                ('pro', 'message_scheduling', 1),
+                ('pro', 'priority_support', 1),
+                ('pro', 'pin_retention_permanent', 1),
+            ],
+        )
+
+        # Default feature mappings: teams tier
+        cursor.executemany(
+            '''
+            INSERT OR IGNORE INTO subscription_features (tier, feature_name, is_enabled)
+            VALUES (?, ?, ?)
+            ''',
+            [
+                ('teams', 'group_workspaces', 1),
+                ('teams', 'admin_dashboard', 1),
+                ('teams', 'audit_logs', 1),
+                ('teams', 'team_cloud_storage_100gb', 1),
+                ('teams', 'sso_integration', 1),
+            ],
+        )
 
         conn.commit()
         print("✅ Admin migrations completed successfully!")
@@ -1779,6 +1874,81 @@ def kyc_upload():
     if 'user_id' not in session:
         return redirect('/login')
     return render_template('kyc-upload.html')
+
+
+@app.route('/subscription')
+def subscription_page():
+    """Subscription management page"""
+    if 'user_id' not in session:
+        return redirect('/login')
+    return render_template('subscription.html')
+
+
+@app.route('/subscription/success')
+def subscription_success():
+    """PayFast subscription return success route"""
+    return redirect('/subscription?status=success')
+
+
+@app.route('/subscription/cancel')
+def subscription_cancel():
+    """PayFast subscription cancel route"""
+    return redirect('/subscription?status=cancel')
+
+
+@app.route('/api/user/subscription', methods=['GET'])
+def get_user_subscription():
+    """Get current user's subscription details"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    with admin_get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            SELECT tier, status, current_period_start, current_period_end
+            FROM subscriptions
+            WHERE user_id = ?
+            ''',
+            (user_id,),
+        )
+        sub = cursor.fetchone()
+
+    if not sub:
+        return jsonify({'success': True, 'tier': 'free', 'status': 'active'}), 200
+
+    return jsonify(
+        {
+            'success': True,
+            'tier': sub['tier'],
+            'status': sub['status'],
+            'current_period_start': sub['current_period_start'],
+            'current_period_end': sub['current_period_end'],
+        }
+    ), 200
+
+
+@app.route('/api/user/subscription/cancel', methods=['POST'])
+def cancel_subscription():
+    """Cancel user's subscription"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    with admin_get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            UPDATE subscriptions
+            SET status = 'cancelled', cancelled_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = ? AND status = 'active'
+            ''',
+            (user_id,),
+        )
+        conn.commit()
+
+    return jsonify({'success': True, 'message': 'Subscription cancelled'}), 200
 
 
 @app.route('/api/user/approval-status', methods=['GET'])

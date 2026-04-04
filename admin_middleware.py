@@ -77,6 +77,10 @@ def require_feature_unlock(feature_name):
 
 def user_has_unlock(user_id, feature_name):
     """Check if user has unlocked a specific feature"""
+    # Subscription access should grant feature access even without one-off unlock rows.
+    if user_has_feature_access(user_id, feature_name):
+        return True
+
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('''
@@ -95,23 +99,87 @@ def user_has_unlock(user_id, feature_name):
         
         return True
 
+
+def get_user_subscription_tier(user_id):
+    """Get user's current subscription tier"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            SELECT tier, status, current_period_end
+            FROM subscriptions
+            WHERE user_id = ? AND status = 'active'
+            ''',
+            (user_id,),
+        )
+        sub = cursor.fetchone()
+
+    if not sub:
+        return 'free'
+
+    if sub['current_period_end']:
+        try:
+            end_date = datetime.fromisoformat(str(sub['current_period_end']).replace(' ', 'T'))
+            if datetime.now() > end_date:
+                return 'free'
+        except Exception:
+            return 'free'
+
+    return sub['tier']
+
+
+def user_has_feature_access(user_id, feature_name):
+    """Check if user has access to a specific feature based on subscription tier"""
+    tier = get_user_subscription_tier(user_id)
+
+    # Backward-compat aliases used by existing routes/decorators.
+    aliases = {
+        'profile_picture': 'profile_picture_unlimited',
+        'custom_ttl': 'custom_ttl',
+        'pin_retention': 'pin_retention_permanent',
+        'file_sharing': 'cloud_backup_10gb',
+    }
+    normalized_feature = aliases.get(feature_name, feature_name)
+
+    tier_chain = {
+        'free': ['free'],
+        'pro': ['free', 'pro'],
+        'teams': ['free', 'pro', 'teams'],
+    }
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        for tier_name in tier_chain.get(tier, ['free']):
+            cursor.execute(
+                '''
+                SELECT is_enabled FROM subscription_features
+                WHERE tier = ? AND feature_name = ?
+                ''',
+                (tier_name, normalized_feature),
+            )
+            result = cursor.fetchone()
+            if result is not None and int(result['is_enabled']) == 1:
+                return True
+
+    return False
+
 def get_unlock_options(feature_name):
     """Return available ways to unlock a feature"""
     unlock_options = {
         'profile_picture': {
             'one_off_payment': {'amount': 29.00, 'currency': 'ZAR', 'endpoint': '/api/user/request-profile-picture'},
-            'subscription': {'tier': 'pro', 'amount': 89.00, 'currency': 'ZAR', 'endpoint': '/api/subscribe'}
+            'subscription': {'tier': 'pro', 'amount': 89.00, 'currency': 'ZAR', 'endpoint': '/api/user/subscribe/pro'}
         },
         'custom_ttl': {
             'one_off_payment': {'amount': 39.00, 'currency': 'ZAR', 'endpoint': '/api/user/request-extended-ttl'},
-            'subscription': {'tier': 'pro', 'amount': 89.00, 'currency': 'ZAR', 'endpoint': '/api/subscribe'}
+            'subscription': {'tier': 'pro', 'amount': 89.00, 'currency': 'ZAR', 'endpoint': '/api/user/subscribe/pro'}
         },
         'pin_retention': {
             'one_off_payment': {'amount': 49.00, 'currency': 'ZAR', 'endpoint': '/api/user/request-pin-retention'}
         },
         'file_sharing': {
             'one_off_payment': {'amount': 59.00, 'currency': 'ZAR', 'endpoint': '/api/user/request-file-sharing'},
-            'subscription': {'tier': 'pro', 'amount': 89.00, 'currency': 'ZAR', 'endpoint': '/api/subscribe'}
+            'subscription': {'tier': 'pro', 'amount': 89.00, 'currency': 'ZAR', 'endpoint': '/api/user/subscribe/pro'}
         }
     }
     return unlock_options.get(feature_name, {})

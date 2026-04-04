@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscription - ZeusChat</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { color: white; text-align: center; margin-bottom: 40px; font-size: 36px; }
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        .pricing-card {
+            background: white;
+            border-radius: 24px;
+            padding: 32px;
+            text-align: center;
+            transition: transform 0.3s;
+            cursor: pointer;
+            position: relative;
+        }
+        .pricing-card:hover { transform: translateY(-5px); }
+        .pricing-card.popular { border: 2px solid #667eea; }
+        .popular-badge {
+            position: absolute;
+            top: -12px;
+            right: 20px;
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+        .tier-name { font-size: 24px; font-weight: 700; color: #1e293b; margin-bottom: 16px; }
+        .price { font-size: 48px; font-weight: 800; color: #667eea; margin-bottom: 8px; }
+        .price small { font-size: 14px; font-weight: normal; color: #64748b; }
+        .description { color: #64748b; margin-bottom: 24px; }
+        .features { list-style: none; margin: 24px 0; text-align: left; }
+        .features li { padding: 8px 0; display: flex; align-items: center; gap: 8px; }
+        .features li::before { content: "\2713"; color: #10b981; font-weight: bold; }
+        .btn-subscribe {
+            width: 100%;
+            padding: 14px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 40px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-subscribe:hover { background: #5a67d8; transform: translateY(-2px); }
+        .btn-current {
+            width: 100%;
+            padding: 14px;
+            background: #e2e8f0;
+            color: #64748b;
+            border: none;
+            border-radius: 40px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: not-allowed;
+        }
+        .current-tier {
+            background: #d1fae5;
+            color: #065f46;
+            text-align: center;
+            padding: 20px;
+            border-radius: 16px;
+            margin-top: 20px;
+        }
+        @media (max-width: 768px) {
+            .pricing-grid { grid-template-columns: 1fr; }
+            h1 { font-size: 28px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Choose Your ZeusChat Plan</h1>
+
+        <div class="pricing-grid" id="pricingGrid">
+            <div class="pricing-card" id="freeCard">
+                <div class="tier-name">Free</div>
+                <div class="price">R0 <small>/month</small></div>
+                <div class="description">Basic secure messaging</div>
+                <ul class="features">
+                    <li>End-to-end encrypted messaging</li>
+                    <li>1-hour auto-delete timer</li>
+                    <li>PIN-to-view protection</li>
+                    <li>Bidirectional blocking</li>
+                    <li>Profile name and bio only</li>
+                    <li>Local device storage</li>
+                </ul>
+                <button class="btn-current" id="freePlanBtn" disabled>Current Plan</button>
+            </div>
+
+            <div class="pricing-card popular" id="proCard">
+                <div class="popular-badge">MOST POPULAR</div>
+                <div class="tier-name">Pro</div>
+                <div class="price">R89 <small>/month</small></div>
+                <div class="description">For power users</div>
+                <ul class="features">
+                    <li>Everything in Free</li>
+                    <li>Custom TTL timers (5s/30s/5m/24h/7d)</li>
+                    <li>Unlimited profile picture changes</li>
+                    <li>10GB encrypted cloud backup</li>
+                    <li>Export chat history (PDF/JSON)</li>
+                    <li>Message scheduling</li>
+                    <li>Priority email support</li>
+                    <li>Permanent PIN retention</li>
+                </ul>
+                <button class="btn-subscribe" id="subscribePro">Upgrade to Pro</button>
+            </div>
+
+            <div class="pricing-card" id="teamsCard">
+                <div class="tier-name">Teams</div>
+                <div class="price">R179 <small>/user/month</small></div>
+                <div class="description">For businesses and teams</div>
+                <ul class="features">
+                    <li>Everything in Pro</li>
+                    <li>Group workspaces (To-Do and Calendar)</li>
+                    <li>Team admin dashboard</li>
+                    <li>Activity audit logs</li>
+                    <li>100GB team cloud storage</li>
+                    <li>SSO integration (Google/Microsoft)</li>
+                    <li>Dedicated support channel</li>
+                    <li>Custom branding</li>
+                </ul>
+                <button class="btn-subscribe" id="subscribeTeams">Start Teams Plan</button>
+            </div>
+        </div>
+
+        <div id="currentSubscription" class="current-tier" style="display:none;"></div>
+    </div>
+
+    <script>
+        async function loadCurrentSubscription() {
+            try {
+                const response = await fetch('/api/user/subscription');
+                const data = await response.json();
+
+                if (!data.success) return;
+
+                const tier = data.tier || 'free';
+
+                if (tier !== 'free') {
+                    document.getElementById('currentSubscription').style.display = 'block';
+                    document.getElementById('currentSubscription').innerHTML = `
+                        <strong>Your current plan: ${tier.toUpperCase()}</strong><br>
+                        Status: ${data.status || 'active'}<br>
+                        ${data.current_period_end ? `Next billing: ${new Date(data.current_period_end).toLocaleDateString()}` : ''}
+                        <button id="cancelSubscriptionBtn" style="background:#ef4444;color:white;border:none;padding:8px 16px;border-radius:8px;margin-top:10px;cursor:pointer;">Cancel Subscription</button>
+                    `;
+
+                    document.getElementById('cancelSubscriptionBtn')?.addEventListener('click', cancelSubscription);
+                }
+
+                if (tier === 'free') {
+                    document.getElementById('freePlanBtn').textContent = 'Current Plan';
+                }
+                if (tier === 'pro') {
+                    document.getElementById('subscribePro').disabled = true;
+                    document.getElementById('subscribePro').textContent = 'Current Plan';
+                    document.getElementById('subscribePro').classList.remove('btn-subscribe');
+                    document.getElementById('subscribePro').classList.add('btn-current');
+                }
+                if (tier === 'teams') {
+                    document.getElementById('subscribeTeams').disabled = true;
+                    document.getElementById('subscribeTeams').textContent = 'Current Plan';
+                    document.getElementById('subscribeTeams').classList.remove('btn-subscribe');
+                    document.getElementById('subscribeTeams').classList.add('btn-current');
+                }
+            } catch (error) {
+                console.error('Failed to load subscription:', error);
+            }
+        }
+
+        document.getElementById('subscribePro')?.addEventListener('click', () => {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/api/user/subscribe/pro';
+            document.body.appendChild(form);
+            form.submit();
+        });
+
+        document.getElementById('subscribeTeams')?.addEventListener('click', () => {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/api/user/subscribe/teams';
+            document.body.appendChild(form);
+            form.submit();
+        });
+
+        async function cancelSubscription() {
+            if (!confirm('Are you sure you want to cancel your subscription? You will lose access to paid features at period end.')) return;
+            try {
+                const response = await fetch('/api/user/subscription/cancel', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    alert('Subscription cancelled. Access remains until period end.');
+                    location.reload();
+                }
+            } catch (error) {
+                alert('Failed to cancel subscription');
+            }
+        }
+
+        loadCurrentSubscription();
+    </script>
+</body>
+</html>

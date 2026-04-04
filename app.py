@@ -4006,6 +4006,12 @@ def offline_page():
     return render_template('offline.html')
 
 
+@app.route('/mobile')
+def mobile_welcome():
+    """Mobile-optimized welcome page for PWA installation."""
+    return render_template('mobile-welcome.html')
+
+
 def keep_alive():
     """Prevent free-tier cold starts by pinging health endpoint periodically."""
     while True:

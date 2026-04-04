@@ -213,7 +213,7 @@
       const qrDiv = document.getElementById('installQrCode');
       if (qrDiv && typeof QRCode !== 'undefined') {
         new QRCode(qrDiv, {
-          text: window.location.href,
+          text: '/mobile',
           width: 150,
           height: 150,
           colorDark: '#667eea',

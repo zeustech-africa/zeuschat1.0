@@ -85,6 +85,38 @@
       font-size: 13px;
       margin-top: 6px;
     }
+    .pro-badge {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
+      margin-left: 8px;
+      display: inline-block;
+    }
+    .feature-locked {
+      opacity: 0.85;
+      cursor: pointer;
+      position: relative;
+    }
+    .feature-locked:hover::after {
+      content: "Pro Feature";
+      position: absolute;
+      background: #1e293b;
+      color: white;
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 8px;
+      white-space: nowrap;
+      top: -30px;
+      left: 0;
+      z-index: 20;
+    }
+    @keyframes modalFadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
   </style>
 </head>
 <body>
@@ -141,6 +173,10 @@
           <option value="enabled">Enabled</option>
           <option value="disabled">Disabled</option>
         </select>
+      </div>
+      <div class="setting feature-locked" id="cloudBackupToggle" role="button" tabindex="0">
+        <div class="setting-label">Cloud backup <span class="pro-badge">PRO</span></div>
+        <div style="font-size: 12px; color: #888;">10GB encrypted backup</div>
       </div>
     </div>
     
@@ -243,6 +279,23 @@
     <button class="btn" onclick="saveAllSettings()">Save and Continue</button>
   </div>
 
+  <!-- Upgrade Modal -->
+  <div id="upgradeModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:10000; align-items:center; justify-content:center;">
+      <div style="background:white; border-radius:28px; max-width:380px; width:90%; padding:32px; text-align:center; animation:modalFadeIn 0.3s ease;">
+          <div style="font-size:56px; margin-bottom:16px;">🔒</div>
+          <h3 style="font-size:22px; color:#1e293b; margin-bottom:8px;">Pro Feature Locked</h3>
+          <p id="modalFeatureMessage" style="color:#64748b; margin-bottom:24px; font-size:14px;">This feature requires ZeusChat Pro</p>
+
+          <div style="background:linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border-radius:20px; padding:20px; margin-bottom:24px;">
+              <div style="font-size:32px; font-weight:800; color:#667eea;">R89<span style="font-size:14px; font-weight:normal;">/month</span></div>
+              <div style="font-size:12px; color:#64748b; margin-top:8px;">Cancel anytime • 30-day money back</div>
+          </div>
+
+          <button id="modalUpgradeBtn" style="width:100%; padding:14px; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white; border:none; border-radius:40px; font-size:16px; font-weight:600; cursor:pointer; margin-bottom:12px; transition:transform 0.2s;">Upgrade to Pro →</button>
+          <button id="modalCancelBtn" style="background:none; border:none; color:#94a3b8; cursor:pointer; font-size:14px;">Not Now</button>
+      </div>
+  </div>
+
   <script>
     // Authentication guard
     const isLoggedIn = sessionStorage.getItem('user_logged_in') === 'true';
@@ -289,7 +342,40 @@
           document.getElementById('char-count').textContent = feedbackMessage.value.length;
         });
       }
+
+      const upgradeBtn = document.getElementById('modalUpgradeBtn');
+      const cancelBtn = document.getElementById('modalCancelBtn');
+      if (upgradeBtn) upgradeBtn.onclick = () => window.location.href = '/subscription';
+      if (cancelBtn) cancelBtn.onclick = hideUpgradeModal;
+
+      document.getElementById('upgradeModal')?.addEventListener('click', function(e) {
+        if (e.target === this) hideUpgradeModal();
+      });
+
+      document.getElementById('cloudBackupToggle')?.addEventListener('click', async () => {
+        const response = await fetch('/api/user/has-feature/cloud_backup_10gb');
+        const data = await response.json();
+        if (!data.has_access) {
+          showUpgradeModal('cloud_backup');
+          return;
+        }
+        alert('Cloud backup enabled.');
+      });
     });
+
+    function showUpgradeModal(featureName) {
+      const modal = document.getElementById('upgradeModal');
+      const message = document.getElementById('modalFeatureMessage');
+      const featureMessages = {
+        'cloud_backup': '10GB encrypted cloud backup',
+      };
+      message.textContent = featureMessages[featureName] || 'This feature requires ZeusChat Pro';
+      modal.style.display = 'flex';
+    }
+
+    function hideUpgradeModal() {
+      document.getElementById('upgradeModal').style.display = 'none';
+    }
 
     function saveSetting(key, value) {
       let settings = JSON.parse(localStorage.getItem('settings')) || {};

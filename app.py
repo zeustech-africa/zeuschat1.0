@@ -15,8 +15,10 @@ from functools import wraps
 import time
 import gzip
 import base64
+import threading
+from urllib import request as urllib_request
 from werkzeug.utils import secure_filename
-from admin_middleware import require_approved_user, user_has_unlock, log_admin_action, get_db_connection as admin_get_db
+from admin_middleware import require_approved_user, user_has_unlock, user_has_feature_access, get_user_subscription_tier, log_admin_action, get_db_connection as admin_get_db
 from admin_routes import admin_bp
 from payment_routes import payment_bp
 
@@ -1143,6 +1145,8 @@ def run_admin_migrations():
             [
                 ('pro', 'custom_ttl', 1),
                 ('pro', 'profile_picture_unlimited', 1),
+                ('pro', 'file_sharing', 1),
+                ('pro', 'voice_notes', 1),
                 ('pro', 'cloud_backup_10gb', 1),
                 ('pro', 'export_chat_history', 1),
                 ('pro', 'message_scheduling', 1),
@@ -1171,6 +1175,26 @@ def run_admin_migrations():
 
 # Call the function
 run_admin_migrations()
+
+def optimize_database():
+    """Add runtime indexes and tuning pragmas for faster messaging queries."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_messages_sender_receiver_created ON messages(sender_id, receiver_id, created_at)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_messages_receiver_created ON messages(receiver_id, created_at)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_messages_status ON messages(status)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_messages_viewed_at ON messages(viewed_at)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_contacts_user_contact_status ON contacts(user_id, contact_user_id, status)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_contacts_contact_user ON contacts(contact_user_id, user_id)')
+
+        cursor.execute('PRAGMA journal_mode=WAL')
+        cursor.execute('PRAGMA synchronous=NORMAL')
+        cursor.execute('PRAGMA cache_size=-20000')
+        cursor.execute('PRAGMA temp_store=MEMORY')
+
+    print('✅ Database optimization complete - indexes added, WAL mode enabled')
+
+optimize_database()
 
 # Register additive blueprints (no existing route removal)
 app.register_blueprint(admin_bp)
@@ -1951,6 +1975,17 @@ def cancel_subscription():
     return jsonify({'success': True, 'message': 'Subscription cancelled'}), 200
 
 
+@app.route('/api/user/has-feature/<feature_name>', methods=['GET'])
+def has_feature(feature_name):
+    """Check if current user has access to a named feature."""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    has_access = user_has_feature_access(user_id, feature_name)
+    return jsonify({'success': True, 'feature': feature_name, 'has_access': bool(has_access)}), 200
+
+
 @app.route('/api/user/approval-status', methods=['GET'])
 def get_approval_status():
     """Check current user's approval status"""
@@ -2197,37 +2232,30 @@ def update_profile():
             current_profile_pic = user_row[2] or ''
             profile_pic_changed = bool(profile_pic) and profile_pic != current_profile_pic
 
+            can_use_one_time_picture_change = False
             if profile_pic_changed:
-                cursor.execute(
-                    '''
-                    SELECT is_locked, remaining_changes, subscription_tier
-                    FROM profile_picture_locks
-                    WHERE user_id = ?
-                    ''',
-                    (user_id,),
-                )
-                lock_row = cursor.fetchone()
+                tier = get_user_subscription_tier(user_id)
 
-                if not lock_row:
+                if tier == 'free':
                     cursor.execute(
                         '''
-                        INSERT INTO profile_picture_locks (user_id, is_locked, remaining_changes, subscription_tier)
-                        VALUES (?, 1, 0, 'free')
+                        SELECT remaining_changes
+                        FROM profile_picture_locks
+                        WHERE user_id = ? AND is_locked = 0 AND remaining_changes > 0
                         ''',
                         (user_id,),
                     )
-                    lock_row = (1, 0, 'free')
+                    one_time = cursor.fetchone()
 
-                is_locked = int(lock_row[0] or 0)
-                remaining_changes = int(lock_row[1] or 0)
-                subscription_tier = (lock_row[2] or 'free').lower()
+                    if not one_time:
+                        return jsonify({
+                            'error': 'Profile picture changes require Pro subscription or one-time payment',
+                            'requires_upgrade': True,
+                            'tier': 'free',
+                            'payment_endpoint': '/api/user/request-profile-picture',
+                        }), 403
 
-                if subscription_tier == 'free' and is_locked == 1 and remaining_changes <= 0:
-                    return jsonify({
-                        'error': 'Profile picture is locked for free users. Request one-off change approval first.',
-                        'requires_payment': True,
-                        'payment_endpoint': '/api/user/request-profile-picture-change',
-                    }), 403
+                    can_use_one_time_picture_change = True
             
             # Update ALL fields including 'about' and 'avatar_url'
             print(f"📝 Executing UPDATE for user {user_id}...")
@@ -2244,45 +2272,28 @@ def update_profile():
             print(f"✅ UPDATE executed: {rows_affected} row(s) affected")
 
             if profile_pic_changed:
-                cursor.execute(
-                    '''
-                    SELECT remaining_changes, subscription_tier
-                    FROM profile_picture_locks
-                    WHERE user_id = ?
-                    ''',
-                    (user_id,),
-                )
-                lock_after = cursor.fetchone()
-                if lock_after:
-                    remaining_changes = int(lock_after[0] or 0)
-                    subscription_tier = (lock_after[1] or 'free').lower()
-                    if subscription_tier == 'free':
-                        if remaining_changes > 0:
-                            cursor.execute(
-                                '''
-                                UPDATE profile_picture_locks
-                                SET remaining_changes = remaining_changes - 1,
-                                    is_locked = 1,
-                                    last_change_at = CURRENT_TIMESTAMP
-                                WHERE user_id = ?
-                                ''',
-                                (user_id,),
-                            )
-                        else:
-                            cursor.execute(
-                                '''
-                                UPDATE profile_picture_locks
-                                SET is_locked = 1,
-                                    last_change_at = CURRENT_TIMESTAMP
-                                WHERE user_id = ?
-                                ''',
-                                (user_id,),
-                            )
-                    else:
-                        cursor.execute(
-                            'UPDATE profile_picture_locks SET last_change_at = CURRENT_TIMESTAMP WHERE user_id = ?',
-                            (user_id,),
-                        )
+                if can_use_one_time_picture_change:
+                    cursor.execute(
+                        '''
+                        UPDATE profile_picture_locks
+                        SET remaining_changes = remaining_changes - 1,
+                            is_locked = CASE WHEN remaining_changes - 1 <= 0 THEN 1 ELSE 0 END,
+                            last_change_at = CURRENT_TIMESTAMP
+                        WHERE user_id = ?
+                        ''',
+                        (user_id,),
+                    )
+                else:
+                    cursor.execute(
+                        '''
+                        UPDATE profile_picture_locks
+                        SET is_locked = 0,
+                            last_change_at = CURRENT_TIMESTAMP,
+                            subscription_tier = ?
+                        WHERE user_id = ?
+                        ''',
+                        (tier, user_id),
+                    )
             
             conn.commit()
             print(f"✅ Database committed successfully")
@@ -2315,6 +2326,75 @@ def update_profile():
         response.headers['Access-Control-Allow-Origin'] = '*'
         return response, 500
 
+
+@app.route('/api/user/profile-picture', methods=['POST'])
+@require_approved_user
+@retry_on_locked(max_retries=3, delay=0.5)
+def update_profile_picture():
+    """Update current user's profile picture with free-tier lock enforcement."""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    data = request.get_json(silent=True) or {}
+    profile_pic = data.get('profile_pic', '')
+    if not profile_pic:
+        return jsonify({'error': 'profile_pic is required'}), 400
+
+    tier = get_user_subscription_tier(user_id)
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+
+        can_use_one_time_picture_change = False
+        if tier == 'free':
+            cursor.execute(
+                '''
+                SELECT remaining_changes
+                FROM profile_picture_locks
+                WHERE user_id = ? AND is_locked = 0 AND remaining_changes > 0
+                ''',
+                (user_id,),
+            )
+            one_time = cursor.fetchone()
+            if not one_time:
+                return jsonify({
+                    'error': 'Profile picture changes require Pro subscription or one-time payment',
+                    'requires_upgrade': True,
+                    'tier': 'free'
+                }), 403
+            can_use_one_time_picture_change = True
+
+        cursor.execute('UPDATE users SET profile_pic = ? WHERE id = ?', (profile_pic, user_id))
+        if cursor.rowcount == 0:
+            return jsonify({'error': 'User not found'}), 404
+
+        if can_use_one_time_picture_change:
+            cursor.execute(
+                '''
+                UPDATE profile_picture_locks
+                SET remaining_changes = remaining_changes - 1,
+                    is_locked = CASE WHEN remaining_changes - 1 <= 0 THEN 1 ELSE 0 END,
+                    last_change_at = CURRENT_TIMESTAMP
+                WHERE user_id = ?
+                ''',
+                (user_id,),
+            )
+        else:
+            cursor.execute(
+                '''
+                INSERT INTO profile_picture_locks (user_id, is_locked, remaining_changes, subscription_tier, last_change_at)
+                VALUES (?, 0, 0, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(user_id) DO UPDATE SET
+                    is_locked = 0,
+                    subscription_tier = excluded.subscription_tier,
+                    last_change_at = CURRENT_TIMESTAMP
+                ''',
+                (user_id, tier),
+            )
+
+    return jsonify({'success': True, 'message': 'Profile picture updated'}), 200
+
 # ============ MESSAGING SYSTEM ENDPOINTS ============
 
 @app.route('/api/send-message', methods=['POST', 'OPTIONS'])
@@ -2326,6 +2406,8 @@ def send_message():
         return jsonify({'success': True}), 200
     
     try:
+        start_time = time.perf_counter()
+
         if 'user_id' not in session:
             return jsonify({'error': 'Not authenticated'}), 401
         
@@ -2414,6 +2496,9 @@ def send_message():
         
         # Emit acknowledgment to sender (message sent confirmation)
         emit_message_status(sender_id, message_id, 'sent')
+
+        delivery_ms = (time.perf_counter() - start_time) * 1000
+        print(f"⚡ Message delivered in {delivery_ms:.2f}ms (id={message_id})")
         
         return jsonify({
             'success': True,
@@ -3765,6 +3850,23 @@ def health():
             'status': 'unhealthy',
             'error': str(e)
         }), 500
+
+
+def keep_alive():
+    """Prevent free-tier cold starts by pinging health endpoint periodically."""
+    while True:
+        time.sleep(480)
+        try:
+            base_url = os.environ.get('BASE_URL', 'https://zeuschat1-0-ixax.onrender.com').rstrip('/')
+            urllib_request.urlopen(f'{base_url}/health', timeout=10)
+            print(f"✅ Keep-alive ping at {datetime.now().isoformat()}")
+        except Exception as e:
+            print(f"❌ Keep-alive failed: {e}")
+
+
+if os.environ.get('RENDER'):
+    keep_alive_thread = threading.Thread(target=keep_alive, daemon=True)
+    keep_alive_thread.start()
 
 # Message status tracking
 @app.route('/api/message-status/<int:message_id>', methods=['GET'])

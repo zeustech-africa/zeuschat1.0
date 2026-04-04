@@ -137,7 +137,9 @@ def user_has_feature_access(user_id, feature_name):
         'profile_picture': 'profile_picture_unlimited',
         'custom_ttl': 'custom_ttl',
         'pin_retention': 'pin_retention_permanent',
-        'file_sharing': 'cloud_backup_10gb',
+        'file_sharing': 'file_sharing',
+        'cloud_backup': 'cloud_backup_10gb',
+        'message_schedule': 'message_scheduling',
     }
     normalized_feature = aliases.get(feature_name, feature_name)
 
@@ -179,6 +181,10 @@ def get_unlock_options(feature_name):
         },
         'file_sharing': {
             'one_off_payment': {'amount': 59.00, 'currency': 'ZAR', 'endpoint': '/api/user/request-file-sharing'},
+            'subscription': {'tier': 'pro', 'amount': 89.00, 'currency': 'ZAR', 'endpoint': '/api/user/subscribe/pro'}
+        },
+        'cloud_backup': {
+            'one_off_payment': {'amount': 99.00, 'currency': 'ZAR', 'endpoint': '/api/user/request-cloud-backup'},
             'subscription': {'tier': 'pro', 'amount': 89.00, 'currency': 'ZAR', 'endpoint': '/api/user/subscribe/pro'}
         }
     }

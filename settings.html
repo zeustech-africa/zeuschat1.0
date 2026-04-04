@@ -279,22 +279,33 @@
     <button class="btn" onclick="saveAllSettings()">Save and Continue</button>
   </div>
 
-  <!-- Upgrade Modal -->
-  <div id="upgradeModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:10000; align-items:center; justify-content:center;">
-      <div style="background:white; border-radius:28px; max-width:380px; width:90%; padding:32px; text-align:center; animation:modalFadeIn 0.3s ease;">
-          <div style="font-size:56px; margin-bottom:16px;">🔒</div>
-          <h3 style="font-size:22px; color:#1e293b; margin-bottom:8px;">Pro Feature Locked</h3>
-          <p id="modalFeatureMessage" style="color:#64748b; margin-bottom:24px; font-size:14px;">This feature requires ZeusChat Pro</p>
+    <!-- Dual Upgrade Modal -->
+    <div id="dualUpgradeModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10001; align-items:center; justify-content:center;">
+      <div style="background:white; border-radius:28px; max-width:420px; width:90%; padding:32px; text-align:center;">
+        <div style="font-size:48px; margin-bottom:16px;">🔒</div>
+        <h3 id="dualModalTitle" style="font-size:22px; color:#1e293b;">Feature Locked</h3>
+        <p id="dualModalMessage" style="color:#64748b; margin:16px 0; font-size:14px;">Upgrade to access this feature</p>
 
-          <div style="background:linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border-radius:20px; padding:20px; margin-bottom:24px;">
-              <div style="font-size:32px; font-weight:800; color:#667eea;">R89<span style="font-size:14px; font-weight:normal;">/month</span></div>
-              <div style="font-size:12px; color:#64748b; margin-top:8px;">Cancel anytime • 30-day money back</div>
+        <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap;">
+          <div style="flex:1; background:#f1f5f9; border-radius:16px; padding:16px; min-width:150px;">
+            <div style="font-size:24px; font-weight:800; color:#667eea;">R89<span style="font-size:12px;">/mo</span></div>
+            <div style="font-size:12px; color:#64748b;">Monthly Subscription</div>
+            <div style="font-size:11px; color:#10b981; margin-top:8px;">✓ All Pro features</div>
+            <div style="font-size:11px; color:#10b981;">✓ Cancel anytime</div>
           </div>
+          <div style="flex:1; background:#f1f5f9; border-radius:16px; padding:16px; min-width:150px;">
+            <div id="oneTimePrice" style="font-size:24px; font-weight:800; color:#764ba2;">R<span>39</span></div>
+            <div style="font-size:12px; color:#64748b;">One-time payment</div>
+            <div style="font-size:11px; color:#10b981; margin-top:8px;">✓ Permanent unlock</div>
+            <div style="font-size:11px; color:#10b981;">✓ No recurring fees</div>
+          </div>
+        </div>
 
-          <button id="modalUpgradeBtn" style="width:100%; padding:14px; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white; border:none; border-radius:40px; font-size:16px; font-weight:600; cursor:pointer; margin-bottom:12px; transition:transform 0.2s;">Upgrade to Pro →</button>
-          <button id="modalCancelBtn" style="background:none; border:none; color:#94a3b8; cursor:pointer; font-size:14px;">Not Now</button>
+        <button id="dualSubscribeBtn" style="width:100%; padding:14px; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white; border:none; border-radius:40px; font-size:16px; font-weight:600; cursor:pointer; margin-bottom:12px;">Subscribe Monthly →</button>
+        <button id="dualOneTimeBtn" style="width:100%; padding:14px; background:#f1f5f9; color:#1e293b; border:none; border-radius:40px; font-size:16px; font-weight:600; cursor:pointer; margin-bottom:12px;">Pay Once (R<span id="oneTimeAmount">39</span>)</button>
+        <button id="dualCancelBtn" style="background:none; border:none; color:#94a3b8; cursor:pointer;">Not Now</button>
       </div>
-  </div>
+    </div>
 
   <script>
     // Authentication guard
@@ -343,14 +354,44 @@
         });
       }
 
-      const upgradeBtn = document.getElementById('modalUpgradeBtn');
-      const cancelBtn = document.getElementById('modalCancelBtn');
-      if (upgradeBtn) upgradeBtn.onclick = () => window.location.href = '/subscription';
+      const subscribeBtn = document.getElementById('dualSubscribeBtn');
+      const oneTimeBtn = document.getElementById('dualOneTimeBtn');
+      const cancelBtn = document.getElementById('dualCancelBtn');
+      if (subscribeBtn) subscribeBtn.onclick = () => window.location.href = '/subscription';
       if (cancelBtn) cancelBtn.onclick = hideUpgradeModal;
 
-      document.getElementById('upgradeModal')?.addEventListener('click', function(e) {
+      document.getElementById('dualUpgradeModal')?.addEventListener('click', function(e) {
         if (e.target === this) hideUpgradeModal();
       });
+
+      if (oneTimeBtn) {
+        oneTimeBtn.onclick = async () => {
+          const endpoints = {
+            profile_picture: '/api/user/request-profile-picture',
+            custom_ttl: '/api/user/request-extended-ttl',
+            pin_retention: '/api/user/request-pin-retention',
+            file_sharing: '/api/user/request-file-sharing',
+            cloud_backup: '/api/user/request-cloud-backup',
+          };
+          const endpoint = endpoints[currentFeatureForUpgrade];
+          if (!endpoint) {
+            window.location.href = '/subscription?mode=oneoff';
+            return;
+          }
+
+          try {
+            const response = await fetch(endpoint, { method: 'POST', credentials: 'include' });
+            const result = await response.json();
+            if (response.ok && result.redirect_url) {
+              window.location.href = result.redirect_url;
+              return;
+            }
+          } catch (_error) {
+            // Fall through to subscription if endpoint is unavailable.
+          }
+          window.location.href = `/subscription?mode=oneoff&feature=${encodeURIComponent(currentFeatureForUpgrade || '')}`;
+        };
+      }
 
       document.getElementById('cloudBackupToggle')?.addEventListener('click', async () => {
         const response = await fetch('/api/user/has-feature/cloud_backup_10gb');
@@ -363,18 +404,34 @@
       });
     });
 
-    function showUpgradeModal(featureName) {
-      const modal = document.getElementById('upgradeModal');
-      const message = document.getElementById('modalFeatureMessage');
-      const featureMessages = {
-        'cloud_backup': '10GB encrypted cloud backup',
+    let currentFeatureForUpgrade = null;
+
+    function showDualUpgradeModal(featureKey, featureTitle, featureDescription) {
+      currentFeatureForUpgrade = featureKey;
+      const pricing = {
+        profile_picture: 29,
+        custom_ttl: 39,
+        pin_retention: 49,
+        file_sharing: 59,
+        cloud_backup: 99,
       };
-      message.textContent = featureMessages[featureName] || 'This feature requires ZeusChat Pro';
-      modal.style.display = 'flex';
+      const oneTimePrice = pricing[featureKey] || 39;
+
+      document.getElementById('dualModalTitle').textContent = featureTitle;
+      document.getElementById('dualModalMessage').textContent = featureDescription;
+      document.getElementById('oneTimePrice').innerHTML = `R${oneTimePrice}<span style="font-size:12px;"></span>`;
+      document.getElementById('oneTimeAmount').textContent = String(oneTimePrice);
+      document.getElementById('dualUpgradeModal').style.display = 'flex';
+    }
+
+    function showUpgradeModal(featureName) {
+      if (featureName === 'cloud_backup') {
+        showDualUpgradeModal('cloud_backup', 'Cloud Backup', '10GB encrypted cloud backup');
+      }
     }
 
     function hideUpgradeModal() {
-      document.getElementById('upgradeModal').style.display = 'none';
+      document.getElementById('dualUpgradeModal').style.display = 'none';
     }
 
     function saveSetting(key, value) {

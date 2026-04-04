@@ -672,6 +672,44 @@
       gap: 8px;
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
     }
+
+    .plan-badge-container {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+    }
+
+    .plan-badge {
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(10px);
+      padding: 8px 16px;
+      border-radius: 40px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .plan-badge:hover {
+      transform: scale(1.02);
+      background: rgba(0, 0, 0, 0.9);
+    }
+
+    .plan-badge.free { border-left: 3px solid #10b981; }
+    .plan-badge.pro { border-left: 3px solid #667eea; background: linear-gradient(135deg, #667eea20, #764ba220); }
+    .plan-badge.teams { border-left: 3px solid #f59e0b; background: linear-gradient(135deg, #f59e0b20, #ef444420); }
+    .plan-icon { font-size: 14px; }
+    .plan-name { color: white; }
+    .upgrade-link {
+      color: #667eea;
+      text-decoration: none;
+      margin-left: 8px;
+      font-size: 11px;
+    }
   </style>
 </head>
 <body>
@@ -683,6 +721,13 @@
 
   <audio id="notification-audio" src="/static/notification.wav?v=2.0" preload="auto"></audio>
   <div id="audio-unlock-banner">Click anywhere to enable sound notifications</div>
+
+  <div class="plan-badge-container" id="planBadgeContainer">
+    <div class="plan-badge free" id="userPlanBadge">
+      <span class="plan-icon">🟢</span>
+      <span class="plan-name" id="planName">Loading...</span>
+    </div>
+  </div>
 
   <div class="app">
     <aside class="sidebar">
@@ -1421,20 +1466,31 @@
     </div>
   </div>
 
-      <!-- Upgrade Modal -->
-      <div id="upgradeModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:10000; align-items:center; justify-content:center;">
-        <div style="background:white; border-radius:28px; max-width:380px; width:90%; padding:32px; text-align:center; animation:modalFadeIn 0.3s ease;">
-          <div style="font-size:56px; margin-bottom:16px;">🔒</div>
-          <h3 style="font-size:22px; color:#1e293b; margin-bottom:8px;">Pro Feature Locked</h3>
-          <p id="modalFeatureMessage" style="color:#64748b; margin-bottom:24px; font-size:14px;">This feature requires ZeusChat Pro</p>
+      <!-- Dual Upgrade Modal -->
+      <div id="dualUpgradeModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10001; align-items:center; justify-content:center;">
+        <div style="background:white; border-radius:28px; max-width:420px; width:90%; padding:32px; text-align:center;">
+          <div style="font-size:48px; margin-bottom:16px;">🔒</div>
+          <h3 id="dualModalTitle" style="font-size:22px; color:#1e293b;">Feature Locked</h3>
+          <p id="dualModalMessage" style="color:#64748b; margin:16px 0; font-size:14px;">Upgrade to access this feature</p>
 
-          <div style="background:linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border-radius:20px; padding:20px; margin-bottom:24px;">
-            <div style="font-size:32px; font-weight:800; color:#667eea;">R89<span style="font-size:14px; font-weight:normal;">/month</span></div>
-            <div style="font-size:12px; color:#64748b; margin-top:8px;">Cancel anytime • 30-day money back</div>
+          <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap;">
+            <div style="flex:1; background:#f1f5f9; border-radius:16px; padding:16px; min-width:150px;">
+              <div style="font-size:24px; font-weight:800; color:#667eea;">R89<span style="font-size:12px;">/mo</span></div>
+              <div style="font-size:12px; color:#64748b;">Monthly Subscription</div>
+              <div style="font-size:11px; color:#10b981; margin-top:8px;">✓ All Pro features</div>
+              <div style="font-size:11px; color:#10b981;">✓ Cancel anytime</div>
+            </div>
+            <div style="flex:1; background:#f1f5f9; border-radius:16px; padding:16px; min-width:150px;">
+              <div id="oneTimePrice" style="font-size:24px; font-weight:800; color:#764ba2;">R<span>39</span></div>
+              <div style="font-size:12px; color:#64748b;">One-time payment</div>
+              <div style="font-size:11px; color:#10b981; margin-top:8px;">✓ Permanent unlock</div>
+              <div style="font-size:11px; color:#10b981;">✓ No recurring fees</div>
+            </div>
           </div>
 
-          <button id="modalUpgradeBtn" style="width:100%; padding:14px; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white; border:none; border-radius:40px; font-size:16px; font-weight:600; cursor:pointer; margin-bottom:12px; transition:transform 0.2s;">Upgrade to Pro →</button>
-          <button id="modalCancelBtn" style="background:none; border:none; color:#94a3b8; cursor:pointer; font-size:14px;">Not Now</button>
+          <button id="dualSubscribeBtn" style="width:100%; padding:14px; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white; border:none; border-radius:40px; font-size:16px; font-weight:600; cursor:pointer; margin-bottom:12px;">Subscribe Monthly →</button>
+          <button id="dualOneTimeBtn" style="width:100%; padding:14px; background:#f1f5f9; color:#1e293b; border:none; border-radius:40px; font-size:16px; font-weight:600; cursor:pointer; margin-bottom:12px;">Pay Once (R<span id="oneTimeAmount">39</span>)</button>
+          <button id="dualCancelBtn" style="background:none; border:none; color:#94a3b8; cursor:pointer;">Not Now</button>
         </div>
       </div>
 
@@ -1494,22 +1550,100 @@
     let pendingMessages = {}; // Track messages waiting for confirmation (optimistic UI)
 
     // ============ PRO FEATURE MODAL & ACCESS GUARDS ============
-    function showUpgradeModal(featureName) {
-      const modal = document.getElementById('upgradeModal');
-      const message = document.getElementById('modalFeatureMessage');
-      const featureMessages = {
-        'custom_ttl': 'Custom TTL timers (5s/30s/5m/24h/7d)',
-        'file_sharing': 'Send images and documents',
-        'voice_notes': 'Record and send voice notes',
-        'message_schedule': 'Schedule messages for later',
+    const PRO_FEATURES = {
+      custom_ttl: 'Custom TTL Timers',
+      file_sharing: 'File Sharing',
+      voice_notes: 'Voice Notes',
+      message_scheduling: 'Message Scheduling',
+      profile_picture_unlimited: 'Profile Picture Changes',
+      cloud_backup_10gb: 'Cloud Backup',
+      export_chat_history: 'Export Chat History',
+    };
+
+    let currentFeatureForUpgrade = null;
+    let currentOneTimePrice = 39;
+
+    async function loadUserPlan() {
+      try {
+        const response = await fetch('/api/user/subscription', { credentials: 'include' });
+        const data = await response.json();
+        const badge = document.getElementById('userPlanBadge');
+        const planName = document.getElementById('planName');
+        if (!badge || !planName) return;
+
+        if (data.tier === 'pro') {
+          badge.className = 'plan-badge pro';
+          planName.innerHTML = 'Pro Plan 💎';
+        } else if (data.tier === 'teams') {
+          badge.className = 'plan-badge teams';
+          planName.innerHTML = 'Teams Plan 👥';
+        } else {
+          badge.className = 'plan-badge free';
+          planName.innerHTML = 'Free Plan 🔒 <a href="/subscription" class="upgrade-link">Upgrade</a>';
+        }
+      } catch (error) {
+        console.error('Failed to load plan:', error);
+      }
+    }
+
+    function showDualUpgradeModal(featureKey, featureTitle, featureDescription) {
+      currentFeatureForUpgrade = featureKey;
+      const pricing = {
+        profile_picture: 29,
+        custom_ttl: 39,
+        pin_retention: 49,
+        file_sharing: 59,
+        cloud_backup: 99,
       };
-      message.textContent = featureMessages[featureName] || 'This feature requires ZeusChat Pro';
-      modal.style.display = 'flex';
+      currentOneTimePrice = pricing[featureKey] || 39;
+
+      const title = document.getElementById('dualModalTitle');
+      const message = document.getElementById('dualModalMessage');
+      const oneTimePrice = document.getElementById('oneTimePrice');
+      const oneTimeAmount = document.getElementById('oneTimeAmount');
+      const modal = document.getElementById('dualUpgradeModal');
+
+      if (title) title.textContent = featureTitle;
+      if (message) message.textContent = featureDescription;
+      if (oneTimePrice) oneTimePrice.innerHTML = `R${currentOneTimePrice}<span style="font-size:12px;"></span>`;
+      if (oneTimeAmount) oneTimeAmount.textContent = String(currentOneTimePrice);
+      if (modal) modal.style.display = 'flex';
     }
 
     function hideUpgradeModal() {
-      const modal = document.getElementById('upgradeModal');
+      const modal = document.getElementById('dualUpgradeModal');
       if (modal) modal.style.display = 'none';
+    }
+
+    function showUpgradeModal(featureName) {
+      const mapping = {
+        custom_ttl: {
+          featureKey: 'custom_ttl',
+          title: 'Custom TTL Timers',
+          description: 'Send messages with custom self-destruct timers (5s, 15s, 45s)',
+        },
+        file_sharing: {
+          featureKey: 'file_sharing',
+          title: 'File Sharing',
+          description: 'Send images, documents, and files up to 50MB',
+        },
+        voice_notes: {
+          featureKey: 'file_sharing',
+          title: 'Voice Notes',
+          description: 'Record and send voice messages',
+        },
+        message_schedule: {
+          featureKey: 'pin_retention',
+          title: 'Message Scheduling',
+          description: 'Schedule messages to send at a specific time',
+        },
+      };
+      const cfg = mapping[featureName] || {
+        featureKey: 'custom_ttl',
+        title: PRO_FEATURES[featureName] || 'Pro Feature',
+        description: 'Upgrade to access this feature',
+      };
+      showDualUpgradeModal(cfg.featureKey, cfg.title, cfg.description);
     }
 
     async function hasFeatureAccess(featureName) {
@@ -1536,23 +1670,61 @@
       if (ttl) ttl.focus();
     }
 
+    async function checkProFeature(featureKey, featureName, description) {
+      const allowed = await hasFeatureAccess(featureKey);
+      if (!allowed) {
+        showDualUpgradeModal(featureKey, featureName, description);
+        return false;
+      }
+      return true;
+    }
+
     function setupProFeatureGuards() {
-      const upgradeBtn = document.getElementById('modalUpgradeBtn');
-      const cancelBtn = document.getElementById('modalCancelBtn');
-      if (upgradeBtn) upgradeBtn.onclick = () => (window.location.href = '/subscription');
+      const subscribeBtn = document.getElementById('dualSubscribeBtn');
+      const oneTimeBtn = document.getElementById('dualOneTimeBtn');
+      const cancelBtn = document.getElementById('dualCancelBtn');
+      if (subscribeBtn) subscribeBtn.onclick = () => (window.location.href = '/subscription');
       if (cancelBtn) cancelBtn.onclick = hideUpgradeModal;
-      document.getElementById('upgradeModal')?.addEventListener('click', function (e) {
+
+      document.getElementById('dualUpgradeModal')?.addEventListener('click', function (e) {
         if (e.target === this) hideUpgradeModal();
       });
+
+      if (oneTimeBtn) {
+        oneTimeBtn.onclick = async () => {
+          const endpoints = {
+            profile_picture: '/api/user/request-profile-picture',
+            custom_ttl: '/api/user/request-extended-ttl',
+            pin_retention: '/api/user/request-pin-retention',
+            file_sharing: '/api/user/request-file-sharing',
+            cloud_backup: '/api/user/request-cloud-backup',
+          };
+          const endpoint = endpoints[currentFeatureForUpgrade];
+          if (!endpoint) {
+            window.location.href = '/subscription?mode=oneoff';
+            return;
+          }
+          try {
+            const response = await fetch(endpoint, { method: 'POST', credentials: 'include' });
+            const result = await response.json();
+            if (response.ok && result.redirect_url) {
+              window.location.href = result.redirect_url;
+              return;
+            }
+          } catch (_error) {
+            // Fall through to subscription if specific endpoint fails.
+          }
+          window.location.href = `/subscription?mode=oneoff&feature=${encodeURIComponent(currentFeatureForUpgrade || '')}`;
+        };
+      }
 
       document.getElementById('attachFileBtn')?.addEventListener(
         'click',
         async (e) => {
-          const allowed = await hasFeatureAccess('file_sharing');
+          const allowed = await checkProFeature('file_sharing', 'File Sharing', 'Send images, documents, and files up to 50MB');
           if (!allowed) {
             e.preventDefault();
             e.stopImmediatePropagation();
-            showUpgradeModal('file_sharing');
           }
         },
         true,
@@ -1561,34 +1733,31 @@
       document.getElementById('voiceNoteBtn')?.addEventListener(
         'click',
         async (e) => {
-          const allowed = await hasFeatureAccess('voice_notes');
+          const allowed = await checkProFeature('voice_notes', 'Voice Notes', 'Record and send voice messages');
           if (!allowed) {
             e.preventDefault();
             e.stopImmediatePropagation();
-            showUpgradeModal('voice_notes');
           }
         },
         true,
       );
 
       document.getElementById('scheduleMsgBtn')?.addEventListener('click', async () => {
-        const allowed = await hasFeatureAccess('message_scheduling');
+        const allowed = await checkProFeature('message_scheduling', 'Message Scheduling', 'Schedule messages to send at a specific time');
         if (!allowed) {
-          showUpgradeModal('message_schedule');
           return;
         }
         showSchedulePicker();
       });
 
-      const ttlSelector = document.getElementById('ttl-selector');
+      const ttlSelector = document.getElementById('ttlDropdownBtn') || document.getElementById('ttl-selector');
       if (ttlSelector) {
         ttlSelector.addEventListener('change', async (e) => {
           const selected = e.target.value;
           if (selected === '30') return;
-          const allowed = await hasFeatureAccess('custom_ttl');
+          const allowed = await checkProFeature('custom_ttl', 'Custom TTL Timers', 'Send messages with custom self-destruct timers');
           if (!allowed) {
             e.target.value = '30';
-            showUpgradeModal('custom_ttl');
           }
         });
       }
@@ -4304,6 +4473,7 @@
       console.log('📭 Empty state initialized');
 
       setupProFeatureGuards();
+      loadUserPlan();
       
       // Load contacts FIRST and WAIT for completion
       await loadChats();

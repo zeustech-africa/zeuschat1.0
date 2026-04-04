@@ -3,6 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#667eea">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ZeusChat">
+  <link rel="apple-touch-icon" href="/zeuschat-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/zeuschat-icon.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/zeuschat-icon.png">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
@@ -752,6 +760,50 @@
         <span id="badge-new-chat" class="notification-badge" style="display:none;"></span>
       </button>
       <button class="new-chat" onclick="window.location.href='/subscription'" style="margin-top:0;background:#334155;color:#f8fafc;">Manage Subscription</button>
+
+      <!-- Push Notification Toggle -->
+      <div class="push-setting" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: rgba(30,30,30,0.7); border-radius: 12px; margin: 8px 16px;">
+        <div>
+          <span style="font-size: 14px;">🔔 Push Notifications</span>
+          <p style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Alerts for new messages</p>
+        </div>
+        <label class="push-switch">
+          <input type="checkbox" id="pushToggle">
+          <span class="push-slider round"></span>
+        </label>
+      </div>
+
+      <style>
+      .push-switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 24px;
+        flex-shrink: 0;
+      }
+      .push-switch input { opacity: 0; width: 0; height: 0; }
+      .push-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-color: #4b5563;
+        transition: 0.3s;
+        border-radius: 24px;
+      }
+      .push-slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.3s;
+        border-radius: 50%;
+      }
+      input:checked + .push-slider { background-color: #667eea; }
+      input:checked + .push-slider:before { transform: translateX(26px); }
+      </style>
     </aside>
     <main class="main">
       <!-- EMPTY STATE: Shows when no contact selected (WhatsApp-style) -->
@@ -1548,6 +1600,55 @@
     let messageQueue = []; // Client-side queue for failed sends
     let typingTimers = {}; // Track typing indicators
     let pendingMessages = {}; // Track messages waiting for confirmation (optimistic UI)
+
+    // ============ PWA INSTALL PROMPT ============
+    let deferredPrompt;
+    let installButton = null;
+
+    function setupInstallPrompt() {
+      const existing = document.getElementById('installContainer');
+      if (existing) {
+        installButton = document.getElementById('installBtn');
+        return;
+      }
+
+      const installContainer = document.createElement('div');
+      installContainer.id = 'installContainer';
+      installContainer.style.position = 'fixed';
+      installContainer.style.bottom = '20px';
+      installContainer.style.left = '20px';
+      installContainer.style.zIndex = '1000';
+      installContainer.innerHTML = '<button id="installBtn" style="background:#667eea; color:white; border:none; border-radius:40px; padding:10px 20px; display:none; cursor:pointer;">📱 Install App</button>';
+      document.body.appendChild(installContainer);
+
+      installButton = document.getElementById('installBtn');
+
+      if (installButton) {
+        installButton.addEventListener('click', async () => {
+          if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`User response to install: ${outcome}`);
+            deferredPrompt = null;
+            installButton.style.display = 'none';
+          }
+        });
+      }
+    }
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      if (!installButton) {
+        setupInstallPrompt();
+      }
+      if (installButton) installButton.style.display = 'block';
+    });
+
+    window.addEventListener('appinstalled', () => {
+      if (installButton) installButton.style.display = 'none';
+      deferredPrompt = null;
+    });
 
     // ============ PRO FEATURE MODAL & ACCESS GUARDS ============
     const PRO_FEATURES = {
@@ -4474,6 +4575,7 @@
 
       setupProFeatureGuards();
       loadUserPlan();
+      setupInstallPrompt();
       
       // Load contacts FIRST and WAIT for completion
       await loadChats();
@@ -5383,6 +5485,145 @@
 
     // Initialize system on page load
     document.addEventListener('DOMContentLoaded', initLowBandwidthSystem);
+  </script>
+
+  <script>
+  // Register Service Worker
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/static/sw.js')
+        .then(registration => {
+          console.log('SW registered:', registration.scope);
+        })
+        .catch(error => {
+          console.log('SW registration failed:', error);
+        });
+    });
+  }
+  </script>
+
+  <script>
+  // ============ PUSH NOTIFICATION SYSTEM ============
+  let pushSubscription = null;
+
+  function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  }
+
+  async function getVapidPublicKey() {
+    try {
+      const res = await fetch('/api/push/vapid-public-key');
+      if (!res.ok) return null;
+      const { publicKey } = await res.json();
+      return publicKey || null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async function subscribeToPush() {
+    try {
+      const publicKey = await getVapidPublicKey();
+      if (!publicKey) {
+        console.warn('Push notifications not configured on server (no VAPID key)');
+        return false;
+      }
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey)
+      });
+
+      const authKey = subscription.getKey('auth');
+      const p256dhKey = subscription.getKey('p256dh');
+      const response = await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          endpoint: subscription.endpoint,
+          keys: {
+            auth: btoa(String.fromCharCode(...new Uint8Array(authKey))),
+            p256dh: btoa(String.fromCharCode(...new Uint8Array(p256dhKey)))
+          }
+        })
+      });
+
+      if (response.ok) {
+        pushSubscription = subscription;
+        localStorage.setItem('pushEnabled', 'true');
+        console.log('✅ Push notifications enabled');
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Push subscription failed:', error);
+      return false;
+    }
+  }
+
+  async function unsubscribeFromPush() {
+    try {
+      if (pushSubscription) {
+        const endpoint = pushSubscription.endpoint;
+        await pushSubscription.unsubscribe();
+        await fetch('/api/push/unsubscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ endpoint })
+        });
+        pushSubscription = null;
+      }
+      localStorage.setItem('pushEnabled', 'false');
+      console.log('🔕 Push notifications disabled');
+    } catch (error) {
+      console.error('Push unsubscribe failed:', error);
+    }
+  }
+
+  async function initPushToggle() {
+    const pushToggle = document.getElementById('pushToggle');
+    if (!pushToggle) return;
+
+    // Hide toggle if browser doesn't support push
+    if (!('PushManager' in window) || !('serviceWorker' in navigator)) {
+      pushToggle.closest('.push-setting').style.display = 'none';
+      return;
+    }
+
+    // Reflect stored preference
+    const stored = localStorage.getItem('pushEnabled') === 'true';
+    if (stored && Notification.permission === 'granted') {
+      pushToggle.checked = true;
+    }
+
+    pushToggle.addEventListener('change', async (e) => {
+      if (e.target.checked) {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          const ok = await subscribeToPush();
+          if (!ok) {
+            e.target.checked = false;
+          }
+        } else {
+          e.target.checked = false;
+          alert('Please allow notifications in your browser settings to enable push alerts.');
+        }
+      } else {
+        await unsubscribeFromPush();
+      }
+    });
+  }
+
+  // Init after page load
+  window.addEventListener('DOMContentLoaded', initPushToggle);
+  // ============ END PUSH NOTIFICATION SYSTEM ============
   </script>
 </body>
 </html>

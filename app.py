@@ -21,6 +21,7 @@ from werkzeug.utils import secure_filename
 from admin_middleware import require_approved_user, user_has_unlock, user_has_feature_access, get_user_subscription_tier, log_admin_action, get_db_connection as admin_get_db
 from admin_routes import admin_bp
 from payment_routes import payment_bp
+from pywebpush import webpush, WebPushException
 
 # Startup logging for deployment verification
 print("="*60)
@@ -31,6 +32,29 @@ print("="*60)
 
 app = Flask(__name__, static_folder='.', static_url_path='')
 DATABASE_PATH = os.environ.get('DATABASE_PATH', 'zeuschat.db')
+BASE_URL = os.environ.get('BASE_URL', 'https://zeuschat1-0-ixax.onrender.com')
+ALLOWED_HOSTS = [
+    host.strip() for host in os.environ.get(
+        'ALLOWED_HOSTS',
+        'zeuschat1-0-ixax.onrender.com,zeustechafrica.com,www.zeustechafrica.com'
+    ).split(',') if host.strip()
+]
+
+if '*' in ALLOWED_HOSTS:
+    ALLOWED_ORIGINS = ['*']
+else:
+    ALLOWED_ORIGINS = []
+    for host in ALLOWED_HOSTS:
+        if host.startswith('http://') or host.startswith('https://'):
+            ALLOWED_ORIGINS.append(host)
+        else:
+            ALLOWED_ORIGINS.append(f'https://{host}')
+            ALLOWED_ORIGINS.append(f'http://{host}')
+
+# VAPID keys for Web Push notifications
+VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', '')
+VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '')
+VAPID_SUBJECT = os.environ.get('VAPID_SUBJECT', 'mailto:admin@zeuschat.com')
 
 # ============ LOW-BANDWIDTH OPTIMIZATION ============
 # Enable gzip compression for all responses
@@ -69,16 +93,18 @@ else:
         f.write(app.secret_key)
     print(f"🔑 Generated new secret key and saved to {SECRET_KEY_FILE}")
 
-# CORS Configuration - Allow all origins
-CORS(app, 
-   origins=["*"],
-   supports_credentials=True,
-   methods=["GET", "POST", "OPTIONS", "PUT", "DELETE"])
+# CORS Configuration
+CORS(
+    app,
+    origins=ALLOWED_ORIGINS,
+    supports_credentials=True,
+    methods=["GET", "POST", "OPTIONS", "PUT", "DELETE"],
+)
 
 # Socket.IO for realtime status updates - OPTIMIZED FOR LOW-BANDWIDTH
 socketio = SocketIO(
     app, 
-    cors_allowed_origins="*", 
+    cors_allowed_origins=ALLOWED_ORIGINS,
     async_mode="threading",
     
     # ℹ️ Low-bandwidth network optimization
@@ -1170,6 +1196,21 @@ def run_admin_migrations():
             ],
         )
 
+        # Create push subscriptions table
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS push_subscriptions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            endpoint TEXT NOT NULL UNIQUE,
+            keys_auth TEXT NOT NULL,
+            keys_p256dh TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+        ''')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON push_subscriptions(user_id)')
+
         conn.commit()
         print("✅ Admin migrations completed successfully!")
 
@@ -1982,9 +2023,113 @@ def has_feature(feature_name):
     if not user_id:
         return jsonify({'error': 'Not authenticated'}), 401
 
+@app.route('/api/user/has-feature/<feature_name>', methods=['GET'])
+def has_feature(feature_name):
+    """Check if current user has access to a named feature."""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Not authenticated'}), 401
+
     has_access = user_has_feature_access(user_id, feature_name)
     return jsonify({'success': True, 'feature': feature_name, 'has_access': bool(has_access)}), 200
 
+
+# ============ PUSH NOTIFICATION ENDPOINTS ============
+
+def send_push_notification(user_id, title, body, url='/'):
+    """Send a push notification to all registered subscriptions for a user."""
+    if not VAPID_PRIVATE_KEY:
+        return  # Skip if VAPID not configured
+
+    with admin_get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            'SELECT endpoint, keys_auth, keys_p256dh FROM push_subscriptions WHERE user_id = ?',
+            (user_id,)
+        )
+        subscriptions = cursor.fetchall()
+
+    for sub in subscriptions:
+        try:
+            webpush(
+                subscription_info={
+                    'endpoint': sub['endpoint'],
+                    'keys': {
+                        'auth': sub['keys_auth'],
+                        'p256dh': sub['keys_p256dh'],
+                    }
+                },
+                data=json.dumps({'title': title, 'body': body, 'url': url}),
+                vapid_private_key=VAPID_PRIVATE_KEY,
+                vapid_claims={'sub': VAPID_SUBJECT}
+            )
+            print(f"✅ Push sent to user {user_id}")
+        except WebPushException as e:
+            print(f"❌ Push failed for user {user_id}: {e}")
+            # Remove subscription if server reports it as gone (HTTP 410)
+            if hasattr(e, 'response') and e.response and e.response.status_code == 410:
+                with admin_get_db() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        'DELETE FROM push_subscriptions WHERE endpoint = ?',
+                        (sub['endpoint'],)
+                    )
+                    conn.commit()
+
+
+@app.route('/api/push/subscribe', methods=['POST'])
+@require_approved_user
+def subscribe_push():
+    """Save or update a push subscription for the current user."""
+    user_id = session['user_id']
+    data = request.get_json()
+
+    endpoint = data.get('endpoint')
+    keys_auth = data.get('keys', {}).get('auth')
+    keys_p256dh = data.get('keys', {}).get('p256dh')
+
+    if not all([endpoint, keys_auth, keys_p256dh]):
+        return jsonify({'error': 'Invalid subscription data'}), 400
+
+    with admin_get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT OR REPLACE INTO push_subscriptions
+                (user_id, endpoint, keys_auth, keys_p256dh, updated_at)
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ''', (user_id, endpoint, keys_auth, keys_p256dh))
+        conn.commit()
+
+    return jsonify({'success': True}), 200
+
+
+@app.route('/api/push/unsubscribe', methods=['POST'])
+@require_approved_user
+def unsubscribe_push():
+    """Remove a push subscription for the current user."""
+    user_id = session['user_id']
+    data = request.get_json()
+    endpoint = data.get('endpoint')
+
+    if endpoint:
+        with admin_get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                'DELETE FROM push_subscriptions WHERE user_id = ? AND endpoint = ?',
+                (user_id, endpoint)
+            )
+            conn.commit()
+
+    return jsonify({'success': True}), 200
+
+
+@app.route('/api/push/vapid-public-key', methods=['GET'])
+def get_vapid_public_key():
+    """Return the VAPID public key so the frontend can subscribe."""
+    return jsonify({'publicKey': VAPID_PUBLIC_KEY}), 200
+
+
+# ============ END PUSH NOTIFICATION ENDPOINTS ============
 
 @app.route('/api/user/approval-status', methods=['GET'])
 def get_approval_status():
@@ -2496,6 +2641,16 @@ def send_message():
         
         # Emit acknowledgment to sender (message sent confirmation)
         emit_message_status(sender_id, message_id, 'sent')
+
+        # Send push notification if receiver is not connected via Socket.IO
+        if receiver_id not in connected_users:
+            message_preview = content[:100] if len(content) > 100 else content
+            send_push_notification(
+                receiver_id,
+                f'New message from {sender_name}',
+                message_preview,
+                '/chat.html'
+            )
 
         delivery_ms = (time.perf_counter() - start_time) * 1000
         print(f"⚡ Message delivered in {delivery_ms:.2f}ms (id={message_id})")
@@ -3852,12 +4007,18 @@ def health():
         }), 500
 
 
+@app.route('/offline.html', methods=['GET'])
+def offline_page():
+    """Serve PWA offline fallback page."""
+    return render_template('offline.html')
+
+
 def keep_alive():
     """Prevent free-tier cold starts by pinging health endpoint periodically."""
     while True:
         time.sleep(480)
         try:
-            base_url = os.environ.get('BASE_URL', 'https://zeuschat1-0-ixax.onrender.com').rstrip('/')
+            base_url = BASE_URL.rstrip('/')
             urllib_request.urlopen(f'{base_url}/health', timeout=10)
             print(f"✅ Keep-alive ping at {datetime.now().isoformat()}")
         except Exception as e:

@@ -12,8 +12,8 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #0a0a2a 0%, #1a1a3e 50%, #2a1a4e 100%);
+            font-family: 'Georgia', 'Times New Roman', -apple-system, BlinkMacSystemFont, 'Segoe UI', serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0d0d0d 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -27,21 +27,21 @@
             margin: 0 auto;
         }
 
-        /* Main Card */
+        /* Main Card - Gold/Black Theme */
         .card {
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(10, 10, 10, 0.95);
             backdrop-filter: blur(10px);
             border-radius: 48px;
             padding: 48px 24px;
             text-align: center;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 20px rgba(212, 175, 55, 0.1);
         }
 
-        /* 3D Spinning Logo Container */
+        /* 3D Spinning Logo Container - Using Real Image */
         .logo-container {
-            width: 120px;
-            height: 120px;
+            width: 140px;
+            height: 140px;
             margin: 0 auto 24px;
             perspective: 800px;
         }
@@ -58,38 +58,42 @@
             position: absolute;
             width: 100%;
             height: 100%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-radius: 28px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 56px;
-            box-shadow: 0 10px 25px -5px rgba(102, 126, 234, 0.4);
             backface-visibility: visible;
+            overflow: hidden;
+        }
+
+        .logo-face img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
         .logo-face-front {
-            transform: translateZ(30px);
+            transform: translateZ(40px);
         }
 
         .logo-face-back {
-            transform: rotateY(180deg) translateZ(30px);
+            transform: rotateY(180deg) translateZ(40px);
         }
 
         .logo-face-right {
-            transform: rotateY(90deg) translateZ(30px);
+            transform: rotateY(90deg) translateZ(40px);
         }
 
         .logo-face-left {
-            transform: rotateY(-90deg) translateZ(30px);
+            transform: rotateY(-90deg) translateZ(40px);
         }
 
         .logo-face-top {
-            transform: rotateX(90deg) translateZ(30px);
+            transform: rotateX(90deg) translateZ(40px);
         }
 
         .logo-face-bottom {
-            transform: rotateX(-90deg) translateZ(30px);
+            transform: rotateX(-90deg) translateZ(40px);
         }
 
         @keyframes spin3D {
@@ -101,72 +105,92 @@
         .simple-logo {
             width: 100px;
             height: 100px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             margin: 0 auto 20px;
-            font-size: 48px;
-            box-shadow: 0 10px 25px -5px rgba(102, 126, 234, 0.4);
+            display: none;
+        }
+        .simple-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
         }
 
+        @supports not (transform-style: preserve-3d) {
+            .logo-3d {
+                display: none;
+            }
+            .simple-logo {
+                display: block;
+            }
+        }
+
+        /* Gold Text Styling */
         h1 {
-            font-size: 32px;
-            color: white;
+            font-size: 36px;
+            color: #D4AF37;
             margin-bottom: 8px;
-            letter-spacing: 2px;
+            letter-spacing: 4px;
+            font-weight: 700;
+            text-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
         }
 
         .ghost-mode {
-            font-size: 14px;
-            color: rgba(255, 255, 255, 0.7);
-            letter-spacing: 3px;
+            font-size: 12px;
+            color: rgba(212, 175, 55, 0.8);
+            letter-spacing: 4px;
             margin-bottom: 12px;
             font-weight: 500;
+            text-transform: uppercase;
         }
 
         .tagline {
             font-size: 16px;
-            color: rgba(255, 255, 255, 0.5);
+            color: rgba(255, 255, 255, 0.6);
             margin-bottom: 40px;
+            font-style: italic;
+            letter-spacing: 1px;
         }
 
-        /* Buttons */
+        /* Gold Buttons */
         .btn-primary {
             width: 100%;
             padding: 16px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%);
+            color: #0a0a0a;
             border: none;
             border-radius: 40px;
             font-size: 16px;
-            font-weight: 600;
+            font-weight: 700;
             cursor: pointer;
             margin-bottom: 12px;
             transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 25px -5px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 10px 25px -5px rgba(212, 175, 55, 0.4);
+            background: linear-gradient(135deg, #E5C65C 0%, #C9A52C 100%);
         }
 
         .btn-secondary {
             width: 100%;
             padding: 16px;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: transparent;
+            color: #D4AF37;
+            border: 2px solid #D4AF37;
             border-radius: 40px;
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(212, 175, 55, 0.1);
+            transform: translateY(-2px);
         }
 
         /* Divider */
@@ -174,15 +198,15 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            margin: 24px 0;
-            color: rgba(255, 255, 255, 0.3);
+            margin: 30px 0 20px;
+            color: rgba(212, 175, 55, 0.3);
             font-size: 12px;
         }
 
         .divider-line {
             flex: 1;
             height: 1px;
-            background: rgba(255, 255, 255, 0.2);
+            background: linear-gradient(90deg, transparent, #D4AF37, transparent);
         }
 
         /* Footer */
@@ -191,53 +215,54 @@
             font-size: 10px;
             color: rgba(255, 255, 255, 0.3);
             text-align: center;
+            letter-spacing: 0.5px;
         }
 
-        /* Install Button (for PWA) */
+        /* Install PWA Button */
         .install-pwa {
-            background: rgba(255, 255, 255, 0.15);
-            border: 1px dashed rgba(255, 255, 255, 0.3);
+            background: rgba(212, 175, 55, 0.1);
+            border: 1px dashed #D4AF37;
             padding: 12px;
             border-radius: 40px;
             margin-top: 20px;
             font-size: 12px;
-            color: rgba(255, 255, 255, 0.6);
+            color: #D4AF37;
             cursor: pointer;
         }
 
         .install-pwa:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        /* Hide 3D on browsers that don't support it */
-        @supports not (transform-style: preserve-3d) {
-            .logo-3d {
-                display: none;
-            }
-            .simple-logo {
-                display: flex;
-            }
-        }
-
-        .simple-logo {
-            display: none;
+            background: rgba(212, 175, 55, 0.2);
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="card">
-            <!-- 3D Spinning Logo -->
+            <!-- 3D Spinning Logo with Real ZeusChat Icon -->
             <div class="logo-container">
                 <div class="logo-3d">
-                    <div class="logo-face logo-face-front">🛡️</div>
-                    <div class="logo-face logo-face-back">⚡</div>
-                    <div class="logo-face logo-face-right">🔒</div>
-                    <div class="logo-face logo-face-left">💬</div>
-                    <div class="logo-face logo-face-top">✨</div>
-                    <div class="logo-face logo-face-bottom">🌟</div>
+                    <div class="logo-face logo-face-front">
+                        <img src="/zeuschat-icon.png" alt="ZeusChat Logo">
+                    </div>
+                    <div class="logo-face logo-face-back">
+                        <img src="/zeuschat-icon.png" alt="ZeusChat Logo">
+                    </div>
+                    <div class="logo-face logo-face-right">
+                        <img src="/zeuschat-icon.png" alt="ZeusChat Logo">
+                    </div>
+                    <div class="logo-face logo-face-left">
+                        <img src="/zeuschat-icon.png" alt="ZeusChat Logo">
+                    </div>
+                    <div class="logo-face logo-face-top">
+                        <img src="/zeuschat-icon.png" alt="ZeusChat Logo">
+                    </div>
+                    <div class="logo-face logo-face-bottom">
+                        <img src="/zeuschat-icon.png" alt="ZeusChat Logo">
+                    </div>
                 </div>
-                <div class="simple-logo">🛡️</div>
+                <div class="simple-logo">
+                    <img src="/zeuschat-icon.png" alt="ZeusChat Logo">
+                </div>
             </div>
 
             <h1>ZEUSCHAT</h1>
@@ -252,11 +277,11 @@
 
             <div class="divider">
                 <div class="divider-line"></div>
-                <span>⚡</span>
+                <span>✦</span>
                 <div class="divider-line"></div>
             </div>
 
-            <!-- PWA Install Button (appears when available) -->
+            <!-- PWA Install Button -->
             <div class="install-pwa" id="installBtn" style="display: none;">
                 📱 Install App on Home Screen
             </div>

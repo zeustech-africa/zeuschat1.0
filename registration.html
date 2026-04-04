@@ -108,16 +108,27 @@
       justify-content: space-between;
       align-items: center;
     }
-    .qr-code {
-      width: 160px;
-      height: 160px;
-      background: url('zeuschaticon-transparent-3d-spin.png') center/contain no-repeat;
-      opacity: 0.8;
+    .qr-container {
+      background: rgba(102, 126, 234, 0.08);
+      border-radius: 28px;
+      padding: 20px;
+      margin: 20px 0;
     }
-    .qr-text {
+    .qr-instructions-text {
+      background: #f8fafc;
+      border-radius: 16px;
+      padding: 16px;
+      margin-top: 15px;
+    }
+    #installQrCode {
+      min-width: 150px;
+      min-height: 150px;
+    }
+    .login-info {
       font-size: 14px;
       text-align: left;
-      margin-left: 16px;
+      margin: 16px 0 8px;
+      color: #d1d5db;
     }
     .btn {
       background: #FFD700;
@@ -160,39 +171,26 @@
   </video>
   <div class="overlay"></div>
 
-  <!-- Top-left: Logo + Byline -->
-  <div class="header">
-    <img src="zeustech-logo-zeushchat.png" class="logo" alt="ZeusTech">
-    <div class="byline">ZeusChat by ZeusTech</div>
-  </div>
-
   <div class="container">
     <div class="box">
       <div class="box-title">Don't have a ZeusChat account? Get started</div>
-      
-      <div class="step">
-        <div class="step-number">1</div>
-        <div class="step-text">Open ZeusChat on your phone</div>
-      </div>
-      <div class="step">
-        <div class="step-number">2</div>
-        <div class="step-text">On Android tap Menu • On iPhone tap Settings</div>
-      </div>
-      <div class="step">
-        <div class="step-number">3</div>
-        <div class="step-text">Tap Linked devices, then Link device</div>
-      </div>
-      <div class="step">
-        <div class="step-number">4</div>
-        <div class="step-text">Scan the QR code to confirm</div>
+      <div class="qr-container" style="text-align: center; margin: 20px auto;">
+        <div style="background: white; padding: 15px; border-radius: 20px; display: inline-block; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+          <div id="installQrCode"></div>
+        </div>
+        <h3 style="color: #1e293b; margin-top: 20px; font-size: 18px;">📱 Get ZeusChat on Your Phone</h3>
+        <div style="margin-top: 10px;">
+          <p style="color: #64748b; font-size: 14px;">Scan QR code with your phone camera to install</p>
+          <div style="background: #f1f5f9; border-radius: 12px; padding: 12px; margin-top: 10px; text-align: left;">
+            <p style="font-size: 12px; margin: 5px 0;">📱 <strong>iPhone:</strong> Tap Share → "Add to Home Screen"</p>
+            <p style="font-size: 12px; margin: 5px 0;">🤖 <strong>Android:</strong> Tap "Install App"</p>
+          </div>
+        </div>
       </div>
 
-      <div class="qr-box">
-        <div class="qr-code"></div>
-        <div class="qr-text">
-          <strong>Log in with email</strong><br>
-          Click "Get Started" below to enter your email.
-        </div>
+      <div class="login-info">
+        <strong>Log in with email</strong><br>
+        Click "Get Started" below to enter your email.
       </div>
 
       <button class="btn" onclick="location.href='emailinput.html'">Get Started</button>
@@ -208,5 +206,22 @@
     Don't have an account? <a href="emailinput.html">Get started</a><br>
     <a href="privacy.html">Terms & Privacy Policy</a>
   </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const qrDiv = document.getElementById('installQrCode');
+      if (qrDiv && typeof QRCode !== 'undefined') {
+        new QRCode(qrDiv, {
+          text: window.location.href,
+          width: 150,
+          height: 150,
+          colorDark: '#667eea',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.H
+        });
+      }
+    });
+  </script>
 </body>
 </html>

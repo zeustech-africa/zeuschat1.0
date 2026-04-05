@@ -6016,6 +6016,38 @@ def ghost_market_apply():
         return redirect('/subscription')
     return render_template('ghost-market-apply.html')
 
+# ============================================
+# LEGAL PAGES
+# ============================================
+
+@app.route('/terms')
+def terms():
+    return render_template('terms.html')
+
+@app.route('/privacy')
+def privacy():
+    return render_template('privacy.html')
+
+@app.route('/kyc-policy')
+def kyc_policy():
+    return render_template('kyc-policy.html')
+
+@app.route('/ghost-market-policy')
+def ghost_market_policy():
+    return render_template('ghost-market-policy.html')
+
+@app.route('/refund-policy')
+def refund_policy():
+    return render_template('refund-policy.html')
+
+@app.route('/cookie-policy')
+def cookie_policy():
+    return render_template('cookie-policy.html')
+
+@app.route('/acceptable-use')
+def acceptable_use():
+    return render_template('acceptable-use.html')
+
 @app.route('/api/ghost-market/items', methods=['GET'])
 def get_ghost_market_items():
     """Get all approved items plus current user's pending/rejected items."""

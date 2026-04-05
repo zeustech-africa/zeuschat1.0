@@ -119,37 +119,67 @@
       display: flex;
       flex-direction: column;
     }
-    .chat-header {
-      font-size: 15px;
-      font-weight: 600;
-      color: #fff;
-      margin-bottom: 12px;
-      text-align: left;
+    .chat-preview {
+      max-width: 100%;
+      margin: 0 auto;
+      background: rgba(0,0,0,0.34);
+      border-radius: 20px;
+      padding: 14px;
+      border: 1px solid rgba(212,175,55,0.22);
+      backdrop-filter: blur(2px);
+      overflow-y: auto;
     }
-    .chat-bubble {
-      margin-bottom: 12px;
+    .message-row {
+      display: flex;
+      margin-bottom: 14px;
+    }
+    .message-row.left {
+      justify-content: flex-start;
+    }
+    .message-row.right {
+      justify-content: flex-end;
+    }
+    .message-wrap {
+      max-width: 80%;
+    }
+    .sender-name {
+      font-size: 11px;
+      margin-bottom: 5px;
+      opacity: 0.78;
+      letter-spacing: 0.2px;
+    }
+    .message-row.right .sender-name {
+      text-align: right;
+      color: #fef3c7;
+    }
+    .message-row.left .sender-name {
+      text-align: left;
+      color: #d1d5db;
+    }
+    .message-bubble {
       padding: 10px 14px;
       border-radius: 18px;
+      position: relative;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.22);
+    }
+    .message-bubble.grey {
+      background: #2a2a2a;
+      color: white;
+      border-bottom-left-radius: 4px;
+    }
+    .message-bubble.gold {
+      background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%);
+      color: #0a0a0a;
+      border-bottom-right-radius: 4px;
+    }
+    .message-text {
       font-size: 13px;
-      line-height: 1.5;
-      white-space: pre-wrap;
+      line-height: 1.42;
     }
-    .received {
-      background: rgba(34,34,34,0.85);
-      align-self: flex-start;
-      border-bottom-left-radius: 6px;
-    }
-    .sent {
-      background: rgba(255,215,0,0.85);
-      color: #000;
-      align-self: flex-end;
-      border-bottom-right-radius: 6px;
-      font-weight: 500;
-    }
-    .timestamp {
-      font-size: 11px;
-      color: #999;
-      margin-top: 6px;
+    .message-time {
+      font-size: 10px;
+      opacity: 0.68;
+      margin-top: 5px;
       text-align: right;
     }
     .main-content {
@@ -300,6 +330,28 @@
     button, a, .clickable {
         min-height: 44px;
     }
+
+    .iphone-mockup {
+      width: 92vw;
+      max-width: 360px;
+      right: 12px;
+      height: 72vh;
+      top: auto;
+      bottom: 16px;
+      transform: none;
+    }
+
+    .iphone-screen {
+      padding: 12px;
+    }
+
+    .chat-preview {
+      padding: 12px;
+    }
+
+    .message-wrap {
+      max-width: 88%;
+    }
 }
   </style>
   <link rel="stylesheet" href="/static/mobile.css">
@@ -330,25 +382,107 @@
   <!-- Middle-right: iPhone Mockup -->
   <div class="iphone-mockup">
     <div class="iphone-screen">
-      <div class="chat-header">Amina</div>
-      <div class="chat-bubble received">You using ZeusChat?</div>
-      <div class="timestamp">11:54</div>
-      <div class="chat-bubble sent">Yes, it's the best! My phone number is private - I only share it via ZEUS-PIN with people I want to chat with.</div>
-      <div class="timestamp">11:59</div>
-      <div class="chat-bubble received">Oh, I see - so I need to type in your PIN to view your messages?</div>
-      <div class="timestamp">12:01</div>
-      <div class="chat-bubble sent">Exactly! And they self-destruct after 5-30 seconds
-- no saving, no screenshots.</div>
-      <div class="timestamp">12:03</div>
-      <div class="chat-bubble received">Wow! That's secure!</div>
-      <div class="timestamp">12:05</div>
-      <div class="chat-bubble sent">And if I type the wrong PIN?</div>
-      <div class="timestamp">12:07</div>
-      <div class="chat-bubble received">Message, files or even voice notes deletes immediately receiver types I’m a wrong view pin and sender gets a notification of message failed and asked to send again or delete..</div>
-      <div class="timestamp">12:09</div>
-      <div class="chat-bubble sent">ZeusChat is the best in sending private messages and messages and files are projected to ensure only the right user have access to view messages </div>
-      <div class="timestamp">12:10</div>
-      <div class="chat-bubble received">I’m glad you like it..can’t wait to see you chiomi 😘...</div>
+      <div class="chat-preview">
+        <div class="message-row left">
+          <div class="message-wrap">
+            <div class="sender-name">Amina</div>
+            <div class="message-bubble grey">
+              <div class="message-text">Hey! Have you tried ZeusChat yet?</div>
+              <div class="message-time">11:54 AM</div>
+            </div>
+          </div>
+        </div>
+        <div class="message-row right">
+          <div class="message-wrap">
+            <div class="sender-name">Friend</div>
+            <div class="message-bubble gold">
+              <div class="message-text">Not yet! What's so special about it?</div>
+              <div class="message-time">11:56 AM</div>
+            </div>
+          </div>
+        </div>
+        <div class="message-row left">
+          <div class="message-wrap">
+            <div class="sender-name">Amina</div>
+            <div class="message-bubble grey">
+              <div class="message-text">It's completely private. No phone number needed - just a Zeus-PIN.</div>
+              <div class="message-time">11:58 AM</div>
+            </div>
+          </div>
+        </div>
+        <div class="message-row right">
+          <div class="message-wrap">
+            <div class="sender-name">Friend</div>
+            <div class="message-bubble gold">
+              <div class="message-text">Wait, no phone number? How do people find you?</div>
+              <div class="message-time">12:00 PM</div>
+            </div>
+          </div>
+        </div>
+        <div class="message-row left">
+          <div class="message-wrap">
+            <div class="sender-name">Amina</div>
+            <div class="message-bubble grey">
+              <div class="message-text">You share your Zeus-PIN instead. It's like a username but more secure.</div>
+              <div class="message-time">12:02 PM</div>
+            </div>
+          </div>
+        </div>
+        <div class="message-row right">
+          <div class="message-wrap">
+            <div class="sender-name">Friend</div>
+            <div class="message-bubble gold">
+              <div class="message-text">And the messages are encrypted?</div>
+              <div class="message-time">12:03 PM</div>
+            </div>
+          </div>
+        </div>
+        <div class="message-row left">
+          <div class="message-wrap">
+            <div class="sender-name">Amina</div>
+            <div class="message-bubble grey">
+              <div class="message-text">End-to-end encrypted. Plus they self-destruct after 5-30 seconds.</div>
+              <div class="message-time">12:05 PM</div>
+            </div>
+          </div>
+        </div>
+        <div class="message-row right">
+          <div class="message-wrap">
+            <div class="sender-name">Friend</div>
+            <div class="message-bubble gold">
+              <div class="message-text">No saving? No screenshots?</div>
+              <div class="message-time">12:06 PM</div>
+            </div>
+          </div>
+        </div>
+        <div class="message-row left">
+          <div class="message-wrap">
+            <div class="sender-name">Amina</div>
+            <div class="message-bubble grey">
+              <div class="message-text">Exactly. And if someone enters the wrong PIN, the message deletes instantly.</div>
+              <div class="message-time">12:08 PM</div>
+            </div>
+          </div>
+        </div>
+        <div class="message-row right">
+          <div class="message-wrap">
+            <div class="sender-name">Friend</div>
+            <div class="message-bubble gold">
+              <div class="message-text">That's incredible! I'm switching today.</div>
+              <div class="message-time">12:10 PM</div>
+            </div>
+          </div>
+        </div>
+        <div class="message-row left">
+          <div class="message-wrap">
+            <div class="sender-name">Amina</div>
+            <div class="message-bubble grey">
+              <div class="message-text">Welcome to Ghost Mode Messaging 😎</div>
+              <div class="message-time">12:11 PM</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -366,6 +500,13 @@
     <a href="registration.html" class="btn">Get Started</a>
     <!-- ✅ Correct: Log in → login.html -->
     <a href="login.html" class="btn">Log in</a>
+  </div>
+  <div class="footer-links" style="text-align:center;padding:16px 0 20px;font-size:13px;">
+    <a href="/terms" style="color:#D4AF37;text-decoration:none;margin:0 8px;opacity:0.7;">Terms</a> |
+    <a href="/privacy" style="color:#D4AF37;text-decoration:none;margin:0 8px;opacity:0.7;">Privacy</a> |
+    <a href="/kyc-policy" style="color:#D4AF37;text-decoration:none;margin:0 8px;opacity:0.7;">KYC Policy</a> |
+    <a href="/ghost-market-policy" style="color:#D4AF37;text-decoration:none;margin:0 8px;opacity:0.7;">Ghost Market Policy</a> |
+    <a href="/refund-policy" style="color:#D4AF37;text-decoration:none;margin:0 8px;opacity:0.7;">Refunds</a>
   </div>
 </body>
 </html>

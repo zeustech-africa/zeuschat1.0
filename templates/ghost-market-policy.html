@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ghost Market Policy - ZeusChat</title>
+    <link rel="stylesheet" href="/static/mobile.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: white;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        .card {
+            background: rgba(17, 17, 17, 0.95);
+            border: 1px solid rgba(212,175,55,0.3);
+            border-radius: 24px;
+            padding: 32px;
+            margin-bottom: 32px;
+        }
+        h1 { color: #D4AF37; margin-bottom: 8px; font-size: 28px; }
+        h2 { color: #D4AF37; margin: 28px 0 12px; font-size: 18px; border-bottom: 1px solid rgba(212,175,55,0.15); padding-bottom: 8px; }
+        p { line-height: 1.7; margin-bottom: 14px; color: rgba(255,255,255,0.82); }
+        ul, ol { margin: 12px 0 12px 24px; color: rgba(255,255,255,0.82); }
+        li { margin: 8px 0; line-height: 1.6; }
+        .last-updated { color: rgba(255,255,255,0.45); font-size: 13px; margin-bottom: 28px; }
+        .back-link {
+            color: #D4AF37;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            opacity: 0.85;
+        }
+        .back-link:hover { opacity: 1; }
+        hr { border: none; border-top: 1px solid rgba(212,175,55,0.2); margin: 28px 0; }
+        .footer-note { font-size: 12px; text-align: center; color: rgba(255,255,255,0.4); }
+        .prohibited-box {
+            background: rgba(231,76,60,0.07);
+            border: 1px solid rgba(231,76,60,0.25);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin: 16px 0;
+        }
+        .prohibited-box h3 { color: #e74c3c; margin: 0 0 10px; font-size: 15px; }
+        .prohibited-box ul { color: rgba(255,255,255,0.78); margin: 0 0 0 20px; }
+        .allowed-box {
+            background: rgba(39,174,96,0.07);
+            border: 1px solid rgba(39,174,96,0.2);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin: 16px 0;
+        }
+        .allowed-box h3 { color: #2ecc71; margin: 0 0 10px; font-size: 15px; }
+        .allowed-box ul { color: rgba(255,255,255,0.78); margin: 0 0 0 20px; }
+        .info-box {
+            background: rgba(212,175,55,0.07);
+            border: 1px solid rgba(212,175,55,0.2);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin: 16px 0;
+            color: rgba(255,255,255,0.82);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .fee-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 14px; }
+        .fee-row:last-child { border-bottom: none; }
+        .fee-label { color: rgba(255,255,255,0.78); }
+        .fee-value { color: #D4AF37; font-weight: 600; }
+        .footer-links {
+            text-align: center;
+            padding: 16px 0;
+            font-size: 13px;
+        }
+        .footer-links a { color: #D4AF37; text-decoration: none; margin: 0 8px; opacity: 0.8; }
+        .footer-links a:hover { opacity: 1; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-link">← Back to ZeusChat</a>
+        <div class="card">
+            <h1>🏪 Ghost Market Rules &amp; Policies</h1>
+            <div class="last-updated">Last Updated: April 5, 2026</div>
+
+            <div class="info-box">
+                <strong>About Ghost Market:</strong> Ghost Market is ZeusChat's anonymous peer-to-peer marketplace. Buyers and sellers transact using their Zeus-PINs, maintaining their Ghost Mode privacy. All sales are protected by our escrow system and physical delivery is conducted through Pudo Lockers for maximum anonymity.
+            </div>
+
+            <h2>1. Who Can Sell on Ghost Market</h2>
+            <p>Selling on Ghost Market is exclusively available to verified ZeusChat subscribers:</p>
+            <ul>
+                <li><strong>Pro subscribers</strong> and <strong>Teams subscribers</strong> may apply to become sellers</li>
+                <li><strong>Free tier users</strong> may browse and buy, but may not list items for sale</li>
+                <li>All seller applications are subject to admin review and approval</li>
+                <li>All sellers must have completed KYC verification</li>
+                <li>ZeusChat reserves the right to revoke seller status for policy violations</li>
+            </ul>
+            <p>To become a seller, upgrade your subscription and submit a seller application from the Ghost Market page.</p>
+
+            <h2>2. Prohibited Items</h2>
+            <p>The following are strictly prohibited on Ghost Market. Listing prohibited items will result in immediate item removal, seller status suspension, and may result in permanent account ban:</p>
+
+            <div class="prohibited-box">
+                <h3>🚫 Absolutely Prohibited</h3>
+                <ul>
+                    <li>Illegal goods, substances, or services of any kind</li>
+                    <li>Drugs, narcotics, controlled substances, or drug paraphernalia</li>
+                    <li>Weapons, firearms, ammunition, or dangerous explosives</li>
+                    <li>Counterfeit, pirated, or fraudulently obtained goods</li>
+                    <li>Stolen property or goods obtained through criminal activity</li>
+                    <li>Child sexual abuse material (CSAM) or any material exploiting minors</li>
+                    <li>Human trafficking services or related materials</li>
+                    <li>Malware, hacking tools, or services designed to compromise computer systems</li>
+                    <li>Personal data, account credentials, or access to other people's accounts</li>
+                    <li>Fraudulent documents, fake IDs, or fake credentials</li>
+                    <li>Currency, banknotes, or financial instruments (unless seller is a licensed financial service provider)</li>
+                    <li>Prescription medicines or unlicensed healthcare products</li>
+                    <li>Endangered species or illegal wildlife products</li>
+                    <li>Tobacco products, e-cigarettes, or alcohol</li>
+                    <li>Adult content, pornographic material, or sexual services</li>
+                </ul>
+            </div>
+
+            <div class="allowed-box">
+                <h3>✅ Examples of Allowed Items</h3>
+                <ul>
+                    <li>Electronics and gadgets (new or secondhand)</li>
+                    <li>Clothing, fashion accessories, and footwear</li>
+                    <li>Books, physical media, and collectibles</li>
+                    <li>Handmade crafts and art</li>
+                    <li>Household items and furniture (deliverable via Pudo)</li>
+                    <li>Digital products and services (within acceptable use)</li>
+                    <li>Sports and outdoor equipment</li>
+                    <li>General merchandise and everyday goods</li>
+                </ul>
+            </div>
+
+            <p>ZeusChat reserves the right to determine, at its sole discretion, whether an item is prohibited. When in doubt, contact us before listing: <strong>marketplace@zeustechafrica.com</strong></p>
+
+            <h2>3. Seller Responsibilities</h2>
+            <p>Approved sellers agree to the following obligations:</p>
+            <ul>
+                <li>List only items you legally own and have the right to sell</li>
+                <li>Provide accurate, honest, and complete descriptions of all items</li>
+                <li>Include clear, real photographs of the actual item being sold</li>
+                <li>Accurately state the condition of the item (new, used, refurbished)</li>
+                <li>Dispatch confirmed orders via Pudo Locker within 3 business days</li>
+                <li>Respond to buyer messages and disputes within 48 hours</li>
+                <li>Not attempt to conduct transactions outside the Ghost Market escrow system</li>
+                <li>Not solicit or share personal contact details with buyers to bypass the marketplace</li>
+            </ul>
+
+            <h2>4. Buyer Protection and Escrow System</h2>
+            <p>Ghost Market uses a built-in escrow payment system to protect buyers from fraud:</p>
+            <ol>
+                <li><strong>Buyer pays into escrow</strong> — Payment is held securely by ZeusChat and not released to the seller until delivery is confirmed.</li>
+                <li><strong>Seller dispatches item</strong> — The seller drops the item at a Pudo Locker and provides the collection PIN to the buyer via the marketplace.</li>
+                <li><strong>Buyer collects item</strong> — Buyer collects from the Pudo Locker and confirms receipt in the app within 5 days of the dispatch notification.</li>
+                <li><strong>Payment released</strong> — Once the buyer confirms receipt, the escrowed payment is released to the seller.</li>
+                <li><strong>Auto-release</strong> — If the buyer does not confirm or dispute within 5 days of the dispatch notification, payment is automatically released to the seller.</li>
+            </ol>
+
+            <p><strong>Buyer Guarantee:</strong> If an item is significantly not as described or was not received, buyers may open a dispute within the 5-day window to trigger a refund review. See Section 5 for dispute resolution.</p>
+
+            <h2>5. Dispute Resolution</h2>
+            <p>In the event of a dispute between buyer and seller:</p>
+            <ol>
+                <li>The buyer opens a dispute through the Ghost Market order page within 5 days of the dispatch notification</li>
+                <li>The seller is notified and has 48 hours to respond with evidence (photos, tracking, etc.)</li>
+                <li>A ZeusChat marketplace moderator reviews the dispute within 3–5 business days</li>
+                <li>The moderator issues a decision: full refund to buyer, partial refund, or payment release to seller</li>
+                <li>The decision of the moderator is final</li>
+            </ol>
+            <p>Grounds for a successful buyer dispute include:</p>
+            <ul>
+                <li>Item significantly not as described in the listing</li>
+                <li>Item never received and seller cannot provide proof of dispatch</li>
+                <li>Item received was damaged, broken, or unusable</li>
+                <li>Counterfeit or fraudulent item received</li>
+            </ul>
+
+            <h2>6. Pudo Locker Delivery</h2>
+            <p>All Ghost Market physical deliveries must be conducted via <strong>Pudo Locker</strong> to maintain buyer and seller anonymity:</p>
+            <ul>
+                <li>Sellers must use the Pudo network to drop off sold items</li>
+                <li>Direct hand-to-hand deliveries or courier deliveries requiring personal details are not permitted through Ghost Market</li>
+                <li>The cost of Pudo delivery is the responsibility of the seller unless otherwise stated in the listing</li>
+                <li>Buyers collect from any Pudo Locker location using the collection PIN provided by the seller</li>
+                <li>Sellers must provide Pudo tracking/dispatch confirmation within 3 business days of order confirmation</li>
+            </ul>
+            <p>For digital goods, delivery is by electronic means within the app messaging system.</p>
+
+            <h2>7. Fees and Commission</h2>
+            <div class="info-box">
+                <div class="fee-row">
+                    <span class="fee-label">ZeusChat commission on sales</span>
+                    <span class="fee-value">0%</span>
+                </div>
+                <div class="fee-row">
+                    <span class="fee-label">Listing fee</span>
+                    <span class="fee-value">Free</span>
+                </div>
+                <div class="fee-row">
+                    <span class="fee-label">Escrow fee</span>
+                    <span class="fee-value">Free</span>
+                </div>
+                <div class="fee-row">
+                    <span class="fee-label">Pudo Locker delivery fee (seller responsibility)</span>
+                    <span class="fee-value">As per Pudo pricing</span>
+                </div>
+                <div class="fee-row">
+                    <span class="fee-label">Payment processing fee (PayFast)</span>
+                    <span class="fee-value">As per PayFast rates</span>
+                </div>
+            </div>
+            <p>ZeusChat does not charge any commission on Ghost Market sales. Sellers receive 100% of the sale price (minus Pudo and PayFast processing fees).</p>
+
+            <h2>8. Anonymity Rules</h2>
+            <p>Ghost Market is designed to protect the anonymity of both buyers and sellers:</p>
+            <ul>
+                <li>Users are identified only by their Zeus-PIN during marketplace transactions</li>
+                <li>You must not ask for, share, or attempt to discover the personal identity of other marketplace participants</li>
+                <li>Reverse-engineering a user's identity from available information is a violation of these rules</li>
+                <li>Sharing another user's identity, Zeus-PIN, or transaction details outside the platform is prohibited</li>
+                <li>Pudo Locker is used specifically to avoid the exchange of physical addresses</li>
+            </ul>
+
+            <h2>9. Policy Enforcement</h2>
+            <p>Violations of Ghost Market policies may result in:</p>
+            <ul>
+                <li>Immediate removal of the offending listing</li>
+                <li>Warning issued to the seller's account</li>
+                <li>Temporary suspension of seller privileges</li>
+                <li>Permanent revocation of seller status</li>
+                <li>Account suspension or permanent ban</li>
+                <li>Reporting to relevant law enforcement authorities (for illegal items)</li>
+            </ul>
+
+            <h2>10. Contact</h2>
+            <p>For Ghost Market policy queries, reports of prohibited listings, or seller applications:<br>
+            <strong>Email:</strong> marketplace@zeustechafrica.com</p>
+
+            <hr>
+            <p class="footer-note">Ghost Market is a service of ZeusTech Africa (Pty) Ltd. ZeusChat is not a party to transactions between buyers and sellers and is not responsible for the quality, safety, legality, or delivery of listed items beyond what is expressly provided under this Policy.</p>
+        </div>
+
+        <div class="footer-links">
+            <a href="/terms">Terms</a> |
+            <a href="/privacy">Privacy</a> |
+            <a href="/kyc-policy">KYC Policy</a> |
+            <a href="/ghost-market-policy">Ghost Market Policy</a> |
+            <a href="/refund-policy">Refunds</a> |
+            <a href="/cookie-policy">Cookies</a> |
+            <a href="/acceptable-use">Acceptable Use</a>
+        </div>
+    </div>
+</body>
+</html>

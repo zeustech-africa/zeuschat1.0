@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
     <title>Contact Profile - ZeusChat</title>
     <style>
         * {
@@ -143,7 +143,95 @@
         .back-link a:hover {
             text-decoration: underline;
         }
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+    body {
+        padding: 16px;
+    }
+
+    .container, .card, .main-content {
+        padding: 20px 16px;
+        margin: 0;
+        width: 100%;
+        border-radius: 24px;
+    }
+
+    h1 {
+        font-size: 28px;
+    }
+
+    h2 {
+        font-size: 22px;
+    }
+
+    button, .btn-primary, .btn-secondary {
+        padding: 14px 20px;
+        font-size: 16px;
+    }
+
+    input, textarea, select {
+        padding: 14px;
+        font-size: 16px;
+    }
+
+    .sidebar {
+        position: fixed;
+        left: -280px;
+        transition: left 0.3s;
+        z-index: 1000;
+    }
+
+    .sidebar.open {
+        left: 0;
+    }
+
+    .menu-toggle {
+        display: block;
+        position: fixed;
+        top: 16px;
+        left: 16px;
+        z-index: 1001;
+        background: #D4AF37;
+        border: none;
+        border-radius: 8px;
+        padding: 10px;
+        cursor: pointer;
+    }
+
+    .main-content {
+        margin-left: 0;
+        padding: 60px 16px 20px;
+    }
+
+    .admin-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .feature-grid, .pricing-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .chat-container {
+        flex-direction: column;
+    }
+
+    .message {
+        max-width: 85%;
+    }
+
+    body {
+        font-size: 14px;
+    }
+
+    button, a, .clickable {
+        min-height: 44px;
+    }
+}
     </style>
+  <link rel="stylesheet" href="/static/mobile.css">
 </head>
 <body>
     <video autoplay muted loop playsinline class="video-bg">

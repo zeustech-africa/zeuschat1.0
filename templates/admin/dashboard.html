@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
     <title>ZeusChat Admin Control Room</title>
     <style>
         * {
@@ -465,7 +465,95 @@
                 max-height: 300px;
             }
         }
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+    body {
+        padding: 16px;
+    }
+
+    .container, .card, .main-content {
+        padding: 20px 16px;
+        margin: 0;
+        width: 100%;
+        border-radius: 24px;
+    }
+
+    h1 {
+        font-size: 28px;
+    }
+
+    h2 {
+        font-size: 22px;
+    }
+
+    button, .btn-primary, .btn-secondary {
+        padding: 14px 20px;
+        font-size: 16px;
+    }
+
+    input, textarea, select {
+        padding: 14px;
+        font-size: 16px;
+    }
+
+    .sidebar {
+        position: fixed;
+        left: -280px;
+        transition: left 0.3s;
+        z-index: 1000;
+    }
+
+    .sidebar.open {
+        left: 0;
+    }
+
+    .menu-toggle {
+        display: block;
+        position: fixed;
+        top: 16px;
+        left: 16px;
+        z-index: 1001;
+        background: #D4AF37;
+        border: none;
+        border-radius: 8px;
+        padding: 10px;
+        cursor: pointer;
+    }
+
+    .main-content {
+        margin-left: 0;
+        padding: 60px 16px 20px;
+    }
+
+    .admin-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .feature-grid, .pricing-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .chat-container {
+        flex-direction: column;
+    }
+
+    .message {
+        max-width: 85%;
+    }
+
+    body {
+        font-size: 14px;
+    }
+
+    button, a, .clickable {
+        min-height: 44px;
+    }
+}
     </style>
+  <link rel="stylesheet" href="/static/mobile.css">
 </head>
 <body>
     <div class="sidebar">
@@ -481,6 +569,7 @@
             <div class="nav-item" data-tab="payments">💰 Payments <span class="nav-badge" id="pendingPaymentsBadge" style="display:none">0</span></div>
             <div class="nav-item" data-tab="messages">💬 Messages <span class="nav-badge" id="unreadMessagesBadge" style="display:none">0</span></div>
             <div class="nav-item" data-tab="subscriptions">📅 Subscriptions</div>
+            <div class="nav-item" data-tab="ghostMarket">🏪 Ghost Market <span class="nav-badge" id="ghostMarketBadge" style="display:none">0</span></div>
         </div>
         <button class="logout-btn" onclick="logout()">🚪 Logout</button>
     </div>
@@ -573,6 +662,20 @@
                 <p>Monitor free, pro, and teams billing lifecycle</p>
             </div>
             <div id="subscriptionsList"><div class="loading">Loading subscriptions...</div></div>
+        </div>
+
+        <!-- Ghost Market Tab -->
+        <div id="tab-ghostMarket" class="tab-content">
+            <div class="page-header">
+                <h1>🏪 Ghost Market Admin</h1>
+                <p>Review seller applications and item listings before they go live</p>
+            </div>
+
+            <h3 style="margin: 20px 0 10px;">Pending Seller Applications</h3>
+            <div id="ghostMarketSellersList"><div class="loading">Loading...</div></div>
+
+            <h3 style="margin: 30px 0 10px;">Pending Items for Approval</h3>
+            <div id="ghostMarketList"><div class="loading">Loading...</div></div>
         </div>
     </div>
 
@@ -1068,8 +1171,132 @@ Message Stats: ${data.message_stats.total} total / ${data.message_stats.user_mes
                 else if (tab === 'payments') loadPendingPayments();
                 else if (tab === 'messages') loadMessagingUsers();
                 else if (tab === 'subscriptions') loadSubscriptions();
+                else if (tab === 'ghostMarket') { loadGhostMarketPending(); loadGhostMarketSellers(); }
             });
         });
+
+        // Ghost Market Admin Functions
+        async function loadGhostMarketPending() {
+            document.getElementById('ghostMarketList').innerHTML = '<div class="loading">Loading...</div>';
+            try {
+                const response = await fetch('/admin/api/ghost-market/pending-items');
+                const data = await response.json();
+                if (data.success && data.items.length > 0) {
+                    const itemsHtml = data.items.map(item => {
+                        const imgHtml = item.images
+                            ? '<img src="/' + escapeHtml(item.images.split(',')[0]) + '" style="width:150px;border-radius:8px;">'
+                            : '<div style="width:150px;height:150px;background:#f1f5f9;border-radius:8px;display:flex;align-items:center;justify-content:center;">📦</div>';
+                        return '<div class="ghost-item-card" style="background:white;border-radius:12px;padding:20px;margin-bottom:20px;">'
+                            + '<div style="display:flex;gap:20px;flex-wrap:wrap;">'
+                            + '<div>' + imgHtml + '</div>'
+                            + '<div style="flex:1;">'
+                            + '<h3>' + escapeHtml(item.title) + '</h3>'
+                            + '<p>Price: R' + item.price + '</p>'
+                            + '<p>Seller PIN: ' + escapeHtml(item.seller_pin) + '</p>'
+                            + '<p>Name: ' + escapeHtml(item.seller_name) + '</p>'
+                            + '<p>Store: ' + escapeHtml(item.store_name) + '</p>'
+                            + '<p>Category: ' + escapeHtml(item.category) + ' | Condition: ' + escapeHtml(item.condition) + '</p>'
+                            + '<p>Description: ' + escapeHtml(item.description) + '</p>'
+                            + '</div></div>'
+                            + '<div style="margin-top:15px;display:flex;gap:10px;">'
+                            + '<textarea id="itemNotes_' + item.id + '" placeholder="Admin notes (optional)" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;"></textarea>'
+                            + '<button class="btn-approve" onclick="approveGhostItem(' + item.id + ')">✓ Approve &amp; Post</button>'
+                            + '<button class="btn-reject" onclick="rejectGhostItem(' + item.id + ')">✗ Reject</button>'
+                            + '</div></div>';
+                    }).join('');
+                    document.getElementById('ghostMarketList').innerHTML = itemsHtml;
+                } else {
+                    document.getElementById('ghostMarketList').innerHTML = '<div style="padding:40px;text-align:center;">No pending items</div>';
+                }
+            } catch (err) {
+                document.getElementById('ghostMarketList').innerHTML = '<div style="padding:40px;text-align:center;">Error loading items</div>';
+            }
+        }
+
+        async function loadGhostMarketSellers() {
+            document.getElementById('ghostMarketSellersList').innerHTML = '<div class="loading">Loading...</div>';
+            try {
+                const response = await fetch('/admin/api/ghost-market/seller-applications');
+                const data = await response.json();
+                if (data.success && data.applications.length > 0) {
+                    const sellersHtml = data.applications.map(app => {
+                        return '<div style="background:white;border-radius:12px;padding:20px;margin-bottom:20px;">'
+                            + '<p><strong>' + escapeHtml(app.full_name) + '</strong> (' + escapeHtml(app.zeus_pin) + ')</p>'
+                            + '<p>Email: ' + escapeHtml(app.email) + '</p>'
+                            + '<p>Store: ' + escapeHtml(app.store_name) + '</p>'
+                            + '<p>Description: ' + escapeHtml(app.store_description) + '</p>'
+                            + '<div style="margin-top:15px;display:flex;gap:10px;">'
+                            + '<textarea id="sellerNotes_' + app.user_id + '" placeholder="Admin notes" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;"></textarea>'
+                            + '<button class="btn-approve" onclick="approveGhostSeller(' + app.user_id + ')">✓ Approve Seller</button>'
+                            + '<button class="btn-reject" onclick="rejectGhostSeller(' + app.user_id + ')">✗ Reject</button>'
+                            + '</div></div>';
+                    }).join('');
+                    document.getElementById('ghostMarketSellersList').innerHTML = sellersHtml;
+                } else {
+                    document.getElementById('ghostMarketSellersList').innerHTML = '<div style="padding:40px;text-align:center;">No pending seller applications</div>';
+                }
+            } catch (err) {
+                document.getElementById('ghostMarketSellersList').innerHTML = '<div style="padding:40px;text-align:center;">Error loading applications</div>';
+            }
+        }
+
+        async function approveGhostItem(itemId) {
+            const notesEl = document.getElementById('itemNotes_' + itemId);
+            const notes = notesEl ? notesEl.value : '';
+            if (!confirm('Approve this item for Ghost Market?')) return;
+            try {
+                const response = await fetch('/admin/api/ghost-market/items/' + itemId + '/approve', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ notes })
+                });
+                if (response.ok) { loadGhostMarketPending(); }
+                else { alert('Failed to approve item'); }
+            } catch (err) { alert('Network error'); }
+        }
+
+        async function rejectGhostItem(itemId) {
+            const reason = prompt('Enter rejection reason:');
+            if (!reason) return;
+            try {
+                const response = await fetch('/admin/api/ghost-market/items/' + itemId + '/reject', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason })
+                });
+                if (response.ok) { loadGhostMarketPending(); }
+                else { alert('Failed to reject item'); }
+            } catch (err) { alert('Network error'); }
+        }
+
+        async function approveGhostSeller(userId) {
+            const notesEl = document.getElementById('sellerNotes_' + userId);
+            const notes = notesEl ? notesEl.value : '';
+            if (!confirm('Approve this seller application?')) return;
+            try {
+                const response = await fetch('/admin/api/ghost-market/sellers/' + userId + '/approve', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ notes })
+                });
+                if (response.ok) { loadGhostMarketSellers(); }
+                else { alert('Failed to approve seller'); }
+            } catch (err) { alert('Network error'); }
+        }
+
+        async function rejectGhostSeller(userId) {
+            const reason = prompt('Enter rejection reason:');
+            if (!reason) return;
+            try {
+                const response = await fetch('/admin/api/ghost-market/sellers/' + userId + '/reject', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason })
+                });
+                if (response.ok) { loadGhostMarketSellers(); }
+                else { alert('Failed to reject seller'); }
+            } catch (err) { alert('Network error'); }
+        }
 
         // Filter listeners
         document.getElementById('userStatusFilter').addEventListener('change', loadUsers);
@@ -1087,6 +1314,31 @@ Message Stats: ${data.message_stats.total} total / ${data.message_stats.user_mes
             }
         }
         init();
+
+        // Mobile menu toggle
+        function toggleMobileMenu() {
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar) {
+                sidebar.classList.toggle('open');
+            }
+        }
+
+        // Add menu button for mobile
+        if (window.innerWidth <= 768) {
+            const menuBtn = document.createElement('button');
+            menuBtn.innerHTML = '☰';
+            menuBtn.className = 'menu-toggle';
+            menuBtn.onclick = toggleMobileMenu;
+            document.body.insertBefore(menuBtn, document.body.firstChild);
+
+            // Close menu when clicking outside
+            document.addEventListener('click', function(e) {
+                const sidebar = document.querySelector('.sidebar');
+                if (sidebar && sidebar.classList.contains('open') && !sidebar.contains(e.target) && e.target !== menuBtn) {
+                    sidebar.classList.remove('open');
+                }
+            });
+        }
     </script>
 </body>
 </html>

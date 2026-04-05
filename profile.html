@@ -2,7 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#667eea">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ZeusChat">
+  <link rel="apple-touch-icon" href="/zeuschat-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/zeuschat-icon.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/zeuschat-icon.png">
   <title>Profile — ZeusChat</title>
   <style>
     * {
@@ -233,7 +241,173 @@
       from { opacity: 0; transform: scale(0.95); }
       to { opacity: 1; transform: scale(1); }
     }
+
+    .mobile-profile-header,
+    .mobile-settings-section {
+      display: none;
+    }
+
+    @media (max-width: 768px) {
+      .mobile-profile-header {
+        display: block;
+        text-align: center;
+        margin-bottom: 20px;
+      }
+
+      .profile-avatar-large {
+        position: relative;
+        width: 96px;
+        height: 96px;
+        margin: 0 auto 12px;
+      }
+
+      .profile-avatar-large img {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #d4af37;
+      }
+
+      .change-avatar-btn {
+        position: absolute;
+        right: -4px;
+        bottom: -4px;
+        border: none;
+        background: #d4af37;
+        color: #000;
+        border-radius: 50%;
+        width: 34px;
+        height: 34px;
+        cursor: pointer;
+      }
+
+      .profile-pin {
+        color: #cbd5e1;
+        font-size: 12px;
+      }
+
+      .plan-badge-mobile {
+        display: inline-block;
+        margin-top: 8px;
+        font-size: 12px;
+        padding: 4px 10px;
+        background: rgba(212,175,55,0.2);
+        border-radius: 12px;
+      }
+
+      .mobile-settings-section {
+        display: block;
+        margin-top: 16px;
+      }
+
+      .setting-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #1a1a1a;
+        border: 1px solid #333;
+        border-radius: 12px;
+        padding: 12px 14px;
+        margin-bottom: 10px;
+        min-height: 44px;
+        cursor: pointer;
+      }
+
+      .setting-name {
+        flex: 1;
+        margin-left: 10px;
+      }
+    }
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+    body {
+        padding: 16px;
+    }
+
+    .container, .card, .main-content {
+        padding: 20px 16px;
+        margin: 0;
+        width: 100%;
+        border-radius: 24px;
+    }
+
+    h1 {
+        font-size: 28px;
+    }
+
+    h2 {
+        font-size: 22px;
+    }
+
+    button, .btn-primary, .btn-secondary {
+        padding: 14px 20px;
+        font-size: 16px;
+    }
+
+    input, textarea, select {
+        padding: 14px;
+        font-size: 16px;
+    }
+
+    .sidebar {
+        position: fixed;
+        left: -280px;
+        transition: left 0.3s;
+        z-index: 1000;
+    }
+
+    .sidebar.open {
+        left: 0;
+    }
+
+    .menu-toggle {
+        display: block;
+        position: fixed;
+        top: 16px;
+        left: 16px;
+        z-index: 1001;
+        background: #D4AF37;
+        border: none;
+        border-radius: 8px;
+        padding: 10px;
+        cursor: pointer;
+    }
+
+    .main-content {
+        margin-left: 0;
+        padding: 60px 16px 20px;
+    }
+
+    .admin-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .feature-grid, .pricing-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .chat-container {
+        flex-direction: column;
+    }
+
+    .message {
+        max-width: 85%;
+    }
+
+    body {
+        font-size: 14px;
+    }
+
+    button, a, .clickable {
+        min-height: 44px;
+    }
+}
   </style>
+  <link rel="stylesheet" href="/static/mobile.css">
 </head>
 <body>
   <video class="video-bg" autoplay muted loop>
@@ -249,6 +423,17 @@
 
   <div class="container">
     <div class="box">
+      <!-- Mobile Profile Header -->
+      <div class="mobile-profile-header mobile-only">
+        <div class="profile-avatar-large">
+          <img src="/zeuschat-icon.png" alt="Profile" id="profileAvatar">
+          <button class="change-avatar-btn" id="changeAvatarBtn">📷</button>
+        </div>
+        <h2 id="profileName">User Name</h2>
+        <p class="profile-pin" id="profilePin">ZT-XXXX-XXXX</p>
+        <div class="plan-badge-mobile" id="planBadge">Free Plan</div>
+      </div>
+
       <div class="box-title">Profile</div>
       
       <!-- Profile Picture Section -->
@@ -291,6 +476,25 @@
         ✓ Profile picture helps other users recognize you<br>
         ✓ Your display name will be shown in conversations<br>
         ✓ Your Zeus-PIN is your unique identifier (copy-paste to share)
+      </div>
+
+      <!-- Mobile Settings Sections -->
+      <div class="mobile-settings-section mobile-only">
+        <div class="setting-item" onclick="navigateTo('/subscription')">
+          <span class="setting-icon">💎</span>
+          <span class="setting-name">Upgrade to Pro</span>
+          <span class="setting-arrow">→</span>
+        </div>
+        <div class="setting-item" onclick="navigateTo('/settings.html')">
+          <span class="setting-icon">⚙️</span>
+          <span class="setting-name">Settings</span>
+          <span class="setting-arrow">→</span>
+        </div>
+        <div class="setting-item" onclick="logout()">
+          <span class="setting-icon">🚪</span>
+          <span class="setting-name">Logout</span>
+          <span class="setting-arrow">→</span>
+        </div>
       </div>
     </div>
   </div>
@@ -355,9 +559,13 @@
 
       if (userPin) {
         document.getElementById('zeusPinDisplay').textContent = userPin;
+        const profilePin = document.getElementById('profilePin');
+        if (profilePin) profilePin.textContent = userPin;
       }
       if (userName) {
         document.getElementById('displayName').value = userName;
+        const profileName = document.getElementById('profileName');
+        if (profileName) profileName.textContent = userName;
       }
       if (userAbout) {
         document.getElementById('about').value = userAbout;
@@ -444,10 +652,25 @@
         img.src = picData;
         img.style.display = 'block';
         placeholder.style.display = 'none';
+        const mobileAvatar = document.getElementById('profileAvatar');
+        if (mobileAvatar) mobileAvatar.src = picData;
       } else {
         img.style.display = 'none';
         placeholder.style.display = 'block';
       }
+    }
+
+    function navigateTo(path) {
+      window.location.href = path;
+    }
+
+    function logout() {
+      sessionStorage.removeItem('user_logged_in');
+      sessionStorage.removeItem('user_zeus_pin');
+      sessionStorage.removeItem('user_full_name');
+      sessionStorage.removeItem('user_profile_pic');
+      sessionStorage.removeItem('user_about');
+      window.location.href = '/login.html';
     }
 
     async function saveProfile() {
@@ -631,7 +854,26 @@
         }
         document.getElementById('picUpload').click();
       });
+
+      document.getElementById('changeAvatarBtn')?.addEventListener('click', function () {
+        document.getElementById('picUpload')?.click();
+      });
     });
+  </script>
+
+  <script>
+  // Register Service Worker
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/static/sw.js')
+        .then(registration => {
+          console.log('SW registered:', registration.scope);
+        })
+        .catch(error => {
+          console.log('SW registration failed:', error);
+        });
+    });
+  }
   </script>
 </body>
 </html>

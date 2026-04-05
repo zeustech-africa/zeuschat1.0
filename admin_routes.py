@@ -1193,3 +1193,259 @@ def approve_profile_pic_change(request_id):
     )
 
     return jsonify({'success': True, 'message': 'Profile picture change approved'}), 200
+
+
+# ============================================
+# GHOST MARKET ADMIN ENDPOINTS
+# ============================================
+
+@admin_bp.route('/api/ghost-market/pending-items', methods=['GET'])
+@admin_required
+def admin_pending_items():
+    """Get all items pending admin approval"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT gmi.*, u.zeus_pin as seller_pin, u.email, u.full_name,
+                   gms.store_name
+            FROM ghost_market_items gmi
+            JOIN ghost_market_sellers gms ON gmi.seller_id = gms.user_id
+            JOIN users u ON gms.user_id = u.id
+            WHERE gmi.status = 'pending_approval'
+            ORDER BY gmi.created_at ASC
+        ''')
+        items = cursor.fetchall()
+
+    return jsonify({
+        'success': True,
+        'items': [
+            {
+                'id': item['id'],
+                'title': item['title'],
+                'description': item['description'],
+                'price': item['price'],
+                'images': item['images'],
+                'category': item['category'],
+                'condition': item['condition'],
+                'seller_pin': item['seller_pin'],
+                'seller_name': item['full_name'],
+                'store_name': item['store_name'],
+                'created_at': item['created_at']
+            }
+            for item in items
+        ]
+    })
+
+
+@admin_bp.route('/api/ghost-market/items/<int:item_id>/approve', methods=['PUT'])
+@admin_required
+def admin_approve_item(item_id):
+    """Admin approves item to appear in Ghost Market"""
+    admin_id = session['admin_id']
+    data = request.get_json() or {}
+    notes = data.get('notes', '')
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            UPDATE ghost_market_items
+            SET status = 'approved',
+                approved_by = ?,
+                approved_at = CURRENT_TIMESTAMP,
+                admin_notes = ?
+            WHERE id = ?
+        ''', (admin_id, notes, item_id))
+
+        cursor.execute(
+            'SELECT seller_id, title FROM ghost_market_items WHERE id = ?',
+            (item_id,)
+        )
+        item = cursor.fetchone()
+
+        if item:
+            cursor.execute('''
+                INSERT INTO admin_messages (user_id, message, is_from_admin, admin_id)
+                VALUES (?, ?, 1, ?)
+            ''', (
+                item['seller_id'],
+                '✅ Your item "{}" has been approved and is now live in Ghost Market!'.format(item['title']),
+                admin_id
+            ))
+
+        conn.commit()
+
+    log_admin_action(
+        admin_id,
+        'ghost_market_item_approved',
+        target_user_id=item['seller_id'] if item else None,
+        details={'item_id': item_id, 'notes': notes},
+        ip_address=request.remote_addr
+    )
+
+    return jsonify({'success': True, 'message': 'Item approved and live'})
+
+
+@admin_bp.route('/api/ghost-market/items/<int:item_id>/reject', methods=['PUT'])
+@admin_required
+def admin_reject_item(item_id):
+    """Admin rejects item with reason"""
+    admin_id = session['admin_id']
+    data = request.get_json() or {}
+    reason = data.get('reason', 'No reason provided')
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            UPDATE ghost_market_items
+            SET status = 'rejected',
+                approved_by = ?,
+                approved_at = CURRENT_TIMESTAMP,
+                rejection_reason = ?
+            WHERE id = ?
+        ''', (admin_id, reason, item_id))
+
+        cursor.execute(
+            'SELECT seller_id, title FROM ghost_market_items WHERE id = ?',
+            (item_id,)
+        )
+        item = cursor.fetchone()
+
+        if item:
+            cursor.execute('''
+                INSERT INTO admin_messages (user_id, message, is_from_admin, admin_id)
+                VALUES (?, ?, 1, ?)
+            ''', (
+                item['seller_id'],
+                '❌ Your item "{}" was rejected.\nReason: {}'.format(item['title'], reason),
+                admin_id
+            ))
+
+        conn.commit()
+
+    log_admin_action(
+        admin_id,
+        'ghost_market_item_rejected',
+        target_user_id=item['seller_id'] if item else None,
+        details={'item_id': item_id, 'reason': reason},
+        ip_address=request.remote_addr
+    )
+
+    return jsonify({'success': True, 'message': 'Item rejected'})
+
+
+@admin_bp.route('/api/ghost-market/seller-applications', methods=['GET'])
+@admin_required
+def admin_seller_applications():
+    """Get all pending seller applications"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT gms.*, u.zeus_pin, u.email, u.full_name
+            FROM ghost_market_sellers gms
+            JOIN users u ON gms.user_id = u.id
+            WHERE gms.application_status = 'pending'
+            ORDER BY gms.created_at ASC
+        ''')
+        applications = cursor.fetchall()
+
+    return jsonify({
+        'success': True,
+        'applications': [
+            {
+                'id': app['id'],
+                'user_id': app['user_id'],
+                'zeus_pin': app['zeus_pin'],
+                'full_name': app['full_name'],
+                'email': app['email'],
+                'store_name': app['store_name'],
+                'store_description': app['store_description'],
+                'created_at': app['created_at']
+            }
+            for app in applications
+        ]
+    })
+
+
+@admin_bp.route('/api/ghost-market/sellers/<int:user_id>/approve', methods=['PUT'])
+@admin_required
+def admin_approve_seller(user_id):
+    """Admin approves seller application"""
+    admin_id = session['admin_id']
+    data = request.get_json() or {}
+    notes = data.get('notes', '')
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            UPDATE ghost_market_sellers
+            SET application_status = 'approved',
+                approved_by = ?,
+                approved_at = CURRENT_TIMESTAMP
+            WHERE user_id = ?
+        ''', (admin_id, user_id))
+
+        cursor.execute('''
+            INSERT INTO admin_messages (user_id, message, is_from_admin, admin_id)
+            VALUES (?, ?, 1, ?)
+        ''', (
+            user_id,
+            '✅ Your seller application has been approved! You can now list items in Ghost Market.\n\nNotes: {}'.format(notes),
+            admin_id
+        ))
+
+        conn.commit()
+
+    log_admin_action(
+        admin_id,
+        'ghost_market_seller_approved',
+        target_user_id=user_id,
+        details={'notes': notes},
+        ip_address=request.remote_addr
+    )
+
+    return jsonify({'success': True, 'message': 'Seller approved'})
+
+
+@admin_bp.route('/api/ghost-market/sellers/<int:user_id>/reject', methods=['PUT'])
+@admin_required
+def admin_reject_seller(user_id):
+    """Admin rejects seller application"""
+    admin_id = session['admin_id']
+    data = request.get_json() or {}
+    reason = data.get('reason', 'No reason provided')
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            UPDATE ghost_market_sellers
+            SET application_status = 'rejected',
+                approved_by = ?,
+                approved_at = CURRENT_TIMESTAMP,
+                rejection_reason = ?
+            WHERE user_id = ?
+        ''', (admin_id, reason, user_id))
+
+        cursor.execute('''
+            INSERT INTO admin_messages (user_id, message, is_from_admin, admin_id)
+            VALUES (?, ?, 1, ?)
+        ''', (
+            user_id,
+            '❌ Your seller application was rejected.\nReason: {}'.format(reason),
+            admin_id
+        ))
+
+        conn.commit()
+
+    log_admin_action(
+        admin_id,
+        'ghost_market_seller_rejected',
+        target_user_id=user_id,
+        details={'reason': reason},
+        ip_address=request.remote_addr
+    )
+
+    return jsonify({'success': True, 'message': 'Seller rejected'})

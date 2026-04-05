@@ -1211,6 +1211,131 @@ def run_admin_migrations():
         ''')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON push_subscriptions(user_id)')
 
+        # ============================================
+        # GHOST MARKET TABLES
+        # ============================================
+
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS ghost_market_sellers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL UNIQUE,
+            application_status TEXT DEFAULT 'pending',
+            store_name TEXT,
+            store_description TEXT,
+            approved_by INTEGER,
+            approved_at TIMESTAMP,
+            rejection_reason TEXT,
+            total_sales INTEGER DEFAULT 0,
+            total_earnings REAL DEFAULT 0,
+            rating REAL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (approved_by) REFERENCES admin_users(id)
+        )
+        ''')
+
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS ghost_market_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            seller_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            description TEXT,
+            price REAL NOT NULL,
+            currency TEXT DEFAULT 'ZAR',
+            images TEXT,
+            category TEXT,
+            condition TEXT,
+            status TEXT DEFAULT 'pending_approval',
+            admin_notes TEXT,
+            approved_by INTEGER,
+            approved_at TIMESTAMP,
+            rejection_reason TEXT,
+            view_count INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP,
+            FOREIGN KEY (seller_id) REFERENCES ghost_market_sellers(user_id),
+            FOREIGN KEY (approved_by) REFERENCES admin_users(id)
+        )
+        ''')
+
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS ghost_market_orders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            item_id INTEGER NOT NULL,
+            buyer_id INTEGER NOT NULL,
+            seller_id INTEGER NOT NULL,
+            amount REAL NOT NULL,
+            status TEXT DEFAULT 'pending_payment',
+            pudo_locker_location TEXT,
+            pudo_pickup_code TEXT,
+            buyer_pin_half TEXT,
+            seller_pin_half TEXT,
+            tracking_number TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            paid_at TIMESTAMP,
+            shipped_at TIMESTAMP,
+            delivered_at TIMESTAMP,
+            completed_at TIMESTAMP,
+            cancelled_at TIMESTAMP,
+            FOREIGN KEY (item_id) REFERENCES ghost_market_items(id),
+            FOREIGN KEY (buyer_id) REFERENCES users(id),
+            FOREIGN KEY (seller_id) REFERENCES ghost_market_sellers(user_id)
+        )
+        ''')
+
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS ghost_market_escrow (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id INTEGER NOT NULL,
+            amount REAL NOT NULL,
+            status TEXT DEFAULT 'held',
+            held_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            released_at TIMESTAMP,
+            refunded_at TIMESTAMP,
+            FOREIGN KEY (order_id) REFERENCES ghost_market_orders(id)
+        )
+        ''')
+
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS ghost_market_disputes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id INTEGER NOT NULL,
+            raised_by INTEGER NOT NULL,
+            reason TEXT NOT NULL,
+            evidence TEXT,
+            status TEXT DEFAULT 'open',
+            resolution TEXT,
+            resolved_by INTEGER,
+            resolved_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (order_id) REFERENCES ghost_market_orders(id),
+            FOREIGN KEY (raised_by) REFERENCES users(id),
+            FOREIGN KEY (resolved_by) REFERENCES admin_users(id)
+        )
+        ''')
+
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS ghost_market_reviews (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            item_id INTEGER NOT NULL,
+            buyer_id INTEGER NOT NULL,
+            seller_id INTEGER NOT NULL,
+            rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+            comment TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (item_id) REFERENCES ghost_market_items(id),
+            FOREIGN KEY (buyer_id) REFERENCES users(id),
+            FOREIGN KEY (seller_id) REFERENCES ghost_market_sellers(user_id),
+            UNIQUE(item_id, buyer_id)
+        )
+        ''')
+
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_gmi_status ON ghost_market_items(status)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_gmi_category ON ghost_market_items(category)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_gmo_status ON ghost_market_orders(status)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_gmo_buyer ON ghost_market_orders(buyer_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_gmo_seller ON ghost_market_orders(seller_id)')
+
         conn.commit()
         print("✅ Admin migrations completed successfully!")
 
@@ -5752,6 +5877,278 @@ def get_queued_messages():
     except Exception as e:
         print(f"❌ get_queued_messages error: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+# ============================================
+# GHOST MARKET - USER ENDPOINTS
+# ============================================
+
+@app.route('/ghost-market')
+def ghost_market():
+    """Ghost Market main page"""
+    if 'user_id' not in session:
+        return redirect('/login.html')
+    return render_template('ghost-market.html')
+
+@app.route('/ghost-market/sell')
+def ghost_market_sell():
+    """Sell item page"""
+    if 'user_id' not in session:
+        return redirect('/login.html')
+    return render_template('ghost-market-sell.html')
+
+@app.route('/ghost-market/apply-seller')
+def ghost_market_apply_seller():
+    """Apply to become a seller page (redirect to sell page with apply mode)"""
+    if 'user_id' not in session:
+        return redirect('/login.html')
+    return render_template('ghost-market-sell.html')
+
+@app.route('/api/ghost-market/items', methods=['GET'])
+def get_ghost_market_items():
+    """Get all approved items for sale"""
+    search = request.args.get('search', '').strip()
+    category = request.args.get('category', '').strip()
+
+    with admin_get_db() as conn:
+        cursor = conn.cursor()
+        query = '''
+            SELECT gmi.*,
+                   SUBSTR(u.zeus_pin, 1, 8) || '-XXXX' as seller_pin_half
+            FROM ghost_market_items gmi
+            JOIN ghost_market_sellers gms ON gmi.seller_id = gms.user_id
+            JOIN users u ON gms.user_id = u.id
+            WHERE gmi.status = 'approved'
+              AND (gmi.expires_at IS NULL OR gmi.expires_at > CURRENT_TIMESTAMP)
+        '''
+        params = []
+
+        if search:
+            query += ' AND (gmi.title LIKE ? OR gmi.description LIKE ?)'
+            search_param = '%' + search + '%'
+            params.extend([search_param, search_param])
+
+        if category:
+            query += ' AND gmi.category = ?'
+            params.append(category)
+
+        query += ' ORDER BY gmi.created_at DESC LIMIT 100'
+
+        cursor.execute(query, params)
+        items = cursor.fetchall()
+
+        return jsonify({
+            'success': True,
+            'items': [
+                {
+                    'id': item['id'],
+                    'title': item['title'],
+                    'description': item['description'],
+                    'price': item['price'],
+                    'images': item['images'],
+                    'category': item['category'],
+                    'condition': item['condition'],
+                    'seller_pin_half': item['seller_pin_half'],
+                    'created_at': item['created_at']
+                }
+                for item in items
+            ]
+        })
+
+@app.route('/api/ghost-market/seller-status', methods=['GET'])
+@require_approved_user
+def ghost_market_seller_status():
+    """Check if user is an approved seller"""
+    user_id = session['user_id']
+
+    with admin_get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            'SELECT application_status FROM ghost_market_sellers WHERE user_id = ?',
+            (user_id,)
+        )
+        seller = cursor.fetchone()
+
+    return jsonify({
+        'is_seller': seller is not None and seller['application_status'] == 'approved',
+        'status': seller['application_status'] if seller else 'not_applied'
+    })
+
+@app.route('/api/ghost-market/apply-seller', methods=['POST'])
+@require_approved_user
+def apply_ghost_market_seller():
+    """Apply to become a Ghost Market seller"""
+    user_id = session['user_id']
+    data = request.get_json() or {}
+    store_name = data.get('store_name', '').strip()
+    store_description = data.get('store_description', '').strip()
+
+    with admin_get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT OR IGNORE INTO ghost_market_sellers (user_id, store_name, store_description, application_status)
+            VALUES (?, ?, ?, 'pending')
+        ''', (user_id, store_name, store_description))
+        conn.commit()
+
+        socketio.emit('new_seller_application', {
+            'user_id': user_id,
+            'store_name': store_name
+        }, room='admins')
+
+    return jsonify({'success': True, 'message': 'Application submitted for admin review'})
+
+@app.route('/api/ghost-market/submit-item', methods=['POST'])
+@require_approved_user
+def submit_ghost_market_item():
+    """Submit item for admin approval"""
+    user_id = session['user_id']
+
+    with admin_get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            'SELECT application_status FROM ghost_market_sellers WHERE user_id = ?',
+            (user_id,)
+        )
+        seller = cursor.fetchone()
+
+    if not seller or seller['application_status'] != 'approved':
+        return jsonify({'error': 'You must be an approved seller to list items'}), 403
+
+    title = (request.form.get('title') or '').strip()
+    category = (request.form.get('category') or '').strip()
+    condition = (request.form.get('condition') or '').strip()
+    price_raw = request.form.get('price', '')
+    description = (request.form.get('description') or '').strip()
+    images = request.files.getlist('images')
+
+    if not title or not price_raw or not description:
+        return jsonify({'error': 'Missing required fields'}), 400
+
+    try:
+        price = float(price_raw)
+        if price <= 0:
+            raise ValueError
+    except ValueError:
+        return jsonify({'error': 'Invalid price'}), 400
+
+    from datetime import datetime, timedelta
+    os.makedirs('uploads/ghost_market', exist_ok=True)
+    image_paths = []
+
+    for img in images[:5]:
+        safe_name = ''.join(
+            c for c in img.filename if c.isalnum() or c in ('.', '_', '-')
+        ) or 'upload'
+        filename = 'gm_{}_{}_{}'.format(
+            user_id,
+            datetime.now().strftime('%Y%m%d_%H%M%S'),
+            safe_name
+        )
+        filepath = os.path.join('uploads/ghost_market', filename)
+        img.save(filepath)
+        image_paths.append(filepath)
+
+    with admin_get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO ghost_market_items
+                (seller_id, title, description, price, category, condition, images, expires_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            user_id, title, description, price, category, condition,
+            ','.join(image_paths),
+            (datetime.now() + timedelta(days=30)).isoformat()
+        ))
+        conn.commit()
+
+        socketio.emit('new_item_submission', {
+            'seller_id': user_id,
+            'title': title
+        }, room='admins')
+
+    return jsonify({'success': True, 'message': 'Item submitted for admin review'})
+
+@app.route('/api/ghost-market/buy/<int:item_id>', methods=['POST'])
+@require_approved_user
+def ghost_market_buy(item_id):
+    """Initiate purchase of an item"""
+    buyer_id = session['user_id']
+
+    with admin_get_db() as conn:
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT gmi.*, gms.user_id as seller_user_id, u.zeus_pin as seller_pin
+            FROM ghost_market_items gmi
+            JOIN ghost_market_sellers gms ON gmi.seller_id = gms.user_id
+            JOIN users u ON gms.user_id = u.id
+            WHERE gmi.id = ? AND gmi.status = 'approved'
+        ''', (item_id,))
+        item = cursor.fetchone()
+
+        if not item:
+            return jsonify({'error': 'Item not found or unavailable'}), 404
+
+        if item['seller_user_id'] == buyer_id:
+            return jsonify({'error': 'You cannot buy your own item'}), 400
+
+        buyer_pin = session.get('user_zeus_pin', '')
+        buyer_pin_half = (buyer_pin[:8] + '-XXXX') if len(buyer_pin) >= 8 else 'ZT-XXXX-XXXX'
+        seller_pin_half = (item['seller_pin'][:8] + '-XXXX') if item['seller_pin'] and len(item['seller_pin']) >= 8 else 'ZT-XXXX-XXXX'
+
+        cursor.execute('''
+            INSERT INTO ghost_market_orders
+                (item_id, buyer_id, seller_id, amount, buyer_pin_half, seller_pin_half, status)
+            VALUES (?, ?, ?, ?, ?, ?, 'pending_payment')
+        ''', (item_id, buyer_id, item['seller_user_id'], item['price'], buyer_pin_half, seller_pin_half))
+        order_id = cursor.lastrowid
+        conn.commit()
+
+    return jsonify({
+        'success': True,
+        'redirect_url': '/ghost-market/pay/{}'.format(order_id)
+    })
+
+@app.route('/api/ghost-market/confirm-receipt/<int:order_id>', methods=['POST'])
+@require_approved_user
+def confirm_receipt(order_id):
+    """Buyer confirms receipt - releases escrow to seller"""
+    user_id = session['user_id']
+
+    with admin_get_db() as conn:
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT * FROM ghost_market_orders
+            WHERE id = ? AND buyer_id = ? AND status = 'delivered'
+        ''', (order_id, user_id))
+        order = cursor.fetchone()
+
+        if not order:
+            return jsonify({'error': 'Order not found or cannot be completed'}), 404
+
+        cursor.execute('''
+            UPDATE ghost_market_orders
+            SET status = 'completed', completed_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''', (order_id,))
+
+        cursor.execute('''
+            UPDATE ghost_market_escrow
+            SET status = 'released_to_seller', released_at = CURRENT_TIMESTAMP
+            WHERE order_id = ?
+        ''', (order_id,))
+
+        cursor.execute('''
+            UPDATE ghost_market_sellers
+            SET total_sales = total_sales + 1,
+                total_earnings = total_earnings + ?
+            WHERE user_id = ?
+        ''', (order['amount'], order['seller_id']))
+
+        conn.commit()
+
+    return jsonify({'success': True, 'message': 'Thank you! Funds have been released to seller.'})
 
 # Serve static files
 @app.route('/')

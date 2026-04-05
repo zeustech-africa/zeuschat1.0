@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
   <link rel="manifest" href="/static/manifest.json">
-  <meta name="theme-color" content="#667eea">
+  <meta name="theme-color" content="#D4AF37">
+  <link rel="apple-touch-startup-image" href="/splash.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="ZeusChat">
@@ -718,7 +719,115 @@
       margin-left: 8px;
       font-size: 11px;
     }
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+    body {
+        padding: 16px;
+    }
+
+    .container, .card, .main-content {
+        padding: 20px 16px;
+        margin: 0;
+        width: 100%;
+        border-radius: 24px;
+    }
+
+    h1 {
+        font-size: 28px;
+    }
+
+    h2 {
+        font-size: 22px;
+    }
+
+    button, .btn-primary, .btn-secondary {
+        padding: 14px 20px;
+        font-size: 16px;
+    }
+
+    input, textarea, select {
+        padding: 14px;
+        font-size: 16px;
+    }
+
+    .sidebar {
+        position: fixed;
+        left: -280px;
+        transition: left 0.3s;
+        z-index: 1000;
+    }
+
+    .sidebar.open {
+        left: 0;
+    }
+
+    .menu-toggle {
+        display: block;
+        position: fixed;
+        top: 16px;
+        left: 16px;
+        z-index: 1001;
+        background: #D4AF37;
+        border: none;
+        border-radius: 8px;
+        padding: 10px;
+        cursor: pointer;
+    }
+
+    .main-content {
+        margin-left: 0;
+        padding: 60px 16px 20px;
+    }
+
+    .admin-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .feature-grid, .pricing-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .chat-container {
+        flex-direction: column;
+    }
+
+    .message {
+        max-width: 85%;
+    }
+
+    body {
+        font-size: 14px;
+    }
+
+    button, a, .clickable {
+        min-height: 44px;
+    }
+
+    .contacts-panel {
+      position: fixed;
+      left: -280px;
+      width: 280px;
+      height: 100%;
+      z-index: 999;
+    }
+
+    .contacts-panel.open {
+      left: 0;
+    }
+
+    .chat-area {
+      width: 100%;
+    }
+
+    .message-input {
+      padding: 10px;
+    }
+}
   </style>
+  <link rel="stylesheet" href="/static/mobile.css">
 </head>
 <body>
   <!-- ✅ 4K Video Background -->
@@ -884,6 +993,11 @@
             <!-- Typing Indicator (WhatsApp-style) -->
             <div id="typing-indicator" style="display:none;padding:8px;color:#4CAF50;font-size:13px;font-style:italic;">
               User is typing...
+            </div>
+            <div id="typingIndicator" class="typing-indicator mobile-only" style="display:none;">
+              <span class="typing-dot"></span>
+              <span class="typing-dot"></span>
+              <span class="typing-dot"></span>
             </div>
           <div class="messages" id="messages">
               <div style="text-align:center;margin-top:60px;color:#f0f0f0;line-height:1.5;text-shadow:0 1px 3px rgba(0,0,0,0.6);">
@@ -5624,6 +5738,241 @@
   // Init after page load
   window.addEventListener('DOMContentLoaded', initPushToggle);
   // ============ END PUSH NOTIFICATION SYSTEM ============
+  </script>
+
+  <script>
+  // Mobile menu toggle
+  function toggleMobileMenu() {
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar) {
+      sidebar.classList.toggle('open');
+    }
+  }
+
+  // Add menu button for mobile
+  if (window.innerWidth <= 768) {
+    const menuBtn = document.createElement('button');
+    menuBtn.innerHTML = '☰';
+    menuBtn.className = 'menu-toggle';
+    menuBtn.onclick = toggleMobileMenu;
+    document.body.insertBefore(menuBtn, document.body.firstChild);
+
+    // Close menu when clicking outside
+    document.addEventListener('click', function (e) {
+      const sidebar = document.querySelector('.sidebar');
+      if (sidebar && sidebar.classList.contains('open') && !sidebar.contains(e.target) && e.target !== menuBtn) {
+        sidebar.classList.remove('open');
+      }
+    });
+  }
+  </script>
+
+  <!-- Mobile Bottom Navigation -->
+  <div class="mobile-bottom-nav mobile-only">
+    <button class="nav-item-mobile" data-page="chat">
+      <span class="nav-icon">💬</span>
+      <span>Chats</span>
+    </button>
+    <button class="nav-item-mobile" data-page="contacts">
+      <span class="nav-icon">👥</span>
+      <span>Contacts</span>
+    </button>
+    <button class="nav-item-mobile" data-page="calls">
+      <span class="nav-icon">📞</span>
+      <span>Calls</span>
+    </button>
+    <button class="nav-item-mobile" data-page="profile">
+      <span class="nav-icon">👤</span>
+      <span>Profile</span>
+    </button>
+    <button class="nav-item-mobile" data-page="settings">
+      <span class="nav-icon">⚙️</span>
+      <span>Settings</span>
+    </button>
+  </div>
+
+  <script>
+  // Mobile Bottom Navigation
+  function initMobileNav() {
+    const navItems = document.querySelectorAll('.nav-item-mobile');
+    const pages = {
+      chat: '/chat.html',
+      contacts: '/contact-requests.html',
+      calls: '/calls.html',
+      profile: '/profile.html',
+      settings: '/settings.html'
+    };
+
+    navItems.forEach(item => {
+      item.addEventListener('click', () => {
+        const page = item.dataset.page;
+        if (pages[page]) {
+          window.location.href = pages[page];
+        }
+      });
+    });
+
+    const currentPath = window.location.pathname;
+    navItems.forEach(item => {
+      const page = item.dataset.page;
+      if (pages[page] === currentPath || (page === 'chat' && currentPath === '/chat.html')) {
+        item.classList.add('active');
+      }
+    });
+  }
+
+  function showReplyInput(messageId, messageText) {
+    const input = document.getElementById('message-input');
+    if (!input) return;
+    input.value = `↩️ ${messageText || ''}`;
+    input.dataset.replyTo = messageId || '';
+    input.focus();
+  }
+
+  // Swipe to reply functionality
+  function initSwipeToReply() {
+    let touchStartX = 0;
+    let currentMessage = null;
+
+    document.querySelectorAll('.message-container, .msg').forEach(container => {
+      container.addEventListener('touchstart', (e) => {
+        touchStartX = e.touches[0].clientX;
+        currentMessage = container;
+      }, { passive: true });
+
+      container.addEventListener('touchend', (e) => {
+        const touchEndX = e.changedTouches[0].clientX;
+        const diff = touchStartX - touchEndX;
+
+        if (diff > 50 && currentMessage === container) {
+          const messageId = container.dataset.messageId || container.getAttribute('data-message-id');
+          const messageText = container.querySelector('.message-text')?.innerText || '';
+          showReplyInput(messageId, messageText);
+        }
+        currentMessage = null;
+      }, { passive: true });
+    });
+  }
+
+  // Mobile typing indicator pulse
+  let mobileTypingTimeout;
+  function showMobileTypingIndicator() {
+    const indicator = document.getElementById('typingIndicator');
+    if (!indicator) return;
+    indicator.style.display = 'flex';
+    clearTimeout(mobileTypingTimeout);
+    mobileTypingTimeout = setTimeout(() => {
+      indicator.style.display = 'none';
+    }, 1500);
+  }
+
+  // Virtual scrolling for messages
+  class VirtualMessageList {
+    constructor(container, messages) {
+      this.container = container;
+      this.messages = messages || [];
+      this.rowHeight = 70;
+      this.visibleCount = 20;
+      this.render();
+    }
+
+    render() {
+      const start = Math.floor(this.container.scrollTop / this.rowHeight);
+      const end = start + this.visibleCount;
+      const visibleMessages = this.messages.slice(start, end);
+
+      this.container.innerHTML = visibleMessages.map(msg => `
+        <div class="message-container ${msg.isSent ? 'message-sent' : 'message-received'}" data-message-id="${msg.id || ''}">
+          <div class="message-bubble">
+            <div class="message-text">${escapeHtml(msg.text || '')}</div>
+            <div class="message-time">${msg.time || ''}</div>
+          </div>
+        </div>
+      `).join('');
+
+      this.container.style.height = `${this.messages.length * this.rowHeight}px`;
+      this.container.style.position = 'relative';
+    }
+
+    onScroll() {
+      requestAnimationFrame(() => this.render());
+    }
+  }
+
+  // Pull to refresh
+  let touchStartY = 0;
+  let isRefreshing = false;
+
+  async function refreshMessages() {
+    if (typeof loadMessages === 'function' && currentChatPartner) {
+      await loadMessages(currentChatPartner, null);
+    }
+  }
+
+  function showRefreshIndicator() {
+    if (document.getElementById('refreshIndicator')) return;
+    const indicator = document.createElement('div');
+    indicator.id = 'refreshIndicator';
+    indicator.innerHTML = '🔄 Refreshing...';
+    indicator.style.cssText = `
+      position: fixed;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--gold, #D4AF37);
+      color: #0a0a0a;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 12px;
+      z-index: 1001;
+    `;
+    document.body.appendChild(indicator);
+  }
+
+  function hideRefreshIndicator() {
+    document.getElementById('refreshIndicator')?.remove();
+  }
+
+  function initPullToRefresh() {
+    document.addEventListener('touchstart', (e) => {
+      if (window.scrollY === 0) {
+        touchStartY = e.touches[0].clientY;
+      }
+    }, { passive: true });
+
+    document.addEventListener('touchmove', (e) => {
+      if (window.scrollY === 0 && e.touches[0].clientY > touchStartY + 50) {
+        if (!isRefreshing) {
+          isRefreshing = true;
+          showRefreshIndicator();
+          refreshMessages().finally(() => {
+            hideRefreshIndicator();
+            isRefreshing = false;
+          });
+        }
+      }
+    }, { passive: true });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    initMobileNav();
+    initSwipeToReply();
+    initPullToRefresh();
+
+    const messageInput = document.getElementById('message-input');
+    if (messageInput) {
+      messageInput.addEventListener('input', showMobileTypingIndicator);
+    }
+
+    // Optional virtualization scaffold for very large datasets.
+    if (window.messageData && Array.isArray(window.messageData)) {
+      const messagesContainer = document.getElementById('messagesContainer');
+      if (messagesContainer) {
+        const messageList = new VirtualMessageList(messagesContainer, window.messageData);
+        messagesContainer.addEventListener('scroll', () => messageList.onScroll(), { passive: true });
+      }
+    }
+  });
   </script>
 </body>
 </html>

@@ -1,0 +1,39 @@
+{
+  "name": "ZeusChat - Ghost Mode Messaging",
+  "short_name": "ZeusChat",
+  "description": "Private, encrypted messaging with PIN-based security. No phone number required.",
+  "start_url": "/mobile",
+  "display": "standalone",
+  "theme_color": "#D4AF37",
+  "background_color": "#0a0a0a",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/zeuschat-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/zeuschat-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot1.png",
+      "sizes": "1080x1920",
+      "type": "image/png"
+    }
+  ],
+  "categories": [
+    "communication",
+    "social",
+    "productivity"
+  ],
+  "prefer_related_applications": false,
+  "related_applications": []
+}

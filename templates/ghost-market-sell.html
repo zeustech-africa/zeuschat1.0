@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Sell on Ghost Market - ZeusChat</title>
+    <link rel="stylesheet" href="/static/mobile.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: white;
+            padding: 20px;
+        }
+        .container { max-width: 600px; margin: 0 auto; }
+        .card {
+            background: rgba(17, 17, 17, 0.95);
+            border: 1px solid rgba(212,175,55,0.3);
+            border-radius: 24px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+        h1 { color: #D4AF37; margin-bottom: 8px; }
+        .subtitle { color: rgba(255,255,255,0.6); margin-bottom: 24px; }
+        .form-group { margin-bottom: 20px; }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #D4AF37;
+            font-weight: 500;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 14px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(212,175,55,0.3);
+            border-radius: 12px;
+            color: white;
+            font-size: 16px;
+            min-height: 44px;
+        }
+        select option { background: #1a1a1a; }
+        textarea { resize: vertical; }
+        .image-preview {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .preview-img {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        .btn-primary {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%);
+            color: #0a0a0a;
+            border: none;
+            border-radius: 40px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            min-height: 44px;
+        }
+        .note {
+            color: rgba(255,255,255,0.4);
+            font-size: 12px;
+            text-align: center;
+            margin-top: 20px;
+        }
+        .back-link {
+            color: #D4AF37;
+            text-decoration: none;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/ghost-market" class="back-link">← Back to Ghost Market</a>
+
+        <div class="card">
+            <h1>📦 Sell an Item</h1>
+            <p class="subtitle">Your item will be reviewed by admin before appearing in Ghost Market</p>
+
+            <div class="form-group">
+                <label>Item Title *</label>
+                <input type="text" id="itemTitle" placeholder="e.g., iPhone 12 Pro - Like New">
+            </div>
+
+            <div class="form-group">
+                <label>Category *</label>
+                <select id="itemCategory">
+                    <option value="Electronics">Electronics</option>
+                    <option value="Clothing">Clothing</option>
+                    <option value="Furniture">Furniture</option>
+                    <option value="Books">Books</option>
+                    <option value="Home">Home &amp; Garden</option>
+                    <option value="Sports">Sports</option>
+                    <option value="Toys">Toys &amp; Hobbies</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Condition *</label>
+                <select id="itemCondition">
+                    <option value="New">New</option>
+                    <option value="Like New">Like New</option>
+                    <option value="Good">Good</option>
+                    <option value="Fair">Fair</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Price (R) *</label>
+                <input type="number" id="itemPrice" placeholder="e.g., 8500" min="1" step="0.01">
+            </div>
+
+            <div class="form-group">
+                <label>Description *</label>
+                <textarea id="itemDescription" rows="4" placeholder="Describe your item..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Photos (max 5)</label>
+                <input type="file" id="itemPhotos" multiple accept="image/*">
+                <div id="imagePreview" class="image-preview"></div>
+            </div>
+
+            <button id="submitBtn" class="btn-primary">Submit for Admin Review</button>
+            <p class="note">Admin will review your item within 24-48 hours. You'll be notified when approved.</p>
+        </div>
+    </div>
+
+    <script>
+        let selectedFiles = [];
+
+        document.getElementById('itemPhotos').addEventListener('change', function (e) {
+            selectedFiles = Array.from(e.target.files).slice(0, 5);
+            const preview = document.getElementById('imagePreview');
+            preview.innerHTML = '';
+            selectedFiles.forEach(function (file) {
+                const reader = new FileReader();
+                reader.onload = function (event) {
+                    const img = document.createElement('img');
+                    img.src = event.target.result;
+                    img.className = 'preview-img';
+                    img.alt = 'Preview';
+                    preview.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            });
+        });
+
+        document.getElementById('submitBtn').addEventListener('click', async function () {
+            const title = document.getElementById('itemTitle').value.trim();
+            const category = document.getElementById('itemCategory').value;
+            const condition = document.getElementById('itemCondition').value;
+            const price = document.getElementById('itemPrice').value;
+            const description = document.getElementById('itemDescription').value.trim();
+
+            if (!title || !price || !description) {
+                alert('Please fill in all required fields');
+                return;
+            }
+
+            if (parseFloat(price) <= 0) {
+                alert('Price must be a positive number');
+                return;
+            }
+
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.textContent = 'Submitting...';
+
+            try {
+                const formData = new FormData();
+                formData.append('title', title);
+                formData.append('category', category);
+                formData.append('condition', condition);
+                formData.append('price', price);
+                formData.append('description', description);
+                selectedFiles.forEach(function (file) {
+                    formData.append('images', file);
+                });
+
+                const response = await fetch('/api/ghost-market/submit-item', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert('Item submitted for admin review! You will be notified when approved.');
+                    window.location.href = '/ghost-market';
+                } else {
+                    alert(data.error || 'Failed to submit item');
+                    btn.disabled = false;
+                    btn.textContent = 'Submit for Admin Review';
+                }
+            } catch (err) {
+                alert('Network error. Please try again.');
+                btn.disabled = false;
+                btn.textContent = 'Submit for Admin Review';
+            }
+        });
+    </script>
+</body>
+</html>

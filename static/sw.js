@@ -1,11 +1,13 @@
 // ZeusChat Service Worker
-const CACHE_NAME = 'zeuschat-v1';
-const STATIC_CACHE = 'zeuschat-static-v1';
-const DYNAMIC_CACHE = 'zeuschat-dynamic-v1';
+const CACHE_NAME = 'zeuschat-v2';
+const STATIC_CACHE = 'zeuschat-static-v2';
+const DYNAMIC_CACHE = 'zeuschat-dynamic-v2';
 
-// Assets to cache on install
-const STATIC_ASSETS = [
+// Critical assets to cache on install
+const CRITICAL_ASSETS = [
   '/',
+  '/mobile',
+  '/registration.html',
   '/chat.html',
   '/login.html',
   '/profile.html',
@@ -16,6 +18,8 @@ const STATIC_ASSETS = [
   '/static/manifest.json',
   '/zeuschat-icon.png',
   '/zeuschat-logo.png',
+  '/splash.png',
+  '/screenshot1.png',
   '/zeustech-background.mp4'
 ];
 
@@ -25,9 +29,9 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then(cache => {
-        console.log('[SW] Caching static assets');
+        console.log('[SW] Caching critical assets');
         return Promise.allSettled(
-          STATIC_ASSETS.map(asset => cache.add(asset))
+          CRITICAL_ASSETS.map(asset => cache.add(asset))
         );
       })
       .then(() => self.skipWaiting())
@@ -63,6 +67,28 @@ self.addEventListener('fetch', event => {
 
   // Skip socket.io
   if (url.pathname.includes('socket.io')) {
+    return;
+  }
+
+  // Ensure all HTML navigations have offline fallback.
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          if (response.status === 200) {
+            const clone = response.clone();
+            caches.open(DYNAMIC_CACHE).then(cache => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(async () => {
+          const cachedPage = await caches.match(request);
+          if (cachedPage) return cachedPage;
+          const cachedMobile = await caches.match('/mobile');
+          if (cachedMobile) return cachedMobile;
+          return caches.match('/offline.html');
+        })
+    );
     return;
   }
 

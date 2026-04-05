@@ -6,7 +6,7 @@ import sqlite3
 import os
 import secrets
 import hashlib
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import sys
 import flask
@@ -31,6 +31,7 @@ print(f"📦 Flask Version: {flask.__version__}")
 print("="*60)
 
 app = Flask(__name__, static_folder='.', static_url_path='')
+app.permanent_session_lifetime = timedelta(days=30)
 DATABASE_PATH = os.environ.get('DATABASE_PATH', 'zeuschat.db')
 BASE_URL = os.environ.get('BASE_URL', 'https://zeuschat1-0-ixax.onrender.com')
 ALLOWED_HOSTS = [
@@ -1376,6 +1377,27 @@ def hash_password(password):
     """Hash password using SHA-256"""
     return hashlib.sha256(password.encode()).hexdigest()
 
+
+def require_password_unlock(f):
+    """Require an additional password unlock step for sensitive pages."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user_id = session.get('user_id')
+        if not user_id:
+            if request.path.endswith('.html'):
+                return redirect('/login')
+            return jsonify({'error': 'Not authenticated', 'redirect': '/login'}), 401
+
+        if not session.get('password_unlocked', False):
+            session['intended_url'] = request.path
+            if request.path.endswith('.html'):
+                return redirect('/unlock')
+            return jsonify({'error': 'Password unlock required', 'redirect': '/unlock'}), 401
+
+        return f(*args, **kwargs)
+
+    return decorated_function
+
 def ensure_user_profile_columns(conn):
     """Ensure profile-related columns exist on users table."""
     cursor = conn.cursor()
@@ -1963,13 +1985,20 @@ def login():
         
         if not user:
             return jsonify({'error': 'Invalid PIN or password'}), 401
+
+        subscription_tier = get_user_subscription_tier(user[0])
         
         # Set session
         session['user_id'] = user[0]
         session['zeus_pin'] = zeus_pin
+        session['full_name'] = user[2]
+        session['email'] = user[1]
         session['user_email'] = user[1]
         session['user_full_name'] = user[2]
+        session['subscription_tier'] = subscription_tier
         session['user_password'] = password  # Store for PIN-to-view verification
+        session['password_unlocked'] = False
+        session.permanent = True
 
         with admin_get_db() as conn:
             cursor = conn.cursor()
@@ -1980,35 +2009,47 @@ def login():
         print(f"✅ User logged in: {user[1]}")
 
         if approval_status != 'approved':
+            session['is_approved'] = False
             return jsonify({
                 'success': True,
                 'message': 'Account pending approval',
                 'redirect': '/pending-approval',
                 'approved': False,
+                'is_approved': False,
+                'user_id': user[0],
+                'subscription_tier': subscription_tier,
                 'approval_status': approval_status,
                 'pending_approval': True,
+                'requires_password_unlock': True,
                 'user': {
                     'id': user[0],
                     'email': user[1],
                     'full_name': user[2],
                     'profile_pic': user[3],
-                    'zeus_pin': zeus_pin
+                    'zeus_pin': zeus_pin,
+                    'subscription_tier': subscription_tier
                 }
             }), 200
         
+        session['is_approved'] = True
         return jsonify({
             'success': True,
             'message': 'Login successful',
             'redirect': '/dashboard',
             'approved': True,
+            'is_approved': True,
+            'user_id': user[0],
+            'subscription_tier': subscription_tier,
             'approval_status': approval_status,
             'pending_approval': False,
+            'requires_password_unlock': True,
             'user': {
                 'id': user[0],
                 'email': user[1],
                 'full_name': user[2],
                 'profile_pic': user[3],
-                'zeus_pin': zeus_pin
+                'zeus_pin': zeus_pin,
+                'subscription_tier': subscription_tier
             }
         }), 200
         
@@ -2024,6 +2065,76 @@ def logout():
     
     session.clear()
     return jsonify({'success': True, 'message': 'Logged out successfully'}), 200
+
+
+@app.route('/unlock')
+def unlock_page():
+    """Password unlock page."""
+    if 'user_id' not in session:
+        return redirect('/login')
+    if session.get('password_unlocked'):
+        return redirect(session.get('intended_url', '/chat.html'))
+    return render_template('unlock.html')
+
+
+@app.route('/api/check-unlock', methods=['GET'])
+def check_unlock_status():
+    """Return whether password unlock is required for current session."""
+    if 'user_id' not in session:
+        return jsonify({'requires_unlock': False, 'authenticated': False}), 200
+    return jsonify({
+        'requires_unlock': not session.get('password_unlocked', False),
+        'authenticated': True,
+    }), 200
+
+
+@app.route('/api/unlock', methods=['POST'])
+def unlock():
+    """Verify password and unlock current session."""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    data = request.get_json() or {}
+    password = (data.get('password') or '').strip()
+    if not password:
+        return jsonify({'error': 'Password required'}), 400
+
+    with admin_get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT password_hash FROM users WHERE id = ?', (user_id,))
+        user = cursor.fetchone()
+
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    if hash_password(password) != user['password_hash']:
+        return jsonify({'error': 'Incorrect password'}), 401
+
+    session['password_unlocked'] = True
+    session.permanent = True
+    intended_url = session.pop('intended_url', '/chat.html')
+    return jsonify({'success': True, 'redirect': intended_url}), 200
+
+
+@app.route('/api/biometric/request', methods=['GET'])
+def biometric_request():
+    """Placeholder biometric challenge endpoint."""
+    return jsonify({'error': 'Biometric authentication is not configured yet'}), 501
+
+
+@app.route('/api/biometric/verify', methods=['POST'])
+def biometric_verify():
+    """Placeholder biometric verify endpoint."""
+    return jsonify({'error': 'Biometric authentication is not configured yet'}), 501
+
+
+@app.route('/chat.html')
+@require_approved_user
+@require_password_unlock
+def chat_page():
+    """Protected chat page route with unlock guard."""
+    return send_from_directory('.', 'chat.html')
 
 
 @app.route('/login')
@@ -5885,8 +5996,6 @@ def get_queued_messages():
 @app.route('/ghost-market')
 def ghost_market():
     """Ghost Market main page"""
-    if 'user_id' not in session:
-        return redirect('/login.html')
     return render_template('ghost-market.html')
 
 @app.route('/ghost-market/sell')
@@ -5894,14 +6003,18 @@ def ghost_market_sell():
     """Sell item page"""
     if 'user_id' not in session:
         return redirect('/login.html')
+    if get_user_subscription_tier(session['user_id']) == 'free':
+        return redirect('/subscription')
     return render_template('ghost-market-sell.html')
 
 @app.route('/ghost-market/apply-seller')
-def ghost_market_apply_seller():
-    """Apply to become a seller page (redirect to sell page with apply mode)"""
+def ghost_market_apply():
+    """Apply to become a seller page."""
     if 'user_id' not in session:
         return redirect('/login.html')
-    return render_template('ghost-market-sell.html')
+    if get_user_subscription_tier(session['user_id']) == 'free':
+        return redirect('/subscription')
+    return render_template('ghost-market-apply.html')
 
 @app.route('/api/ghost-market/items', methods=['GET'])
 def get_ghost_market_items():
@@ -6013,9 +6126,15 @@ def ghost_market_seller_status():
 def apply_ghost_market_seller():
     """Apply to become a Ghost Market seller"""
     user_id = session['user_id']
+    if get_user_subscription_tier(user_id) == 'free':
+        return jsonify({'error': 'Only Pro and Teams subscribers can sell on Ghost Market'}), 403
+
     data = request.get_json() or {}
     store_name = data.get('store_name', '').strip()
     store_description = data.get('store_description', '').strip()
+
+    if not store_name:
+        return jsonify({'error': 'Store name is required'}), 400
 
     with admin_get_db() as conn:
         cursor = conn.cursor()
@@ -6037,6 +6156,9 @@ def apply_ghost_market_seller():
 def submit_ghost_market_item():
     """Submit item for admin approval"""
     user_id = session['user_id']
+
+    if get_user_subscription_tier(user_id) == 'free':
+        return jsonify({'error': 'Only Pro and Teams subscribers can list items'}), 403
 
     with admin_get_db() as conn:
         cursor = conn.cursor()

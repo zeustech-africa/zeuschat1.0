@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, session, render_template, redirect, url_for
+from flask import Blueprint, request, jsonify, session, render_template, redirect, url_for, current_app
 import hashlib
 import json
 from admin_middleware import admin_required, get_db_connection, log_admin_action
@@ -1276,6 +1276,18 @@ def admin_approve_item(item_id):
                 admin_id
             ))
 
+            socketio_ext = current_app.extensions.get('socketio')
+            if socketio_ext:
+                socketio_ext.emit(
+                    'item_approved',
+                    {
+                        'item_id': item_id,
+                        'title': item['title'],
+                        'message': 'Your item "{}" is now live!'.format(item['title']),
+                    },
+                    room='user:{}'.format(item['seller_id']),
+                )
+
         conn.commit()
 
     log_admin_action(
@@ -1327,6 +1339,19 @@ def admin_reject_item(item_id):
                 ),
                 admin_id
             ))
+
+            socketio_ext = current_app.extensions.get('socketio')
+            if socketio_ext:
+                socketio_ext.emit(
+                    'item_rejected',
+                    {
+                        'item_id': item_id,
+                        'title': item['title'],
+                        'reason': reason,
+                        'message': 'Your item "{}" was rejected. Reason: {}'.format(item['title'], reason),
+                    },
+                    room='user:{}'.format(item['seller_id']),
+                )
 
         conn.commit()
 

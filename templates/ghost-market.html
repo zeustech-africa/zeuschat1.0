@@ -14,6 +14,25 @@
             padding-bottom: 80px;
         }
         .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .market-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .back-btn {
+            background: rgba(212, 175, 55, 0.2);
+            border: 1px solid #D4AF37;
+            color: #D4AF37;
+            padding: 10px 16px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .back-btn:hover {
+            background: rgba(212, 175, 55, 0.4);
+        }
         .header {
             display: flex;
             justify-content: space-between;
@@ -169,6 +188,11 @@
         }
         .seller-section h3 { margin-bottom: 8px; color: #D4AF37; }
         .seller-section p { color: rgba(255,255,255,0.6); margin-bottom: 16px; }
+        .note {
+            color: rgba(255,255,255,0.45);
+            font-size: 12px;
+            margin-top: 10px;
+        }
         .sell-btn {
             padding: 14px 28px;
             background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%);
@@ -193,9 +217,9 @@
 </head>
 <body>
     <div class="container">
-        <div class="header">
+        <div class="market-header">
+            <button class="back-btn" onclick="window.location.href='/chat.html'">← Back to Chats</button>
             <h1>🏪 Ghost Market</h1>
-            <button class="sell-btn" id="sellBtn" style="display: none;">📦 Sell an Item</button>
         </div>
         <p class="subtitle">Buy and sell anonymously. No names. No shame. Every item reviewed by admin.</p>
 
@@ -353,30 +377,78 @@
             }
         }
 
-        async function checkSellerStatus() {
-            try {
-                const response = await fetch('/api/ghost-market/seller-status');
-                const data = await response.json();
+        async function checkSellerAccess() {
+            const sellerSection = document.getElementById('sellerSection');
+            sellerSection.style.display = 'block';
 
-                if (data.is_seller) {
-                    isSeller = true;
-                    document.getElementById('sellBtn').style.display = 'block';
-                    document.getElementById('sellerSection').style.display = 'none';
+            let isLoggedIn = true;
+            let tier = 'free';
+
+            try {
+                const subResponse = await fetch('/api/user/subscription');
+                if (subResponse.status === 401) {
+                    isLoggedIn = false;
                 } else {
-                    document.getElementById('sellerSection').style.display = 'block';
+                    const subData = await subResponse.json();
+                    tier = (subData.tier || 'free').toLowerCase();
                 }
             } catch (err) {
-                document.getElementById('sellerSection').style.display = 'block';
+                isLoggedIn = false;
+            }
+
+            if (!isLoggedIn) {
+                sellerSection.innerHTML =
+                    '<h3>Become a Ghost Seller</h3>' +
+                    '<p>Login to apply to become a seller</p>' +
+                    '<button class="sell-btn" onclick="window.location.href=\'/login.html\'">Login →</button>';
+                return;
+            }
+
+            if (tier === 'free') {
+                sellerSection.innerHTML =
+                    '<h3>💎 Upgrade to Sell</h3>' +
+                    '<p>Only Pro and Teams subscribers can sell on Ghost Market.</p>' +
+                    '<button class="sell-btn" onclick="window.location.href=\'/subscription\'">Upgrade to Pro →</button>' +
+                    '<p class="note">Free users can browse and buy, but selling requires subscription.</p>';
+                return;
+            }
+
+            try {
+                const sellerResponse = await fetch('/api/ghost-market/seller-status');
+                const sellerData = await sellerResponse.json();
+
+                if (sellerData.is_seller) {
+                    isSeller = true;
+                    sellerSection.innerHTML = '<button class="sell-btn" id="sellBtn">📦 Sell an Item</button>';
+                    const sellBtn = document.getElementById('sellBtn');
+                    if (sellBtn) {
+                        sellBtn.addEventListener('click', function () {
+                            window.location.href = '/ghost-market/sell';
+                        });
+                    }
+                } else if (sellerData.status === 'pending') {
+                    sellerSection.innerHTML =
+                        '<h3>⏳ Seller Application Pending</h3>' +
+                        '<p>Your application is being reviewed by admin.</p>' +
+                        '<p class="note">You will be notified when approved.</p>';
+                } else {
+                    sellerSection.innerHTML =
+                        '<h3>Become a Ghost Seller</h3>' +
+                        '<p>Sell your used items anonymously. Admin approves every listing.</p>' +
+                        '<button class="sell-btn" id="applySellerBtn">Apply to Sell →</button>';
+                    const applyBtn = document.getElementById('applySellerBtn');
+                    if (applyBtn) {
+                        applyBtn.addEventListener('click', function () {
+                            window.location.href = '/ghost-market/apply-seller';
+                        });
+                    }
+                }
+            } catch (err) {
+                sellerSection.innerHTML =
+                    '<h3>Unable to load seller status</h3>' +
+                    '<p>Please refresh the page and try again.</p>';
             }
         }
-
-        document.getElementById('sellBtn').addEventListener('click', function () {
-            window.location.href = '/ghost-market/sell';
-        });
-
-        document.getElementById('applySellerBtn').addEventListener('click', function () {
-            window.location.href = '/ghost-market/apply-seller';
-        });
 
         document.getElementById('searchBtn').addEventListener('click', loadItems);
         document.getElementById('searchInput').addEventListener('keypress', function (e) {
@@ -410,7 +482,7 @@
         });
 
         loadItems();
-        checkSellerStatus();
+        checkSellerAccess();
     </script>
 </body>
 </html>

@@ -5964,6 +5964,8 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+    checkUnlockStatus();
+
     initMobileNav();
     initSwipeToReply();
     initPullToRefresh();
@@ -5982,6 +5984,18 @@
       }
     }
   });
+
+  async function checkUnlockStatus() {
+    try {
+      const response = await fetch('/api/check-unlock');
+      const data = await response.json();
+      if (data && data.requires_unlock) {
+        window.location.href = '/unlock';
+      }
+    } catch (err) {
+      // Keep page usable if unlock status check fails temporarily.
+    }
+  }
   </script>
 </body>
 </html>

@@ -30,6 +30,27 @@
             color: rgba(255,255,255,0.6);
             margin-bottom: 24px;
         }
+        .market-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .tab-btn {
+            border: 1px solid rgba(212,175,55,0.35);
+            background: rgba(255,255,255,0.08);
+            color: #e5e7eb;
+            border-radius: 999px;
+            padding: 10px 16px;
+            cursor: pointer;
+            min-height: 44px;
+            font-weight: 600;
+        }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%);
+            color: #0a0a0a;
+            border-color: #D4AF37;
+        }
         .search-bar {
             display: flex;
             gap: 10px;
@@ -103,6 +124,31 @@
             color: rgba(255,255,255,0.5);
             margin-bottom: 12px;
         }
+        .item-status {
+            min-height: 22px;
+            margin-bottom: 10px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            margin-top: 2px;
+            font-weight: 600;
+        }
+        .status-badge.pending {
+            background: #fef3c7;
+            color: #d97706;
+        }
+        .status-badge.rejected {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        .buy-btn[disabled] {
+            cursor: not-allowed;
+            background: #374151;
+            color: #d1d5db;
+        }
         .buy-btn {
             width: 100%;
             padding: 12px;
@@ -152,6 +198,11 @@
             <button class="sell-btn" id="sellBtn" style="display: none;">📦 Sell an Item</button>
         </div>
         <p class="subtitle">Buy and sell anonymously. No names. No shame. Every item reviewed by admin.</p>
+
+        <div class="market-tabs">
+            <button class="tab-btn active" data-tab="browse">🏪 Browse Market</button>
+            <button class="tab-btn" data-tab="my-listings">📦 My Listings</button>
+        </div>
 
         <div class="search-bar">
             <input type="text" id="searchInput" placeholder="Search ghost market...">
@@ -206,11 +257,61 @@
 
     <script>
         let isSeller = false;
+        let currentTab = 'browse';
+        let allItems = [];
 
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text || '';
             return div.innerHTML;
+        }
+
+        function getStatusBadge(status, rejectionReason) {
+            if (status === 'pending_approval') {
+                return '<span class="status-badge pending">⏳ Pending Admin Approval</span>';
+            }
+            if (status === 'rejected') {
+                return '<span class="status-badge rejected">❌ Rejected: ' + escapeHtml(rejectionReason || 'No reason provided') + '</span>';
+            }
+            return '';
+        }
+
+        function renderItems() {
+            const grid = document.getElementById('itemsGrid');
+            const visibleItems = allItems.filter(function (item) {
+                if (currentTab === 'my-listings') {
+                    return !!item.is_owner;
+                }
+                return item.status === 'approved';
+            });
+
+            if (!visibleItems.length) {
+                grid.innerHTML = currentTab === 'my-listings'
+                    ? '<div class="loading">No listings yet. Tap "Sell an Item" to submit your first listing.</div>'
+                    : '<div class="loading">No items found in Ghost Market</div>';
+                return;
+            }
+
+            grid.innerHTML = visibleItems.map(function (item) {
+                const imgHtml = item.images
+                    ? '<img src="/' + escapeHtml(item.images.split(',')[0]) + '" alt="' + escapeHtml(item.title) + '">'
+                    : '📦';
+                const statusHtml = getStatusBadge(item.status, item.rejection_reason);
+                const canBuy = item.status === 'approved' && !item.is_owner;
+                const buyButton = canBuy
+                    ? '<button class="buy-btn" onclick="event.stopPropagation(); buyItem(' + item.id + ')">Buy Now</button>'
+                    : '<button class="buy-btn" disabled>' + (item.is_owner ? 'Your Listing' : 'Not Available') + '</button>';
+
+                return '<div class="item-card" data-status="' + escapeHtml(item.status || 'approved') + '" data-owner="' + (item.is_owner ? '1' : '0') + '">' +
+                    '<div class="item-image">' + imgHtml + '</div>' +
+                    '<div class="item-info">' +
+                    '<div class="item-title">' + escapeHtml(item.title) + '</div>' +
+                    '<div class="item-price">R' + item.price + '</div>' +
+                    '<div class="item-seller">Seller: ' + escapeHtml(item.seller_pin_half || 'ZT-XXXX') + '</div>' +
+                    '<div class="item-status">' + statusHtml + '</div>' +
+                    buyButton +
+                    '</div></div>';
+            }).join('');
         }
 
         async function loadItems() {
@@ -224,31 +325,15 @@
                 );
                 const data = await response.json();
 
-                if (data.success && data.items.length > 0) {
-                    const grid = document.getElementById('itemsGrid');
-                    grid.innerHTML = data.items.map(item => {
-                        const imgHtml = item.images
-                            ? '<img src="/' + escapeHtml(item.images.split(',')[0]) + '" alt="' + escapeHtml(item.title) + '">'
-                            : '📦';
-                        return '<div class="item-card" onclick="viewItem(' + item.id + ')">' +
-                            '<div class="item-image">' + imgHtml + '</div>' +
-                            '<div class="item-info">' +
-                            '<div class="item-title">' + escapeHtml(item.title) + '</div>' +
-                            '<div class="item-price">R' + item.price + '</div>' +
-                            '<div class="item-seller">Seller: ' + escapeHtml(item.seller_pin_half || 'ZT-XXXX') + '</div>' +
-                            '<button class="buy-btn" onclick="event.stopPropagation(); buyItem(' + item.id + ')">Buy Now</button>' +
-                            '</div></div>';
-                    }).join('');
+                if (data.success) {
+                    allItems = data.items || [];
+                    renderItems();
                 } else {
                     document.getElementById('itemsGrid').innerHTML = '<div class="loading">No items found in Ghost Market</div>';
                 }
             } catch (err) {
                 document.getElementById('itemsGrid').innerHTML = '<div class="loading">Failed to load items</div>';
             }
-        }
-
-        function viewItem(itemId) {
-            window.location.href = '/ghost-market/item/' + itemId;
         }
 
         async function buyItem(itemId) {
@@ -296,6 +381,17 @@
         document.getElementById('searchBtn').addEventListener('click', loadItems);
         document.getElementById('searchInput').addEventListener('keypress', function (e) {
             if (e.key === 'Enter') loadItems();
+        });
+
+        document.querySelectorAll('.tab-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                document.querySelectorAll('.tab-btn').forEach(function (item) {
+                    item.classList.remove('active');
+                });
+                btn.classList.add('active');
+                currentTab = btn.dataset.tab;
+                renderItems();
+            });
         });
 
         // Mobile navigation

@@ -1269,7 +1269,10 @@ def admin_approve_item(item_id):
                 VALUES (?, ?, 1, ?)
             ''', (
                 item['seller_id'],
-                '✅ Your item "{}" has been approved and is now live in Ghost Market!'.format(item['title']),
+                '✅ Your item "{}" has been APPROVED and is now live in Ghost Market!\n\nAdmin notes: {}'.format(
+                    item['title'],
+                    notes or 'No additional notes.'
+                ),
                 admin_id
             ))
 
@@ -1318,7 +1321,10 @@ def admin_reject_item(item_id):
                 VALUES (?, ?, 1, ?)
             ''', (
                 item['seller_id'],
-                '❌ Your item "{}" was rejected.\nReason: {}'.format(item['title'], reason),
+                '❌ Your item "{}" was REJECTED.\nReason: {}\n\nPlease update your listing and resubmit.'.format(
+                    item['title'],
+                    reason
+                ),
                 admin_id
             ))
 

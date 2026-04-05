@@ -5905,36 +5905,67 @@ def ghost_market_apply_seller():
 
 @app.route('/api/ghost-market/items', methods=['GET'])
 def get_ghost_market_items():
-    """Get all approved items for sale"""
+    """Get all approved items plus current user's pending/rejected items."""
+    user_id = session.get('user_id')
     search = request.args.get('search', '').strip()
     category = request.args.get('category', '').strip()
 
     with admin_get_db() as conn:
         cursor = conn.cursor()
-        query = '''
+
+        approved_query = '''
             SELECT gmi.*,
-                   SUBSTR(u.zeus_pin, 1, 8) || '-XXXX' as seller_pin_half
+                   SUBSTR(u.zeus_pin, 1, 8) || '-XXXX' as seller_pin_half,
+                   'approved' as display_status
             FROM ghost_market_items gmi
             JOIN ghost_market_sellers gms ON gmi.seller_id = gms.user_id
             JOIN users u ON gms.user_id = u.id
             WHERE gmi.status = 'approved'
               AND (gmi.expires_at IS NULL OR gmi.expires_at > CURRENT_TIMESTAMP)
         '''
-        params = []
+        approved_params = []
 
         if search:
-            query += ' AND (gmi.title LIKE ? OR gmi.description LIKE ?)'
+            approved_query += ' AND (gmi.title LIKE ? OR gmi.description LIKE ?)'
             search_param = '%' + search + '%'
-            params.extend([search_param, search_param])
+            approved_params.extend([search_param, search_param])
 
         if category:
-            query += ' AND gmi.category = ?'
-            params.append(category)
+            approved_query += ' AND gmi.category = ?'
+            approved_params.append(category)
 
-        query += ' ORDER BY gmi.created_at DESC LIMIT 100'
+        approved_query += ' ORDER BY gmi.created_at DESC LIMIT 100'
+        cursor.execute(approved_query, approved_params)
+        approved_items = cursor.fetchall()
 
-        cursor.execute(query, params)
-        items = cursor.fetchall()
+        pending_items = []
+        if user_id:
+            pending_query = '''
+                SELECT gmi.*,
+                       SUBSTR(u.zeus_pin, 1, 8) || '-XXXX' as seller_pin_half,
+                       gmi.status as display_status
+                FROM ghost_market_items gmi
+                JOIN ghost_market_sellers gms ON gmi.seller_id = gms.user_id
+                JOIN users u ON gms.user_id = u.id
+                WHERE gmi.seller_id = ?
+                  AND gmi.status IN ('pending_approval', 'rejected')
+            '''
+            pending_params = [user_id]
+
+            if search:
+                pending_query += ' AND (gmi.title LIKE ? OR gmi.description LIKE ?)'
+                search_param = '%' + search + '%'
+                pending_params.extend([search_param, search_param])
+
+            if category:
+                pending_query += ' AND gmi.category = ?'
+                pending_params.append(category)
+
+            pending_query += ' ORDER BY gmi.created_at DESC'
+            cursor.execute(pending_query, pending_params)
+            pending_items = cursor.fetchall()
+
+        all_items = list(pending_items) + list(approved_items)
 
         return jsonify({
             'success': True,
@@ -5947,10 +5978,14 @@ def get_ghost_market_items():
                     'images': item['images'],
                     'category': item['category'],
                     'condition': item['condition'],
+                    'seller_id': item['seller_id'],
                     'seller_pin_half': item['seller_pin_half'],
+                    'status': item['display_status'],
+                    'is_owner': bool(user_id and item['seller_id'] == user_id),
+                    'rejection_reason': item['rejection_reason'] if item['display_status'] == 'rejected' else None,
                     'created_at': item['created_at']
                 }
-                for item in items
+                for item in all_items
             ]
         })
 

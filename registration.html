@@ -4,306 +4,108 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
   <title>Register — ZeusChat</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-    body {
-      background: #000;
-      overflow: hidden;
-      height: 100vh;
-      color: #fff;
-    }
-    .video-bg {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      z-index: -1;
-    }
-    .overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.6);
-      z-index: 0;
-    }
-    .header {
-      position: absolute;
-      top: 24px;
-      left: 24px;
-      z-index: 2;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-    }
-    .logo {
-      height: 32px;
-      margin-bottom: 4px;
-    }
-    .byline {
-      font-size: 12px;
-      color: #FFD700;
-      font-weight: 500;
-    }
-    .container {
-      position: relative;
-      z-index: 1;
-      text-align: center;
-      padding: 20px;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-    }
-    .box {
-      background: #222;
-      border-radius: 12px;
-      padding: 24px;
-      margin: 16px 0;
-      width: 100%;
-      max-width: 600px;
-      text-align: left;
-    }
-    .box-title {
-      font-size: 20px;
-      font-weight: 600;
-      margin-bottom: 16px;
-      color: #fff;
-    }
-    .step {
-      display: flex;
-      align-items: flex-start;
-      margin: 12px 0;
-    }
-    .step-number {
-      background: #333;
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 14px;
-      margin-right: 12px;
-    }
-    .step-text {
-      font-size: 14px;
-      line-height: 1.5;
-    }
-    .qr-box {
-      background: #111;
-      padding: 16px;
-      border-radius: 8px;
-      margin: 16px 0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .qr-container {
-      background: rgba(102, 126, 234, 0.08);
-      border-radius: 28px;
-      padding: 20px;
-      margin: 20px 0;
-    }
-    .qr-instructions-text {
-      background: #f8fafc;
-      border-radius: 16px;
-      padding: 16px;
-      margin-top: 15px;
-    }
-    #installQrCode {
-      min-width: 150px;
-      min-height: 150px;
-    }
-    .login-info {
-      font-size: 14px;
-      text-align: left;
-      margin: 16px 0 8px;
-      color: #d1d5db;
-    }
-    .btn {
-      background: #FFD700;
-      color: #000;
-      border: none;
-      padding: 12px 24px;
-      font-size: 14px;
-      font-weight: 600;
-      border-radius: 6px;
-      cursor: pointer;
-      margin-top: 16px;
-      width: 100%;
-      max-width: 400px;
-    }
-    .note {
-      background: #1a1a1a;
-      border-left: 4px solid #d4af37;
-      padding: 12px;
-      margin-top: 16px;
-      font-size: 13px;
-      text-align: left;
-      line-height: 1.5;
-    }
-    .footer {
-      position: absolute;
-      bottom: 24px;
-      left: 24px;
-      z-index: 2;
-      text-align: left;
-    }
-    .footer a {
-      color: #d4af37;
-      text-decoration: underline;
-    }
-
-/* Mobile Responsive Styles */
-@media (max-width: 768px) {
-    body {
-        padding: 16px;
-    }
-
-    .container, .card, .main-content {
-        padding: 20px 16px;
-        margin: 0;
-        width: 100%;
-        border-radius: 24px;
-    }
-
-    h1 {
-        font-size: 28px;
-    }
-
-    h2 {
-        font-size: 22px;
-    }
-
-    button, .btn-primary, .btn-secondary {
-        padding: 14px 20px;
-        font-size: 16px;
-    }
-
-    input, textarea, select {
-        padding: 14px;
-        font-size: 16px;
-    }
-
-    .sidebar {
-        position: fixed;
-        left: -280px;
-        transition: left 0.3s;
-        z-index: 1000;
-    }
-
-    .sidebar.open {
-        left: 0;
-    }
-
-    .menu-toggle {
-        display: block;
-        position: fixed;
-        top: 16px;
-        left: 16px;
-        z-index: 1001;
-        background: #D4AF37;
-        border: none;
-        border-radius: 8px;
-        padding: 10px;
-        cursor: pointer;
-    }
-
-    .main-content {
-        margin-left: 0;
-        padding: 60px 16px 20px;
-    }
-
-    .admin-table {
-        display: block;
-        overflow-x: auto;
-        white-space: nowrap;
-    }
-
-    .feature-grid, .pricing-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .chat-container {
-        flex-direction: column;
-    }
-
-    .message {
-        max-width: 85%;
-    }
-
-    body {
-        font-size: 14px;
-    }
-
-    button, a, .clickable {
-        min-height: 44px;
-    }
-}
-  </style>
+  <link rel="stylesheet" href="/static/premium.css">
   <link rel="stylesheet" href="/static/mobile.css">
 </head>
 <body>
-  <video class="video-bg" autoplay muted loop>
-    <source src="zeustech-register.mp4" type="video/mp4">
-  </video>
-  <div class="overlay"></div>
 
-  <div class="container">
-    <div class="box">
-      <div class="box-title">Don't have a ZeusChat account? Get started</div>
-      <div class="qr-container" style="text-align: center; margin: 20px auto;">
-        <div style="background: white; padding: 15px; border-radius: 20px; display: inline-block; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-          <div id="installQrCode"></div>
-        </div>
-        <h3 style="color: #1e293b; margin-top: 20px; font-size: 18px;">📱 Get ZeusChat on Your Phone</h3>
-        <div style="margin-top: 10px;">
-          <p style="color: #64748b; font-size: 14px;">Scan QR code with your phone camera to install</p>
-          <div style="background: #f1f5f9; border-radius: 12px; padding: 12px; margin-top: 10px; text-align: left;">
-            <p style="font-size: 12px; margin: 5px 0;">📱 <strong>iPhone:</strong> Tap Share → "Add to Home Screen"</p>
-            <p style="font-size: 12px; margin: 5px 0;">🤖 <strong>Android:</strong> Tap "Install App"</p>
+  <div class="premium-container">
+    <div class="premium-two-col">
+
+      <!-- Form Column -->
+      <div class="premium-form-col">
+        <div class="premium-card">
+          <div class="premium-logo">
+            <span class="premium-logo-icon">🛡️</span>
+            <h1>ZEUSCHAT</h1>
+            <div class="premium-tagline">GHOST MODE MESSAGING</div>
+          </div>
+
+          <div class="premium-qr-wrapper" id="qrWrapper">
+            <div class="premium-qr-inner">
+              <div id="installQrCode"></div>
+            </div>
+            <p style="color: rgba(255,255,255,0.5); font-size: 13px; margin-top: 12px;">
+              📱 Scan with your phone camera to install
+            </p>
+            <div style="background: rgba(255,255,255,0.04); border-radius: 12px; padding: 10px; margin-top: 10px; font-size: 12px; color: rgba(255,255,255,0.5); text-align: left;">
+              📱 <strong style="color: rgba(255,255,255,0.7);">iPhone:</strong> Tap Share → "Add to Home Screen"<br>
+              🤖 <strong style="color: rgba(255,255,255,0.7);">Android:</strong> Tap "Install App"
+            </div>
+          </div>
+
+          <div style="margin: 20px 0 16px; font-size: 14px; color: rgba(255,255,255,0.6);">
+            <strong style="color: #D4AF37;">Log in with email</strong> — Click below to enter your email address.
+          </div>
+
+          <button class="premium-btn" onclick="location.href='emailinput.html'">Get Started ✨</button>
+
+          <div class="premium-note" style="margin-top: 20px;">
+            Your personal messages are end-to-end encrypted.<br>
+            No saving, no screenshots, no traces.
+          </div>
+
+          <div style="margin-top: 16px; text-align: center; font-size: 13px; color: rgba(255,255,255,0.35);">
+            <a href="privacy.html" style="color: rgba(212,175,55,0.7); text-decoration: none;">Terms &amp; Privacy Policy</a>
           </div>
         </div>
       </div>
 
-      <div class="login-info">
-        <strong>Log in with email</strong><br>
-        Click "Get Started" below to enter your email.
+      <!-- Side Column -->
+      <div class="premium-side-col">
+        <div class="premium-side-card">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <span style="font-size: 56px; display: block; margin-bottom: 12px; animation: bounce 2s infinite;">👻</span>
+            <div style="color: #D4AF37; font-size: 11px; letter-spacing: 3px; margin-bottom: 12px;">GHOST TOWN AWAITS</div>
+            <div style="color: rgba(255,255,255,0.65); font-size: 14px; line-height: 1.7;">
+              The most exclusive messaging platform in Africa. Anonymous. Encrypted. Untraceable.
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="premium-feature-row">
+              <span style="font-size: 26px;">🔑</span>
+              <div>
+                <div style="color: #D4AF37; font-size: 11px; letter-spacing: 1px; margin-bottom: 2px;">ZEUS-PIN</div>
+                <div style="color: rgba(255,255,255,0.65); font-size: 13px;">Your anonymous identity. No phone number needed.</div>
+              </div>
+            </div>
+            <div class="premium-feature-row">
+              <span style="font-size: 26px;">💀</span>
+              <div>
+                <div style="color: #D4AF37; font-size: 11px; letter-spacing: 1px; margin-bottom: 2px;">SELF-DESTRUCT</div>
+                <div style="color: rgba(255,255,255,0.65); font-size: 13px;">Messages vanish on a timer. No traces left behind.</div>
+              </div>
+            </div>
+            <div class="premium-feature-row">
+              <span style="font-size: 26px;">🏪</span>
+              <div>
+                <div style="color: #D4AF37; font-size: 11px; letter-spacing: 1px; margin-bottom: 2px;">GHOST MARKET</div>
+                <div style="color: rgba(255,255,255,0.65); font-size: 13px;">Africa's first anonymous buy &amp; sell marketplace.</div>
+              </div>
+            </div>
+            <div class="premium-feature-row">
+              <span style="font-size: 26px;">💰</span>
+              <div>
+                <div style="color: #D4AF37; font-size: 11px; letter-spacing: 1px; margin-bottom: 2px;">GET PAID</div>
+                <div style="color: rgba(255,255,255,0.65); font-size: 13px;">Earn 80% of every paid post. Your content, your earnings.</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <button class="btn" onclick="location.href='emailinput.html'">Get Started</button>
-
-      <div class="note">
-        Your personal messages are end-to-end encrypted.<br>
-        No saving, no screenshots, no traces.
-      </div>
     </div>
-  </div>
-
-  <div class="footer">
-    Don't have an account? <a href="emailinput.html">Get started</a><br>
-    <a href="privacy.html">Terms & Privacy Policy</a>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
-      const qrContainer = document.querySelector('.qr-container');
+      const qrWrapper = document.getElementById('qrWrapper');
 
-      // Registration QR flow is desktop-only; mobile users go directly to email input.
       if (isMobile) {
-        if (qrContainer) qrContainer.style.display = 'none';
+        if (qrWrapper) qrWrapper.style.display = 'none';
         window.location.href = '/emailinput.html';
         return;
       }
@@ -314,12 +116,13 @@
           text: '/mobile',
           width: 150,
           height: 150,
-          colorDark: '#667eea',
-          colorLight: '#ffffff',
+          colorDark: '#111111',
+          colorLight: '#D4AF37',
           correctLevel: QRCode.CorrectLevel.H
         });
       }
     });
   </script>
+  <script src="/static/premium.js"></script>
 </body>
 </html>

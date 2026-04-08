@@ -4,389 +4,61 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
   <title>Enter Email — ZeusChat</title>
-
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-
-    body {
-      background: #000;
-      overflow: hidden;
-      height: 100vh;
-      color: #fff;
-    }
-
-    .video-bg {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      z-index: -1;
-    }
-
-    .overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.6);
-      z-index: 0;
-    }
-
-    .header {
-      position: absolute;
-      top: 24px;
-      left: 24px;
-      z-index: 2;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-    }
-
-    .logo {
-      height: 32px;
-      margin-bottom: 4px;
-    }
-
-    .byline {
-      font-size: 12px;
-      color: #FFD700;
-      font-weight: 500;
-    }
-
-    .container {
-      position: relative;
-      z-index: 1;
-      text-align: center;
-      padding: 20px;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .registration-shell {
-      width: 100%;
-      max-width: 1080px;
-      display: flex;
-      gap: 24px;
-      align-items: stretch;
-      justify-content: center;
-    }
-
-    .box {
-      background: rgba(20, 20, 20, 0.84);
-      backdrop-filter: blur(14px);
-      border-radius: 24px;
-      padding: 32px;
-      width: 100%;
-      max-width: 640px;
-      text-align: left;
-      border: 1px solid rgba(255, 215, 0, 0.18);
-      box-shadow: 0 28px 70px rgba(0, 0, 0, 0.38);
-    }
-
-    .box-title {
-      font-size: 20px;
-      font-weight: 600;
-      margin-bottom: 16px;
-    }
-
-    .input-group {
-      margin-bottom: 16px;
-    }
-
-    input {
-      width: 100%;
-      padding: 12px;
-      background: #333;
-      border: 1px solid #444;
-      color: #fff;
-      border-radius: 6px;
-    }
-
-    .btn {
-      background: #FFD700;
-      color: #000;
-      border: none;
-      padding: 12px 24px;
-      font-size: 14px;
-      font-weight: 600;
-      border-radius: 6px;
-      cursor: pointer;
-      margin-top: 16px;
-      width: 100%;
-      max-width: 400px;
-    }
-
-    .note {
-      background: #1a1a1a;
-      border-left: 4px solid #d4af37;
-      padding: 12px;
-      margin-top: 16px;
-      font-size: 13px;
-      line-height: 1.5;
-    }
-
-    .premium-sidebar {
-      background: linear-gradient(135deg, rgba(212,175,55,0.1) 0%, rgba(0,0,0,0.3) 100%);
-      border-left: 2px solid #D4AF37;
-      border-radius: 16px;
-      padding: 24px;
-      max-width: 320px;
-      width: 100%;
-      display: flex;
-      align-items: center;
-    }
-
-    .fun-fact-card {
-      background: rgba(0,0,0,0.6);
-      backdrop-filter: blur(10px);
-      border-radius: 20px;
-      padding: 24px;
-      text-align: center;
-      width: 100%;
-      animation: fadeInUp 0.6s ease;
-    }
-
-    .fun-fact-icon {
-      font-size: 48px;
-      margin-bottom: 16px;
-    }
-
-    .fun-fact-title {
-      color: #D4AF37;
-      font-size: 12px;
-      letter-spacing: 3px;
-      margin-bottom: 12px;
-    }
-
-    .fun-fact-text {
-      color: white;
-      font-size: 16px;
-      line-height: 1.5;
-      margin-bottom: 20px;
-    }
-
-    .fun-fact-footer {
-      color: rgba(255,255,255,0.5);
-      font-size: 11px;
-      font-style: italic;
-    }
-
-    @keyframes fadeInUp {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @keyframes glowPulse {
-      0% {
-        box-shadow: 0 0 5px rgba(212,175,55,0.3);
-      }
-      50% {
-        box-shadow: 0 0 20px rgba(212,175,55,0.6);
-      }
-      100% {
-        box-shadow: 0 0 5px rgba(212,175,55,0.3);
-      }
-    }
-
-    .premium-card {
-      animation: fadeInUp 0.6s ease;
-    }
-
-    .premium-card:hover {
-      animation: glowPulse 1.5s infinite;
-    }
-
-/* Mobile Responsive Styles */
-@media (max-width: 768px) {
-    body {
-        padding: 16px;
-    }
-
-    .container, .card, .main-content {
-        padding: 20px 16px;
-        margin: 0;
-        width: 100%;
-        border-radius: 24px;
-    }
-
-    h1 {
-        font-size: 28px;
-    }
-
-    h2 {
-        font-size: 22px;
-    }
-
-    button, .btn-primary, .btn-secondary {
-        padding: 14px 20px;
-        font-size: 16px;
-    }
-
-    input, textarea, select {
-        padding: 14px;
-        font-size: 16px;
-    }
-
-    .sidebar {
-        position: fixed;
-        left: -280px;
-        transition: left 0.3s;
-        z-index: 1000;
-    }
-
-    .sidebar.open {
-        left: 0;
-    }
-
-    .menu-toggle {
-        display: block;
-        position: fixed;
-        top: 16px;
-        left: 16px;
-        z-index: 1001;
-        background: #D4AF37;
-        border: none;
-        border-radius: 8px;
-        padding: 10px;
-        cursor: pointer;
-    }
-
-    .main-content {
-        margin-left: 0;
-        padding: 60px 16px 20px;
-    }
-
-    .admin-table {
-        display: block;
-        overflow-x: auto;
-        white-space: nowrap;
-    }
-
-    .feature-grid, .pricing-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .chat-container {
-        flex-direction: column;
-    }
-
-    .message {
-        max-width: 85%;
-    }
-
-    .registration-shell {
-      flex-direction: column;
-      max-width: 640px;
-    }
-
-    .premium-sidebar {
-      max-width: 100%;
-      order: -1;
-    }
-
-    body {
-        font-size: 14px;
-    }
-
-    button, a, .clickable {
-        min-height: 44px;
-    }
-}
-  </style>
+  <link rel="stylesheet" href="/static/premium.css">
   <link rel="stylesheet" href="/static/mobile.css">
 </head>
-
 <body>
-  <video class="video-bg" autoplay muted loop>
-    <source src="zeustech-register.mp4" type="video/mp4" />
-  </video>
 
-  <div class="overlay"></div>
+  <div class="premium-container">
+    <div class="premium-two-col">
 
-  <div class="header">
-    <img src="zeustech-logo-zeushchat.png" class="logo" alt="ZeusTech" />
-    <div class="byline">ZeusChat by ZeusTech</div>
-  </div>
-
-  <div class="container">
-    <div class="registration-shell">
-      <div class="box premium-card">
-        <div class="box-title">Enter your email</div>
-
-        <div class="input-group">
-          <input type="email" id="email" placeholder="you@email.com" />
-        </div>
-
-        <button class="btn" id="nextBtn" onclick="saveEmail()">Next</button>
-
-        <div class="note" style="background: #2a2a1a; border-color: #FFD700;">
-          <strong>Test Mode Active:</strong><br />
-          Enter any email -> Next -> Use code <strong>123456</strong><br />
-          You'll get a unique Zeus-PIN for secure messaging.
-        </div>
-      </div>
-
-      <div class="premium-sidebar premium-card">
-        <div class="fun-fact-card" id="funFactCard">
-          <div class="fun-fact-icon" id="funFactIcon">✨</div>
-          <div class="fun-fact-title" id="funFactTitle">DID YOU KNOW?</div>
-          <div class="fun-fact-text" id="funFactText">
-            ZeusChat is the FIRST messaging platform with an anonymous marketplace called GHOST MARKET.
+      <!-- Form Column -->
+      <div class="premium-form-col">
+        <div class="premium-card">
+          <div class="premium-logo">
+            <span class="premium-logo-icon">🛡️</span>
+            <h1>ZEUSCHAT</h1>
+            <div class="premium-tagline">GHOST MODE MESSAGING</div>
           </div>
-          <div class="fun-fact-footer">Only the worthy enter.</div>
+
+          <div class="premium-input-group">
+            <label class="premium-label">Your Email Address</label>
+            <input type="email" id="email" class="premium-input" placeholder="you@email.com" />
+          </div>
+
+          <button class="premium-btn" id="nextBtn" onclick="saveEmail()">Continue →</button>
+
+          <div class="premium-note">
+            <strong style="color: #D4AF37;">Test Mode Active:</strong><br />
+            Enter any email → Next → Use code <strong>123456</strong><br />
+            You'll get a unique Zeus-PIN for secure messaging.
+          </div>
         </div>
       </div>
+
+      <!-- Side Column -->
+      <div class="premium-side-col">
+        <div class="premium-side-card">
+          <div class="fact-card" id="funFactCard">
+            <span class="fact-icon" id="funFactIcon">✨</span>
+            <div class="fact-title" id="funFactTitle">DID YOU KNOW?</div>
+            <div class="fact-text" id="funFactText">ZeusChat is the FIRST messaging platform with an anonymous marketplace called GHOST MARKET.</div>
+            <div class="fact-footer">Only the worthy enter.</div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
   <script>
     const funFacts = [
-      {
-        icon: "🏪",
-        title: "GHOST MARKET",
-        text: "The first anonymous marketplace built into a messaging platform. Sell used items without anyone knowing who you are."
-      },
-      {
-        icon: "🔑",
-        title: "ZEUS-PIN",
-        text: "Your identity is your PIN. No phone number needed. Ever. No tracking. No spam."
-      },
-      {
-        icon: "💀",
-        title: "SELF-DESTRUCT",
-        text: "Messages disappear on a timer, keeping your most private conversations light, sharp, and hard to keep."
-      },
-      {
-        icon: "👻",
-        title: "GHOST TOWN",
-        text: "Posts vanish after 24 hours. What happens in Ghost Town stays in Ghost Town."
-      },
-      {
-        icon: "💰",
-        title: "GET PAID",
-        text: "Earn 80% of every paid post. Your content, your value, your earnings."
-      },
-      {
-        icon: "🌍",
-        title: "YOUR LANGUAGE",
-        text: "Speak Swahili, Yoruba, Zulu, Hausa, Igbo, or Amharic. ZeusChat speaks your language."
-      }
+      { icon: "🏪", title: "GHOST MARKET", text: "The first anonymous marketplace built into a messaging platform. Sell used items without anyone knowing who you are." },
+      { icon: "🔑", title: "ZEUS-PIN", text: "Your identity is your PIN. No phone number needed. Ever. No tracking. No spam." },
+      { icon: "💀", title: "SELF-DESTRUCT", text: "Messages disappear on a timer, keeping your most private conversations light, sharp, and hard to keep." },
+      { icon: "👻", title: "GHOST TOWN", text: "Posts vanish after 24 hours. What happens in Ghost Town stays in Ghost Town." },
+      { icon: "💰", title: "GET PAID", text: "Earn 80% of every paid post. Your content, your value, your earnings." },
+      { icon: "🌍", title: "YOUR LANGUAGE", text: "Speak Swahili, Yoruba, Zulu, Hausa, Igbo, or Amharic. ZeusChat speaks your language." }
     ];
 
     let currentFact = 0;
@@ -419,23 +91,21 @@
       if (!email) {
         alert("Please enter your email.");
         nextBtn.disabled = false;
-        nextBtn.textContent = "Next";
+        nextBtn.textContent = "Continue →";
         return;
       }
 
-      const emailRegex =
-        /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+      const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
 
       if (!emailRegex.test(email)) {
         alert("Please enter a valid email address.");
         nextBtn.disabled = false;
-        nextBtn.textContent = "Next";
+        nextBtn.textContent = "Continue →";
         return;
       }
 
-      // Call backend to send OTP
       const API_BASE = window.location.origin;
-      
+
       fetch(`${API_BASE}/api/start-signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -447,21 +117,21 @@
         if (data.success) {
           localStorage.setItem("pending_email", email);
           console.log('✅ OTP sent to:', email);
-          // otp-verify.html MUST validate pending_email exists to enforce step-locked flow
           window.location.href = "otp-verify.html";
         } else {
           alert(data.error || 'Failed to send OTP. Please try again.');
           nextBtn.disabled = false;
-          nextBtn.textContent = "Next";
+          nextBtn.textContent = "Continue →";
         }
       })
       .catch(error => {
         console.error('❌ Signup error:', error);
         alert('Network error. Please check your connection.');
         nextBtn.disabled = false;
-        nextBtn.textContent = "Next";
+        nextBtn.textContent = "Continue →";
       });
     }
   </script>
+  <script src="/static/premium.js"></script>
 </body>
 </html>

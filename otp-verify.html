@@ -4,401 +4,72 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
   <title>Verify OTP — ZeusChat</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-    body {
-      background: #000;
-      overflow: hidden;
-      height: 100vh;
-      color: #fff;
-    }
-    .video-bg {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      z-index: -1;
-    }
-    .overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.6);
-      z-index: 0;
-    }
-    .header {
-      position: absolute;
-      top: 24px;
-      left: 24px;
-      z-index: 2;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-    }
-    .logo {
-      height: 32px;
-      margin-bottom: 4px;
-    }
-    .byline {
-      font-size: 12px;
-      color: #FFD700;
-      font-weight: 500;
-    }
-    .container {
-      position: relative;
-      z-index: 1;
-      text-align: center;
-      padding: 20px;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .otp-shell {
-      width: 100%;
-      max-width: 1080px;
-      display: flex;
-      gap: 24px;
-      align-items: stretch;
-      justify-content: center;
-    }
-
-    .box {
-      background: rgba(24, 24, 24, 0.86);
-      backdrop-filter: blur(14px);
-      border-radius: 24px;
-      padding: 32px;
-      width: 100%;
-      max-width: 640px;
-      text-align: left;
-      border: 1px solid rgba(212,175,55,0.18);
-      box-shadow: 0 24px 72px rgba(0, 0, 0, 0.4);
-    }
-    .box-title {
-      font-size: 20px;
-      font-weight: 600;
-      margin-bottom: 8px;
-    }
-    .box-subtitle {
-      font-size: 13px;
-      color: #aaa;
-      margin-bottom: 16px;
-    }
-    .input-group {
-      margin-bottom: 16px;
-    }
-    input {
-      width: 100%;
-      padding: 12px;
-      background: #333;
-      border: 1px solid #444;
-      color: #fff;
-      border-radius: 6px;
-      font-size: 16px;
-      letter-spacing: 2px;
-      text-align: center;
-    }
-    .btn {
-      background: #FFD700;
-      color: #000;
-      border: none;
-      padding: 12px 24px;
-      font-size: 14px;
-      font-weight: 600;
-      border-radius: 6px;
-      cursor: pointer;
-      margin-top: 16px;
-      width: 100%;
-      max-width: 400px;
-    }
-    .btn:disabled {
-      background: #666;
-      cursor: not-allowed;
-    }
-    .note {
-      background: #1a1a1a;
-      border-left: 4px solid #d4af37;
-      padding: 12px;
-      margin-top: 16px;
-      font-size: 13px;
-      line-height: 1.5;
-    }
-    .error {
-      background: #331a1a;
-      border-left: 4px solid #ff4444;
-      padding: 12px;
-      margin-top: 16px;
-      font-size: 13px;
-      color: #ff9999;
-      display: none;
-    }
-
-    .ghost-town-card {
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-      border: 1px solid rgba(212,175,55,0.3);
-      border-radius: 24px;
-      padding: 28px;
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-      width: 100%;
-      max-width: 320px;
-      animation: fadeInUp 0.6s ease;
-    }
-
-    .ghost-town-card::before {
-      content: "👻";
-      position: absolute;
-      font-size: 120px;
-      opacity: 0.05;
-      bottom: -20px;
-      right: -20px;
-      pointer-events: none;
-    }
-
-    .ghost-town-icon {
-      font-size: 56px;
-      margin-bottom: 16px;
-    }
-
-    .ghost-town-title {
-      color: #D4AF37;
-      font-size: 18px;
-      letter-spacing: 4px;
-      margin-bottom: 12px;
-    }
-
-    .ghost-town-quote {
-      color: white;
-      font-size: 14px;
-      font-style: italic;
-      margin-bottom: 20px;
-    }
-
-    .ghost-town-population {
-      background: rgba(0,0,0,0.5);
-      border-radius: 40px;
-      padding: 8px 16px;
-      display: inline-flex;
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-
-    .population-label {
-      color: rgba(255,255,255,0.6);
-      font-size: 12px;
-    }
-
-    .population-count {
-      color: #D4AF37;
-      font-size: 18px;
-      font-weight: bold;
-    }
-
-    .ghost-town-footer {
-      color: rgba(255,255,255,0.4);
-      font-size: 11px;
-    }
-
-    @keyframes fadeInUp {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @keyframes glowPulse {
-      0% {
-        box-shadow: 0 0 5px rgba(212,175,55,0.3);
-      }
-      50% {
-        box-shadow: 0 0 20px rgba(212,175,55,0.6);
-      }
-      100% {
-        box-shadow: 0 0 5px rgba(212,175,55,0.3);
-      }
-    }
-
-    .premium-card {
-      animation: fadeInUp 0.6s ease;
-    }
-
-    .premium-card:hover {
-      animation: glowPulse 1.5s infinite;
-    }
-
-/* Mobile Responsive Styles */
-@media (max-width: 768px) {
-    body {
-        padding: 16px;
-    }
-
-    .container, .card, .main-content {
-        padding: 20px 16px;
-        margin: 0;
-        width: 100%;
-        border-radius: 24px;
-    }
-
-    h1 {
-        font-size: 28px;
-    }
-
-    h2 {
-        font-size: 22px;
-    }
-
-    button, .btn-primary, .btn-secondary {
-        padding: 14px 20px;
-        font-size: 16px;
-    }
-
-    input, textarea, select {
-        padding: 14px;
-        font-size: 16px;
-    }
-
-    .sidebar {
-        position: fixed;
-        left: -280px;
-        transition: left 0.3s;
-        z-index: 1000;
-    }
-
-    .sidebar.open {
-        left: 0;
-    }
-
-    .menu-toggle {
-        display: block;
-        position: fixed;
-        top: 16px;
-        left: 16px;
-        z-index: 1001;
-        background: #D4AF37;
-        border: none;
-        border-radius: 8px;
-        padding: 10px;
-        cursor: pointer;
-    }
-
-    .main-content {
-        margin-left: 0;
-        padding: 60px 16px 20px;
-    }
-
-    .admin-table {
-        display: block;
-        overflow-x: auto;
-        white-space: nowrap;
-    }
-
-    .feature-grid, .pricing-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .chat-container {
-        flex-direction: column;
-    }
-
-    .message {
-        max-width: 85%;
-    }
-
-    .otp-shell {
-      flex-direction: column;
-      max-width: 640px;
-    }
-
-    .ghost-town-card {
-      max-width: 100%;
-      order: -1;
-    }
-
-    body {
-        font-size: 14px;
-    }
-
-    button, a, .clickable {
-        min-height: 44px;
-    }
-}
-  </style>
+  <link rel="stylesheet" href="/static/premium.css">
   <link rel="stylesheet" href="/static/mobile.css">
 </head>
 <body>
-  <video class="video-bg" autoplay muted loop>
-    <source src="zeustech-register.mp4" type="video/mp4">
-  </video>
-  <div class="overlay"></div>
 
-  <!-- Top-left: Logo + Byline -->
-  <div class="header">
-    <img src="zeustech-logo-zeushchat.png" class="logo" alt="ZeusTech">
-    <div class="byline">ZeusChat by ZeusTech</div>
-  </div>
+  <div class="premium-container">
+    <div class="premium-two-col">
 
-  <div class="container">
-    <div class="otp-shell">
-      <div class="box premium-card">
-        <div class="box-title">Verify your email</div>
-        <div class="box-subtitle">Enter the 6-digit code we sent to <span id="emailDisplay"></span></div>
+      <!-- Form Column -->
+      <div class="premium-form-col">
+        <div class="premium-card">
+          <div class="premium-logo">
+            <span class="premium-logo-icon">🛡️</span>
+            <h1>ZEUSCHAT</h1>
+            <div class="premium-tagline">VERIFY YOUR IDENTITY</div>
+          </div>
 
-        <div class="input-group">
-          <input type="text" id="otp" placeholder="000000" maxlength="6" autocomplete="off" value="123456">
+          <div style="font-size: 15px; font-weight: 600; margin-bottom: 6px;">Check your inbox</div>
+          <div style="font-size: 13px; color: rgba(255,255,255,0.5); margin-bottom: 24px;">
+            Enter the 6-digit code we sent to <span id="emailDisplay" style="color: #D4AF37;"></span>
+          </div>
+
+          <div class="premium-input-group">
+            <label class="premium-label">Verification Code</label>
+            <input type="text" id="otp" class="premium-input"
+              placeholder="000000" maxlength="6" autocomplete="off" value="123456"
+              style="text-align: center; letter-spacing: 8px; font-size: 22px; font-weight: 600;">
+          </div>
+
+          <button class="premium-btn" id="verifyBtn" onclick="verifyOTP()">Verify &amp; Continue →</button>
+
+          <div class="premium-error" id="errorMsg"></div>
+
+          <div class="premium-note">
+            <strong style="color: #D4AF37;">Test Mode Active:</strong><br />
+            Default code: <strong>123456</strong><br />
+            This will generate your unique Zeus-PIN for secure messaging.
+          </div>
         </div>
+      </div>
 
-        <button class="btn" id="verifyBtn" onclick="verifyOTP()">Verify & Continue</button>
-
-        <div id="errorMsg" class="error"></div>
-
-        <div class="note" style="background: #2a2a1a; border-color: #FFD700;">
-          <strong>Test Mode Active:</strong><br />
-          Default code: <strong>123456</strong><br />
-          This will generate your unique Zeus-PIN for secure messaging.
+      <!-- Side Column: Ghost Town Card -->
+      <div class="premium-side-col">
+        <div class="premium-side-card">
+          <div class="ghost-town-card">
+            <span class="ghost-town-icon">🏚️</span>
+            <div class="ghost-town-title">GHOST TOWN</div>
+            <div class="ghost-town-quote">
+              "Where words disappear, but legends are born."
+            </div>
+            <div class="population-counter">
+              <span class="population-label">Population</span>
+              <span class="population-number" id="populationCount">12,437</span>
+            </div>
+            <div style="color: rgba(255,255,255,0.35); font-size: 11px; font-style: italic;">
+              Every Ghost has a story. What will yours be?
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="ghost-town-card premium-card">
-        <div class="ghost-town-icon">🏚️</div>
-        <div class="ghost-town-title">GHOST TOWN</div>
-        <div class="ghost-town-quote">
-          "Where words disappear, but legends are born."
-        </div>
-        <div class="ghost-town-population">
-          <span class="population-label">Population</span>
-          <span class="population-count" id="populationCount">10,437</span>
-        </div>
-        <div class="ghost-town-footer">
-          Every Ghost has a story. What will yours be?
-        </div>
-      </div>
     </div>
   </div>
 
   <script>
     const API_BASE = window.location.origin;
-    let currentPopulation = 10437;
-
-    setInterval(() => {
-      const increment = Math.floor(Math.random() * 5) + 1;
-      currentPopulation += increment;
-      document.getElementById('populationCount').textContent = currentPopulation.toLocaleString();
-    }, 30000);
 
     // Enforce step-locked flow: Must come from emailinput.html
     const pendingEmail = localStorage.getItem('pending_email');
@@ -407,14 +78,10 @@
       window.location.href = 'emailinput.html';
     }
 
-    // Display pending email
     document.getElementById('emailDisplay').textContent = pendingEmail;
 
-    // Allow Enter key to verify
     document.getElementById('otp').addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        verifyOTP();
-      }
+      if (e.key === 'Enter') { verifyOTP(); }
     });
 
     async function verifyOTP() {
@@ -422,7 +89,6 @@
       const verifyBtn = document.getElementById('verifyBtn');
       const errorMsg = document.getElementById('errorMsg');
 
-      // Prevent double submission
       if (verifyBtn.disabled) return;
       verifyBtn.disabled = true;
       verifyBtn.textContent = 'Verifying...';
@@ -431,34 +97,24 @@
       const email = localStorage.getItem('pending_email');
       const otp = otpInput.value.trim();
 
-      // Validate OTP
       if (!otp || otp.length !== 6 || !/^\d+$/.test(otp)) {
         errorMsg.textContent = 'Please enter a valid 6-digit code.';
         errorMsg.style.display = 'block';
         verifyBtn.disabled = false;
-        verifyBtn.textContent = 'Verify & Continue';
+        verifyBtn.textContent = 'Verify & Continue →';
         return;
       }
 
       try {
         console.log('🔐 Verifying OTP...');
-        console.log('📧 Email:', email);
-        // OTP not logged for security
-
-        // Call /api/verify-otp endpoint
         const response = await fetch(`${API_BASE}/api/verify-otp`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ 
-            email, 
-            otp 
-          })
+          body: JSON.stringify({ email, otp })
         });
 
-        console.log('📡 Response status:', response.status);
         const result = await response.json();
-        console.log('📊 Response data:', result);
 
         if (!response.ok) {
           throw new Error(result.error || 'OTP verification failed');
@@ -468,17 +124,10 @@
           throw new Error('Invalid response: no zeus_pin generated');
         }
 
-        console.log('✅ OTP verified! Zeus PIN:', result.zeus_pin);
-
-        // Store Zeus PIN for next step
         localStorage.setItem('registration_email', email);
         localStorage.setItem('my_zeus_pin', result.zeus_pin);
-        
-        // Remove pending email (step is complete)
         localStorage.removeItem('pending_email');
 
-        console.log('🎉 Redirecting to profile creation...');
-        // Proceed to profile creation
         window.location.href = 'profile-create.html';
 
       } catch (error) {
@@ -486,9 +135,10 @@
         errorMsg.textContent = 'Error: ' + (error.message || 'OTP verification failed. Please try again.');
         errorMsg.style.display = 'block';
         verifyBtn.disabled = false;
-        verifyBtn.textContent = 'Verify & Continue';
+        verifyBtn.textContent = 'Verify & Continue →';
       }
     }
   </script>
+  <script src="/static/premium.js"></script>
 </body>
 </html>

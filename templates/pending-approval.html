@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
   <link rel="manifest" href="/static/manifest.json">
-  <meta name="theme-color" content="#667eea">
+  <meta name="theme-color" content="#0f0f1a">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="ZeusChat">
@@ -12,293 +12,103 @@
   <link rel="icon" type="image/png" sizes="192x192" href="/zeuschat-icon.png">
   <link rel="icon" type="image/png" sizes="512x512" href="/zeuschat-icon.png">
   <title>ZeusChat - Pending Approval</title>
-  <link rel="stylesheet" href="/static/pending-approval.css" />
-  <style>
-    .video-background {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      z-index: -2;
-    }
-
-    .overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.4) 100%);
-      z-index: -1;
-    }
-
-    .while-you-wait-card {
-      background: rgba(0,0,0,0.5);
-      backdrop-filter: blur(10px);
-      border-radius: 20px;
-      padding: 20px;
-    }
-
-    .wyw-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 16px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid rgba(212,175,55,0.3);
-    }
-
-    .wyw-icon {
-      font-size: 20px;
-    }
-
-    .wyw-title {
-      color: #D4AF37;
-      font-size: 12px;
-      letter-spacing: 2px;
-    }
-
-    .wyw-list {
-      margin-bottom: 16px;
-    }
-
-    .wyw-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 8px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
-    }
-
-    .wyw-item-icon {
-      color: #D4AF37;
-      font-size: 12px;
-    }
-
-    .wyw-item-text {
-      color: rgba(255,255,255,0.8);
-      font-size: 13px;
-    }
-
-    .wyw-quote {
-      text-align: center;
-      font-size: 11px;
-      color: rgba(255,255,255,0.4);
-      font-style: italic;
-      padding-top: 12px;
-      border-top: 1px solid rgba(255,255,255,0.05);
-    }
-
-    @keyframes fadeInUp {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @keyframes glowPulse {
-      0% {
-        box-shadow: 0 0 5px rgba(212,175,55,0.3);
-      }
-      50% {
-        box-shadow: 0 0 20px rgba(212,175,55,0.6);
-      }
-      100% {
-        box-shadow: 0 0 5px rgba(212,175,55,0.3);
-      }
-    }
-
-    .premium-card {
-      animation: fadeInUp 0.6s ease;
-    }
-
-    .premium-card:hover {
-      animation: glowPulse 1.5s infinite;
-    }
-
-/* Mobile Responsive Styles */
-@media (max-width: 768px) {
-    body {
-        padding: 16px;
-    }
-
-    .container, .card, .main-content {
-        padding: 20px 16px;
-        margin: 0;
-        width: 100%;
-        border-radius: 24px;
-    }
-
-    h1 {
-        font-size: 28px;
-    }
-
-    h2 {
-        font-size: 22px;
-    }
-
-    button, .btn-primary, .btn-secondary {
-        padding: 14px 20px;
-        font-size: 16px;
-    }
-
-    input, textarea, select {
-        padding: 14px;
-        font-size: 16px;
-    }
-
-    .sidebar {
-        position: fixed;
-        left: -280px;
-        transition: left 0.3s;
-        z-index: 1000;
-    }
-
-    .sidebar.open {
-        left: 0;
-    }
-
-    .menu-toggle {
-        display: block;
-        position: fixed;
-        top: 16px;
-        left: 16px;
-        z-index: 1001;
-        background: #D4AF37;
-        border: none;
-        border-radius: 8px;
-        padding: 10px;
-        cursor: pointer;
-    }
-
-    .main-content {
-        margin-left: 0;
-        padding: 60px 16px 20px;
-    }
-
-    .admin-table {
-        display: block;
-        overflow-x: auto;
-        white-space: nowrap;
-    }
-
-    .feature-grid, .pricing-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .chat-container {
-        flex-direction: column;
-    }
-
-    .message {
-        max-width: 85%;
-    }
-
-    body {
-        font-size: 14px;
-    }
-
-    button, a, .clickable {
-        min-height: 44px;
-    }
-}
-  </style>
+  <link rel="stylesheet" href="/static/premium.css">
   <link rel="stylesheet" href="/static/mobile.css">
+  <style>
+    body { overflow-y: auto; }
+    .premium-container { align-items: flex-start; padding-top: 24px; padding-bottom: 60px; }
+  </style>
 </head>
 <body>
-  <video class="video-background" autoplay loop muted playsinline id="bgVideo">
-    <source src="/zeuschat-chatpage.mp4" type="video/mp4">
-  </video>
-  <div class="overlay"></div>
-
-  <div class="wrap">
-    <div class="top">
-      <h2 style="margin:0;">ZeusChat</h2>
-      <div>
-        <span class="badge">Pending Approval</span>
-        <button class="btn logout" id="logout-btn">Logout</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <h3 style="margin-top:0;">Account Under Review</h3>
-      <p>Your account is registered and waiting for admin approval.</p>
-
-      <div class="timeline">
-        <div class="step">1. Registration complete</div>
-        <div class="step active">2. Admin review in progress</div>
-        <div class="step">3. Full access enabled</div>
-      </div>
-    </div>
-
-    <div class="card premium-card">
-      <div class="while-you-wait-card">
-        <div class="wyw-header">
-          <span class="wyw-icon">📚</span>
-          <span class="wyw-title">WHILE YOU WAIT</span>
-        </div>
-        <div class="wyw-list">
-          <div class="wyw-item">
-            <span class="wyw-item-icon">✦</span>
-            <span class="wyw-item-text">Read the Ghost Manifesto</span>
-          </div>
-          <div class="wyw-item">
-            <span class="wyw-item-icon">✦</span>
-            <span class="wyw-item-text">Explore Ghost Market rules</span>
-          </div>
-          <div class="wyw-item">
-            <span class="wyw-item-icon">✦</span>
-            <span class="wyw-item-text">Join our exclusive waitlist</span>
-          </div>
-          <div class="wyw-item">
-            <span class="wyw-item-icon">✦</span>
-            <span class="wyw-item-text">Follow us on social media</span>
-          </div>
-        </div>
-        <div class="wyw-quote">
-          "Good things come to those who wait. Great things come to those who become Ghosts."
+  <div class="premium-container">
+    <div style="width: 100%; max-width: 1000px; margin: 0 auto; position: relative; z-index: 1;">
+      <div class="premium-status-bar">
+        <h2 style="margin: 0; font-family: 'Playfair Display', serif; letter-spacing: 2px; color: #D4AF37;">ZEUSCHAT</h2>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span class="premium-badge">Pending Approval</span>
+          <button class="premium-btn-secondary" id="logout-btn" style="width: auto; padding: 8px 14px; border-radius: 20px;">Logout</button>
         </div>
       </div>
-    </div>
 
-    <div class="card">
-      <h3 style="margin-top:0;">Message Admin</h3>
-      <div class="msg-box">
-        <div id="msg-log" class="msg-log"></div>
-        <div class="msg-input">
-          <textarea id="msg-input" rows="2" placeholder="Type a message to admin..."></textarea>
-          <button id="msg-send" class="btn pay">Send</button>
+      <div class="premium-card">
+        <div class="premium-section-title">Approval Progress</div>
+        <h3 style="margin: 0 0 8px; color: rgba(255,255,255,0.9); font-size: 24px;">Account Under Review</h3>
+        <p style="color: rgba(255,255,255,0.55);">Your account is registered and waiting for admin approval.</p>
+
+        <div class="premium-timeline">
+          <div class="premium-timeline-step">1. Registration complete</div>
+          <div class="premium-timeline-step active">2. Admin review in progress</div>
+          <div class="premium-timeline-step">3. Full access enabled</div>
         </div>
       </div>
-    </div>
 
-    <div class="card">
-      <h3 style="margin-top:0;">Optional One-Off Unlocks</h3>
-      <div class="upgrades">
-        <div class="upgrade">
-          <strong>Profile Picture</strong>
-          <div>R29 one-off</div>
-          <button class="btn pay" onclick="requestUnlock('profile_picture')">Unlock</button>
+      <div class="premium-card" style="margin-top: 20px;">
+        <div class="while-you-wait-card">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid rgba(212,175,55,0.3);">
+            <span style="font-size: 20px;">📚</span>
+            <span style="color: #D4AF37; font-size: 12px; letter-spacing: 2px;">WHILE YOU WAIT</span>
+          </div>
+          <div class="wyw-list">
+            <div class="wyw-item">
+              <span class="wyw-dot">●</span>
+              <span style="color: rgba(255,255,255,0.8); font-size: 13px;">Read the Ghost Manifesto</span>
+            </div>
+            <div class="wyw-item">
+              <span class="wyw-dot">●</span>
+              <span style="color: rgba(255,255,255,0.8); font-size: 13px;">Explore Ghost Market rules</span>
+            </div>
+            <div class="wyw-item">
+              <span class="wyw-dot">●</span>
+              <span style="color: rgba(255,255,255,0.8); font-size: 13px;">Join our exclusive waitlist</span>
+            </div>
+            <div class="wyw-item">
+              <span class="wyw-dot">●</span>
+              <span style="color: rgba(255,255,255,0.8); font-size: 13px;">Follow us on social media</span>
+            </div>
+          </div>
+          <div style="text-align: center; font-size: 11px; color: rgba(255,255,255,0.35); font-style: italic; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05);">
+            "Good things come to those who wait. Great things come to those who become Ghosts."
+          </div>
         </div>
-        <div class="upgrade">
-          <strong>Extended TTL</strong>
-          <div>R39 one-off</div>
-          <button class="btn pay" onclick="requestUnlock('extended_ttl')">Unlock</button>
+      </div>
+
+      <div class="premium-card" style="margin-top: 20px;">
+        <div class="premium-section-title">Message Admin</div>
+        <div class="premium-msg-box">
+          <div id="msg-log" class="premium-msg-log"></div>
+          <div class="premium-msg-input-row">
+            <textarea id="msg-input" rows="2" class="premium-textarea" placeholder="Type a message to admin..."></textarea>
+            <button id="msg-send" class="premium-btn" style="width: auto; min-width: 110px; padding: 12px 16px;">Send</button>
+          </div>
         </div>
-        <div class="upgrade">
-          <strong>PIN Retention</strong>
-          <div>R49 one-off</div>
-          <button class="btn pay" onclick="requestUnlock('pin_retention')">Unlock</button>
+      </div>
+
+      <div class="premium-card" style="margin-top: 20px;">
+        <div class="premium-section-title">Optional One-Off Unlocks</div>
+        <div class="premium-upgrades">
+          <div class="premium-upgrade-item">
+            <strong style="display:block; color: rgba(255,255,255,0.85);">Profile Picture</strong>
+            <div class="premium-upgrade-price">R29 one-off</div>
+            <button class="premium-upgrade-btn" onclick="requestUnlock('profile_picture')">Unlock</button>
+          </div>
+          <div class="premium-upgrade-item">
+            <strong style="display:block; color: rgba(255,255,255,0.85);">Extended TTL</strong>
+            <div class="premium-upgrade-price">R39 one-off</div>
+            <button class="premium-upgrade-btn" onclick="requestUnlock('extended_ttl')">Unlock</button>
+          </div>
+          <div class="premium-upgrade-item">
+            <strong style="display:block; color: rgba(255,255,255,0.85);">PIN Retention</strong>
+            <div class="premium-upgrade-price">R49 one-off</div>
+            <button class="premium-upgrade-btn" onclick="requestUnlock('pin_retention')">Unlock</button>
+          </div>
         </div>
       </div>
     </div>
   </div>
+
+  <div class="floating-ghost" style="top: 10%; left: 5%;">👻</div>
+  <div class="floating-ghost" style="bottom: 15%; right: 8%;">👻</div>
+  <div class="floating-ghost" style="top: 30%; right: 15%;">🕯️</div>
 
   <script>
     function esc(text) {
@@ -322,7 +132,7 @@
         `).join('');
 
         const log = document.getElementById('msg-log');
-        log.innerHTML = html || '<div>No messages yet.</div>';
+        log.innerHTML = html || '<div style="color: rgba(255,255,255,0.45);">No messages yet.</div>';
         log.scrollTop = log.scrollHeight;
       } catch (_err) {
       }
@@ -385,18 +195,18 @@
   </script>
 
   <script>
-  // Register Service Worker
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/static/sw.js')
-        .then(registration => {
-          console.log('SW registered:', registration.scope);
-        })
-        .catch(error => {
-          console.log('SW registration failed:', error);
-        });
-    });
-  }
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/static/sw.js')
+          .then(registration => {
+            console.log('SW registered:', registration.scope);
+          })
+          .catch(error => {
+            console.log('SW registration failed:', error);
+          });
+      });
+    }
   </script>
+  <script src="/static/premium.js"></script>
 </body>
 </html>

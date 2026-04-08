@@ -626,6 +626,16 @@ def rate_limit(endpoint_key):
 
 
 CSRF_SAFE_METHODS = {'GET', 'HEAD', 'OPTIONS'}
+PUBLIC_CSRF_EXEMPT_PATHS = {
+    '/api/csrf-token',
+    '/api/start-signup',
+    '/api/verify-otp',
+    '/api/register',
+    '/api/complete-registration',
+    '/api/complete-registration-with-kyc',
+    '/api/complete-kyc',
+    '/api/login',
+}
 
 
 def generate_csrf_token(force_refresh=False):
@@ -660,6 +670,27 @@ def enforce_admin_csrf_protection():
         return None
 
     if request.method in CSRF_SAFE_METHODS:
+        return None
+
+    if not validate_csrf_token():
+        return jsonify({'error': 'CSRF token validation failed'}), 403
+
+    return None
+
+
+@app.before_request
+def enforce_user_api_csrf_protection():
+    """Apply CSRF checks to non-admin mutating API requests by default."""
+    if not request.path.startswith('/api/'):
+        return None
+
+    if request.path.startswith('/admin/api/'):
+        return None
+
+    if request.method in CSRF_SAFE_METHODS:
+        return None
+
+    if request.path in PUBLIC_CSRF_EXEMPT_PATHS:
         return None
 
     if not validate_csrf_token():

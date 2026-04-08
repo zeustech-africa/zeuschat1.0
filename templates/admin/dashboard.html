@@ -944,6 +944,7 @@
                                     <td>
                                         <button class="btn-view" onclick="viewUserDetails(${user.id})">View</button>
                                         <button class="btn-view" style="background:#6366f1;" onclick="openUserMessaging(${user.id})">Message</button>
+                                        <button class="btn-view" style="background:#059669;" onclick="viewUserActivity(${user.id})">📋 Activity</button>
                                         ${user.approval_status === 'pending' ? `<button class="btn-approve" onclick="approveUser(${user.id})">Approve</button>` : ''}
                                         ${user.approval_status !== 'banned' ? `<button class="btn-reject" style="background:#f97316;" onclick="suspendUser(${user.id})">Suspend</button>` : ''}
                                         ${user.approval_status !== 'banned' ? `<button class="btn-reject" onclick="banUser(${user.id})">Ban</button>` : ''}
@@ -1394,6 +1395,7 @@ Message Stats: ${data.message_stats.total} total / ${data.message_stats.user_mes
                                     <div class="ghost-action-stack">
                                         <button class="btn-approve" onclick="approveGhostPost(${post.id})">✓ Approve</button>
                                         <button class="btn-reject" onclick="rejectGhostPost(${post.id})">✗ Reject</button>
+                                        <button class="btn-reject" style="background:#dc2626;" onclick="deleteGhostPost(${post.id})">🗑️ Delete</button>
                                     </div>
                                 </div>
                                 <textarea id="modNotes_${post.id}" class="ghost-notes-input" placeholder="Admin notes (optional)"></textarea>
@@ -1692,6 +1694,7 @@ Message Stats: ${data.message_stats.total} total / ${data.message_stats.user_mes
                             + '<textarea id="itemNotes_' + item.id + '" placeholder="Admin notes (optional)" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;"></textarea>'
                             + '<button class="btn-approve" onclick="approveGhostItem(' + item.id + ')">✓ Approve &amp; Post</button>'
                             + '<button class="btn-reject" onclick="rejectGhostItem(' + item.id + ')">✗ Reject</button>'
+                            + '<button class="btn-reject" style="background:#dc2626;" onclick="deleteMarketItem(' + item.id + ')">🗑️ Delete</button>'
                             + '</div></div>';
                     }).join('');
                     document.getElementById('ghostMarketList').innerHTML = itemsHtml;
@@ -1788,6 +1791,81 @@ Message Stats: ${data.message_stats.total} total / ${data.message_stats.user_mes
             } catch (err) { alert('Network error'); }
         }
 
+        // ── Delete Ghost Market Item ──────────────────────────────
+        async function deleteMarketItem(itemId) {
+            if (!confirm('Delete this listing permanently? This cannot be undone.')) return;
+            try {
+                const response = await fetch('/admin/api/ghost-market/items/' + itemId + '/delete', { method: 'DELETE' });
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    loadGhostMarketPending();
+                } else {
+                    alert(data.error || 'Failed to delete listing.');
+                }
+            } catch (err) { alert('Network error.'); }
+        }
+
+        // ── Delete Ghost Community Post ──────────────────────────────
+        async function deleteGhostPost(postId) {
+            if (!confirm('Delete this post permanently? This cannot be undone.')) return;
+            try {
+                const response = await fetch('/admin/api/ghost/posts/' + postId + '/delete', { method: 'DELETE' });
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    loadPendingPosts();
+                } else {
+                    alert(data.error || 'Failed to delete post.');
+                }
+            } catch (err) { alert('Network error.'); }
+        }
+
+        // ── Delete Ghost Community Comment ───────────────────────────
+        async function deleteGhostComment(commentId) {
+            if (!confirm('Delete this comment permanently?')) return;
+            try {
+                const response = await fetch('/admin/api/ghost/comments/' + commentId + '/delete', { method: 'DELETE' });
+                const data = await response.json();
+                if (!response.ok) alert(data.error || 'Failed to delete comment.');
+            } catch (err) { alert('Network error.'); }
+        }
+
+        // ── User Activity Modal ──────────────────────────────────────
+        async function viewUserActivity(userId) {
+            document.getElementById('userActivityModal').style.display = 'flex';
+            document.getElementById('userActivityContent').innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;">Loading...</div>';
+            try {
+                const response = await fetch('/admin/api/users/' + userId + '/activity');
+                const data = await response.json();
+                if (!data.success) { document.getElementById('userActivityContent').innerHTML = '<p style="color:red;">Error: ' + (data.error || 'Unknown error') + '</p>'; return; }
+                const u = data.user;
+                const listings = data.market_listings.map(i =>
+                    '<li><strong>' + escapeHtml(i.title) + '</strong> — R' + Number(i.price).toFixed(2) + ' <span style="color:#94a3b8;">(' + escapeHtml(i.status) + ')</span></li>'
+                ).join('') || '<li style="color:#94a3b8;">None</li>';
+                const posts = data.ghost_posts.map(p =>
+                    '<li><strong>' + escapeHtml(p.title) + '</strong> — ' + (p.is_paid ? 'Paid R' + Number(p.price).toFixed(2) : 'Free') + ' (' + Number(p.view_count || 0) + ' views)</li>'
+                ).join('') || '<li style="color:#94a3b8;">None</li>';
+                const comments = data.comments.map(c =>
+                    '<li>' + escapeHtml((c.content || '').substring(0, 80)) + (c.content && c.content.length > 80 ? '…' : '') + '</li>'
+                ).join('') || '<li style="color:#94a3b8;">None</li>';
+                document.getElementById('userActivityContent').innerHTML = `
+                    <h4 style="margin:0 0 4px;color:#1e293b;">${escapeHtml(u.full_name)}</h4>
+                    <p style="margin:0 0 16px;color:#64748b;">PIN: ${escapeHtml(u.zeus_pin)} &nbsp;|&nbsp; ${escapeHtml(u.email)}</p>
+                    <h5 style="color:#0f172a;margin:0 0 6px;">🛍 Ghost Market Listings (${data.market_listings.length})</h5>
+                    <ul style="margin:0 0 16px;padding-left:20px;color:#334155;">${listings}</ul>
+                    <h5 style="color:#0f172a;margin:0 0 6px;">👻 Ghost Community Posts (${data.ghost_posts.length})</h5>
+                    <ul style="margin:0 0 16px;padding-left:20px;color:#334155;">${posts}</ul>
+                    <h5 style="color:#0f172a;margin:0 0 6px;">💬 Comments (${data.comments.length})</h5>
+                    <ul style="margin:0 0 8px;padding-left:20px;color:#334155;">${comments}</ul>
+                `;
+            } catch (err) {
+                document.getElementById('userActivityContent').innerHTML = '<p style="color:red;">Network error loading activity.</p>';
+            }
+        }
+
+        function closeUserActivity() {
+            document.getElementById('userActivityModal').style.display = 'none';
+        }
+
         // Filter listeners
         document.getElementById('userStatusFilter').addEventListener('change', loadUsers);
         let searchTimeout;
@@ -1832,5 +1910,14 @@ Message Stats: ${data.message_stats.total} total / ${data.message_stats.user_mes
             });
         }
     </script>
+
+    <!-- User Activity Modal -->
+    <div id="userActivityModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:2000; align-items:center; justify-content:center; padding:20px;">
+        <div style="max-width:700px; width:100%; max-height:80vh; overflow-y:auto; background:#fff; border-radius:20px; padding:28px; box-shadow:0 20px 60px rgba(0,0,0,0.4); position:relative;">
+            <button onclick="closeUserActivity()" style="position:absolute;top:16px;right:16px;background:#f1f5f9;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:14px;color:#64748b;">✕ Close</button>
+            <h3 style="margin:0 0 16px;color:#0f172a;">📋 User Activity</h3>
+            <div id="userActivityContent"></div>
+        </div>
+    </div>
 </body>
 </html>

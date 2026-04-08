@@ -1869,6 +1869,112 @@ def admin_ghost_resolve_report(report_id):
     return jsonify({'success': True, 'status': status}), 200
 
 
+@admin_bp.route('/api/ghost-market/items/<int:item_id>/delete', methods=['DELETE'])
+@admin_required
+def admin_delete_market_item(item_id):
+    """Admin hard-delete a Ghost Market listing and notify the seller."""
+    admin_id = session['admin_id']
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT seller_id, title FROM ghost_market_items WHERE id = ?', (item_id,))
+        item = cursor.fetchone()
+        if not item:
+            return jsonify({'error': 'Item not found'}), 404
+        cursor.execute('DELETE FROM ghost_market_items WHERE id = ?', (item_id,))
+        cursor.execute(
+            '''INSERT INTO admin_messages (user_id, message, is_from_admin, admin_id)
+               VALUES (?, ?, 1, ?)''',
+            (item['seller_id'], f'❌ Your listing "{item["title"]}" was deleted by admin.', admin_id),
+        )
+        log_admin_action(admin_id, 'deleted_market_item', target_user_id=item['seller_id'],
+                         details={'item_id': item_id, 'title': item['title']})
+        conn.commit()
+    return jsonify({'success': True}), 200
+
+
+@admin_bp.route('/api/ghost/posts/<int:post_id>/delete', methods=['DELETE'])
+@admin_required
+def admin_delete_ghost_post(post_id):
+    """Admin hard-delete a Ghost Community post and notify the author."""
+    admin_id = session['admin_id']
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT user_id, title FROM ghost_posts WHERE id = ?', (post_id,))
+        post = cursor.fetchone()
+        if not post:
+            return jsonify({'error': 'Post not found'}), 404
+        cursor.execute('DELETE FROM ghost_posts WHERE id = ?', (post_id,))
+        cursor.execute(
+            '''INSERT INTO admin_messages (user_id, message, is_from_admin, admin_id)
+               VALUES (?, ?, 1, ?)''',
+            (post['user_id'], f'❌ Your Ghost post "{post["title"]}" was deleted by admin.', admin_id),
+        )
+        log_admin_action(admin_id, 'deleted_ghost_post', target_user_id=post['user_id'],
+                         details={'post_id': post_id, 'title': post['title']})
+        conn.commit()
+    return jsonify({'success': True}), 200
+
+
+@admin_bp.route('/api/ghost/comments/<int:comment_id>/delete', methods=['DELETE'])
+@admin_required
+def admin_delete_ghost_comment(comment_id):
+    """Admin hard-delete a Ghost Community comment."""
+    admin_id = session['admin_id']
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT user_id, content, post_id FROM ghost_comments WHERE id = ?', (comment_id,))
+        comment = cursor.fetchone()
+        if not comment:
+            return jsonify({'error': 'Comment not found'}), 404
+        cursor.execute('DELETE FROM ghost_comments WHERE id = ?', (comment_id,))
+        cursor.execute(
+            'UPDATE ghost_posts SET comment_count = MAX(0, comment_count - 1) WHERE id = ?',
+            (comment['post_id'],),
+        )
+        log_admin_action(admin_id, 'deleted_ghost_comment', target_user_id=comment['user_id'],
+                         details={'comment_id': comment_id})
+        conn.commit()
+    return jsonify({'success': True}), 200
+
+
+@admin_bp.route('/api/users/<int:user_id>/activity', methods=['GET'])
+@admin_required
+def admin_user_activity(user_id):
+    """Return a summary of a user's Ghost Market listings, community posts, and comments."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT id, zeus_pin, full_name, email FROM users WHERE id = ?', (user_id,))
+        user = cursor.fetchone()
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        cursor.execute(
+            'SELECT id, title, price, status, created_at FROM ghost_market_items WHERE seller_id = ? ORDER BY created_at DESC',
+            (user_id,),
+        )
+        market_listings = [dict(r) for r in cursor.fetchall()]
+
+        cursor.execute(
+            'SELECT id, title, is_paid, price, view_count, paid_view_count, created_at FROM ghost_posts WHERE user_id = ? ORDER BY created_at DESC',
+            (user_id,),
+        )
+        ghost_posts = [dict(r) for r in cursor.fetchall()]
+
+        cursor.execute(
+            'SELECT id, content, post_id, created_at FROM ghost_comments WHERE user_id = ? ORDER BY created_at DESC LIMIT 50',
+            (user_id,),
+        )
+        comments = [dict(r) for r in cursor.fetchall()]
+
+    return jsonify({
+        'success': True,
+        'user': dict(user),
+        'market_listings': market_listings,
+        'ghost_posts': ghost_posts,
+        'comments': comments,
+    }), 200
+
+
 @admin_bp.route('/api/ghost/banned', methods=['GET'])
 @admin_required
 def admin_ghost_banned_users():

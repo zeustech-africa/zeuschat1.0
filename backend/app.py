@@ -16,7 +16,7 @@ CORS(app)
 def get_db_connection():
     """Context manager for database connections with automatic retry on lock"""
     conn = sqlite3.connect('zeuschat.db', timeout=30.0)
-    conn.execute('PRAGMA foreign_keys=ON')
+    conn.execute('PRAGMA foreign_keys = ON')
     conn.execute('PRAGMA journal_mode=WAL')
     try:
         yield conn

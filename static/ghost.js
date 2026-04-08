@@ -58,6 +58,11 @@ async function loadFeed(reset = false) {
     }
 }
 
+async function loadMorePosts() {
+    if (isLoading || !hasMore) return;
+    await loadFeed(false);
+}
+
 function renderFeed(posts, append = true) {
     const container = document.getElementById('feedContainer');
     if (!append) container.innerHTML = '';
@@ -325,16 +330,19 @@ function bindModalActions() {
 }
 
 function bindInfiniteScroll() {
-    let scrollTimeout;
-    document.querySelector('.feed-container')?.addEventListener('scroll', () => {
-        clearTimeout(scrollTimeout);
-        scrollTimeout = setTimeout(() => {
-            const container = document.querySelector('.feed-container');
-            if (!container) return;
-            if (container.scrollTop + container.clientHeight >= container.scrollHeight - 500) {
-                loadFeed();
-            }
-        }, 100);
+    const feedContainer = document.querySelector('.feed-container');
+    if (!feedContainer) return;
+
+    feedContainer.addEventListener('scroll', () => {
+        if (isLoading || !hasMore) return;
+
+        const scrollTop = feedContainer.scrollTop;
+        const scrollHeight = feedContainer.scrollHeight;
+        const clientHeight = feedContainer.clientHeight;
+
+        if (scrollTop + clientHeight >= scrollHeight - 500) {
+            loadMorePosts();
+        }
     });
 }
 

@@ -265,6 +265,10 @@
             <span class="nav-icon">🏪</span>
             <span>Market</span>
         </button>
+        <button class="nav-item-mobile" data-page="ghost">
+            <span class="nav-icon">👻</span>
+            <span>Ghost</span>
+        </button>
         <button class="nav-item-mobile" data-page="profile">
             <span class="nav-icon">👤</span>
             <span>Profile</span>
@@ -272,10 +276,6 @@
         <button class="nav-item-mobile" data-page="settings">
             <span class="nav-icon">⚙️</span>
             <span>Settings</span>
-        </button>
-        <button class="nav-item-mobile" data-page="upgrade">
-            <span class="nav-icon">💎</span>
-            <span>Upgrade</span>
         </button>
     </div>
 
@@ -472,10 +472,10 @@
                 const page = item.dataset.page;
                 const pages = {
                     'chat': '/chat.html',
+                    'ghost': '/ghost-ultimate',
                     'profile': '/profile.html',
                     'market': '/ghost-market',
-                    'settings': '/settings.html',
-                    'upgrade': '/subscription'
+                    'settings': '/settings.html'
                 };
                 if (pages[page]) window.location.href = pages[page];
             });

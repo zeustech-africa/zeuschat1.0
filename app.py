@@ -84,6 +84,9 @@ VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', '')
 VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '')
 VAPID_SUBJECT = os.environ.get('VAPID_SUBJECT', 'mailto:admin@zeuschat.com')
 
+if not VAPID_PUBLIC_KEY and not app.debug:
+    print("⚠️ WARNING: VAPID_PUBLIC_KEY not set. Push notifications will not work.")
+
 # ============ LOW-BANDWIDTH OPTIMIZATION ============
 # Enable gzip compression for all responses
 Compress(app)
@@ -505,10 +508,10 @@ def get_db_connection():
     try:
         # Enable WAL mode for better concurrency
         conn = sqlite3.connect(DATABASE_PATH, timeout=30.0)
-        conn.execute('PRAGMA foreign_keys=ON')
+        conn.row_factory = sqlite3.Row
+        conn.execute('PRAGMA foreign_keys = ON')
         conn.execute('PRAGMA journal_mode=WAL')
         conn.execute('PRAGMA busy_timeout=30000')
-        conn.row_factory = sqlite3.Row
         yield conn
         conn.commit()
     except sqlite3.OperationalError as e:
@@ -1777,6 +1780,36 @@ def verify_password(password, stored_hash):
     return False
 
 
+def migrate_legacy_passwords():
+    """One-time scan of legacy SHA-256 hashes; migrated on successful login."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS password_migration_queue (
+                user_id INTEGER PRIMARY KEY,
+                queued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        ''')
+        cursor.execute('SELECT id FROM users WHERE LENGTH(password_hash) = 64')
+        users = cursor.fetchall()
+
+        cursor.execute('DELETE FROM password_migration_queue')
+        if users:
+            cursor.executemany(
+                'INSERT OR IGNORE INTO password_migration_queue (user_id) VALUES (?)',
+                [(row['id'],) for row in users],
+            )
+
+    if users:
+        print(f"⚠️ Found {len(users)} legacy SHA-256 password hash(es); accounts will migrate on next successful login.")
+    else:
+        print("✅ No legacy SHA-256 password hashes detected.")
+
+
+migrate_legacy_passwords()
+
+
 def require_password_unlock(f):
     """Require an additional password unlock step for sensitive pages."""
     @wraps(f)
@@ -2470,7 +2503,9 @@ def login():
                     SET password_hash = ?
                     WHERE id = ?
                 ''', (hash_password(password), user['id']))
+                cursor.execute('DELETE FROM password_migration_queue WHERE user_id = ?', (user['id'],))
                 conn.commit()
+                print(f"✅ Migrated user {user['id']} from SHA-256 to bcrypt")
 
         subscription_tier = get_user_subscription_tier(user[0])
 
@@ -2845,7 +2880,10 @@ def unsubscribe_push():
 @app.route('/api/push/vapid-public-key', methods=['GET'])
 def get_vapid_public_key():
     """Return the VAPID public key so the frontend can subscribe."""
-    return jsonify({'publicKey': VAPID_PUBLIC_KEY}), 200
+    public_key = os.environ.get('VAPID_PUBLIC_KEY', VAPID_PUBLIC_KEY)
+    if not public_key:
+        return jsonify({'publicKey': '', 'public_key': ''}), 200
+    return jsonify({'publicKey': public_key, 'public_key': public_key}), 200
 
 
 # ============ END PUSH NOTIFICATION ENDPOINTS ============

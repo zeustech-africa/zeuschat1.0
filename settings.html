@@ -488,6 +488,29 @@
     <button class="btn" onclick="saveAllSettings()" data-i18n="get_started">Get Started</button>
   </div>
 
+    <div class="mobile-bottom-nav mobile-only">
+      <button class="nav-item-mobile" data-page="chat">
+        <span class="nav-icon">💬</span>
+        <span>Chats</span>
+      </button>
+      <button class="nav-item-mobile" data-page="market">
+        <span class="nav-icon">🏪</span>
+        <span>Market</span>
+      </button>
+      <button class="nav-item-mobile" data-page="ghost">
+        <span class="nav-icon">👻</span>
+        <span>Ghost</span>
+      </button>
+      <button class="nav-item-mobile" data-page="profile">
+        <span class="nav-icon">👤</span>
+        <span>Profile</span>
+      </button>
+      <button class="nav-item-mobile active" data-page="settings">
+        <span class="nav-icon">⚙️</span>
+        <span>Settings</span>
+      </button>
+    </div>
+
     <!-- Dual Upgrade Modal -->
     <div id="dualUpgradeModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10001; align-items:center; justify-content:center;">
       <div style="background:white; border-radius:28px; max-width:420px; width:90%; padding:32px; text-align:center;">
@@ -794,6 +817,20 @@
           window.location.href = `/subscription?mode=oneoff&feature=${encodeURIComponent(currentFeatureForUpgrade || '')}`;
         };
       }
+
+      document.querySelectorAll('.nav-item-mobile').forEach((item) => {
+        item.addEventListener('click', () => {
+          const page = item.dataset.page;
+          const pages = {
+            chat: '/chat.html',
+            market: '/ghost-market',
+            ghost: '/ghost-ultimate',
+            profile: '/profile.html',
+            settings: '/settings.html',
+          };
+          if (pages[page]) window.location.href = pages[page];
+        });
+      });
 
       document.getElementById('cloudBackupToggle')?.addEventListener('click', async () => {
         const response = await apiFetch('/api/user/has-feature/cloud_backup_10gb');

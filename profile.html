@@ -247,6 +247,10 @@
       display: none;
     }
 
+    .mobile-bottom-nav {
+      display: none;
+    }
+
     @media (max-width: 768px) {
       .mobile-profile-header {
         display: block;
@@ -317,6 +321,44 @@
       .setting-name {
         flex: 1;
         margin-left: 10px;
+      }
+
+      .mobile-bottom-nav {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        background: rgba(12, 12, 12, 0.98);
+        border-top: 1px solid #2b2b2b;
+        padding: 10px 6px calc(10px + env(safe-area-inset-bottom));
+        z-index: 2000;
+      }
+
+      .nav-item-mobile {
+        min-height: 44px;
+        min-width: 44px;
+        border: none;
+        background: transparent;
+        color: #c8c8c8;
+        font-size: 11px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        padding: 4px 8px;
+        cursor: pointer;
+      }
+
+      .nav-item-mobile.active {
+        color: #FFD700;
+      }
+
+      .container {
+        padding-bottom: 96px;
       }
     }
 
@@ -509,6 +551,29 @@
     </div>
   </div>
 
+    <div class="mobile-bottom-nav mobile-only">
+      <button class="nav-item-mobile" data-page="chat">
+        <span class="nav-icon">💬</span>
+        <span>Chats</span>
+      </button>
+      <button class="nav-item-mobile" data-page="market">
+        <span class="nav-icon">🏪</span>
+        <span>Market</span>
+      </button>
+      <button class="nav-item-mobile" data-page="ghost">
+        <span class="nav-icon">👻</span>
+        <span>Ghost</span>
+      </button>
+      <button class="nav-item-mobile active" data-page="profile">
+        <span class="nav-icon">👤</span>
+        <span>Profile</span>
+      </button>
+      <button class="nav-item-mobile" data-page="settings">
+        <span class="nav-icon">⚙️</span>
+        <span>Settings</span>
+      </button>
+    </div>
+
     <!-- Dual Upgrade Modal -->
     <div id="dualUpgradeModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10001; align-items:center; justify-content:center;">
       <div style="background:white; border-radius:28px; max-width:420px; width:90%; padding:32px; text-align:center;">
@@ -595,6 +660,20 @@
       loadUserProfile();
       loadProfileFromBackend();
       setupPhotoUpload();
+
+      document.querySelectorAll('.nav-item-mobile').forEach((item) => {
+        item.addEventListener('click', () => {
+          const page = item.dataset.page;
+          const pages = {
+            chat: '/chat.html',
+            market: '/ghost-market',
+            ghost: '/ghost-ultimate',
+            profile: '/profile.html',
+            settings: '/settings.html',
+          };
+          if (pages[page]) window.location.href = pages[page];
+        });
+      });
     });
 
     // Load from sessionStorage

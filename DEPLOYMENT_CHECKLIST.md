@@ -29,8 +29,8 @@ ls templates/pending-approval.html 2>/dev/null || echo "⚠️  WARNING: templat
 ```
 
 ```bash
-# Check that no leftover sandbox PayFast credentials are hardcoded
-grep -n "10000100\|46f0cd694581a" payment_routes.py && echo "⚠️  Sandbox defaults still present — override via env vars before going live"
+# Check that PayFast credentials are sourced from env vars only
+grep -n "PAYFAST_MERCHANT_ID\|PAYFAST_MERCHANT_KEY\|PAYFAST_TEST_MODE" payment_routes.py
 ```
 
 ### 1.2 Git Status
@@ -65,11 +65,13 @@ Go to **Render Dashboard → Your Service → Environment** and add/verify the f
 
 | Variable | Value | Notes |
 |---|---|---|
-| `PAYFAST_MERCHANT_ID` | *(your live merchant ID from PayFast dashboard)* | Sandbox default: `10000100` |
-| `PAYFAST_MERCHANT_KEY` | *(your live merchant key)* | Sandbox default: `46f0cd694581a` |
+| `PAYFAST_MERCHANT_ID` | *(your live merchant ID from PayFast dashboard)* | Required when `PAYFAST_TEST_MODE=false` |
+| `PAYFAST_MERCHANT_KEY` | *(your live merchant key)* | Required when `PAYFAST_TEST_MODE=false` |
 | `PAYFAST_PASSPHRASE` | *(your PayFast passphrase, if set)* | Leave blank if not configured in PayFast |
 | `PAYFAST_TEST_MODE` | `false` | Set `true` to keep sandbox mode active |
 | `BASE_URL` | `https://zeuschat1-0-ixax.onrender.com` | Used for PayFast return/cancel/notify URLs |
+
+> Startup validation now enforces this: if `PAYFAST_TEST_MODE=false` and merchant credentials are missing, the app exits with a clear configuration error.
 
 ### 2.3 Optional — Email OTP (when ready)
 
@@ -135,11 +137,11 @@ curl -s https://zeuschat1-0-ixax.onrender.com/api/health | python3 -m json.tool
 
 - [ ] Open `https://zeuschat1-0-ixax.onrender.com/admin/login`
 - [ ] Page loads with gradient dark theme (no 404 / no blank screen)
-- [ ] Enter credentials: `superadmin` / `ZeusAdmin2026!`
+- [ ] Enter the admin credentials you provisioned through the `FIRST_ADMIN_*` environment variables
 - [ ] Should redirect to `/admin/dashboard`
 - [ ] Dashboard shows 5 tabs: Dashboard, Users, Approvals, Payments, Messages
 
-> **Security note:** Change the default admin password immediately after first login.
+> **Security note:** Do not document or share live admin credentials. Provision the first admin from environment variables and rotate credentials if exposure is suspected.
 
 ### 4.3 User Approval Flow
 
@@ -168,7 +170,7 @@ BASE="https://zeuschat1-0-ixax.onrender.com"
 curl -s -c /tmp/admin_cookie.txt \
   -X POST "$BASE/admin/api/login" \
   -H "Content-Type: application/json" \
-  -d '{"username":"superadmin","password":"ZeusAdmin2026!"}' \
+  -d '{"username":"<FIRST_ADMIN_USERNAME>","password":"<FIRST_ADMIN_PASSWORD>"}' \
   | python3 -m json.tool
 
 # Stats endpoint
@@ -217,18 +219,23 @@ git push
 
 ### 5.2 Admin Login Returns 401 "Invalid credentials"
 
-**Cause 1:** The default admin was created with the old hash from `init_db()` (password `admin123` or similar) rather than `ZeusAdmin2026!`.
+**Cause 1:** The first admin credentials in Render do not match the values you provisioned in `FIRST_ADMIN_USERNAME`, `FIRST_ADMIN_PASSWORD`, and `FIRST_ADMIN_EMAIL`.
 
-**Fix:** Reset the admin password directly in the database. SSH into the Render shell (**Dashboard → Shell** tab):
+**Fix:** Reset the admin password directly in the database or rotate the `FIRST_ADMIN_*` values and recreate the initial admin on a clean database. SSH into the Render shell (**Dashboard → Shell** tab):
 
 ```python
 python3 - <<'EOF'
-import sqlite3, hashlib, os
+import os
+import sqlite3
+import bcrypt
 db = os.environ.get('DATABASE_PATH', 'zeuschat.db')
-new_pw = 'ZeusAdmin2026!'
-h = hashlib.sha256(new_pw.encode()).hexdigest()
+admin_username = os.environ.get('FIRST_ADMIN_USERNAME', 'superadmin')
+new_pw = os.environ.get('FIRST_ADMIN_PASSWORD', '')
+if not new_pw:
+  raise SystemExit('Set FIRST_ADMIN_PASSWORD before running this reset script')
+h = bcrypt.hashpw(new_pw.encode(), bcrypt.gensalt()).decode()
 conn = sqlite3.connect(db)
-conn.execute("UPDATE admin_users SET password_hash=? WHERE username='superadmin'", (h,))
+conn.execute("UPDATE admin_users SET password_hash=? WHERE username=?", (h, admin_username))
 conn.commit()
 conn.close()
 print("Password reset OK. Hash:", h)
@@ -321,15 +328,15 @@ EOF
 
 ---
 
-## 6. Default Admin Credentials
+## 6. Initial Admin Provisioning
 
 | Field | Value |
 |---|---|
 | URL | `https://zeuschat1-0-ixax.onrender.com/admin/login` |
-| Username | `superadmin` |
-| Default Password | `ZeusAdmin2026!` |
+| Username | `FIRST_ADMIN_USERNAME` environment variable |
+| Password | `FIRST_ADMIN_PASSWORD` environment variable |
 
-> ⚠️ **Change this password immediately after first login via the Render Shell** using the script in section 5.2.
+> ⚠️ **Keep these credentials out of documentation, screenshots, and chat logs.**
 
 ---
 

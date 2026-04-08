@@ -405,6 +405,11 @@
     button, a, .clickable {
         min-height: 44px;
     }
+
+    /* Hidden feature - ready to enable by removing this class */
+    .feature-hidden {
+      display: none !important;
+    }
 }
   </style>
   <link rel="stylesheet" href="/static/mobile.css">
@@ -534,9 +539,46 @@
 
   <script>
     console.log('=== PROFILE PAGE LOAD ===');
+    const API_BASE = window.location.origin;
+    let csrfToken = null;
+
+    async function ensureCsrfToken(forceRefresh = false) {
+      if (csrfToken && !forceRefresh) {
+        return csrfToken;
+      }
+
+      const response = await window.fetch(`${API_BASE}/api/csrf-token`, {
+        method: 'GET',
+        credentials: 'include'
+      });
+      const data = await response.json();
+      csrfToken = data.csrf_token || null;
+      return csrfToken;
+    }
+
+    async function apiFetch(url, options = {}) {
+      const requestOptions = { ...options };
+      const method = (requestOptions.method || 'GET').toUpperCase();
+      requestOptions.method = method;
+      requestOptions.credentials = requestOptions.credentials || 'include';
+      requestOptions.headers = { ...(requestOptions.headers || {}) };
+
+      if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+        const token = await ensureCsrfToken();
+        if (token) {
+          requestOptions.headers['X-CSRF-Token'] = token;
+        }
+      }
+
+      return window.fetch(url, requestOptions);
+    }
     
     // Authentication guard
     window.addEventListener('DOMContentLoaded', () => {
+      ensureCsrfToken().catch((error) => {
+        console.error('Failed to initialize CSRF token:', error);
+      });
+
       const isLoggedIn = sessionStorage.getItem('user_logged_in') === 'true';
       let userPin = sessionStorage.getItem('user_zeus_pin');
       
@@ -586,7 +628,7 @@
     async function loadProfileFromBackend() {
       try {
         const API_BASE = window.location.origin;
-        const response = await fetch(`${API_BASE}/api/user/profile`, {
+        const response = await apiFetch(`${API_BASE}/api/user/profile`, {
           method: 'GET',
           credentials: 'include'
         });
@@ -720,7 +762,7 @@
 
       try {
         const API_BASE = window.location.origin;
-        const response = await fetch(`${API_BASE}/api/user/update-profile`, {
+        const response = await apiFetch(`${API_BASE}/api/user/update-profile`, {
           method: 'POST',
           credentials: 'include',
           headers: {
@@ -801,7 +843,7 @@
     }
 
     async function checkProfilePicturePermission() {
-      const response = await fetch('/api/user/has-feature/profile_picture_unlimited', { credentials: 'include' });
+      const response = await apiFetch('/api/user/has-feature/profile_picture_unlimited', { credentials: 'include' });
       const data = await response.json();
 
       if (!data.has_access) {
@@ -838,7 +880,7 @@
           }
 
           try {
-            const response = await fetch(endpoint, { method: 'POST', credentials: 'include' });
+            const response = await apiFetch(endpoint, { method: 'POST', credentials: 'include' });
             const result = await response.json();
             if (response.ok && result.redirect_url) {
               window.location.href = result.redirect_url;

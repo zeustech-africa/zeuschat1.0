@@ -230,6 +230,7 @@
     <!-- Box: Login -->
     <div class="box">
       <div class="box-title">Log In to Existing Account</div>
+      <input type="hidden" id="csrf-token" name="csrf_token" value="">
       <div class="input-group">
         <input type="text" id="zeus-pin" placeholder="Zeus-PIN (e.g. ZT-1234-5678)" />
       </div>
@@ -250,6 +251,50 @@
 
   <script>
     const API_BASE = window.location.origin; // Automatically uses current domain
+    let csrfToken = null;
+
+    async function ensureCsrfToken(forceRefresh = false) {
+      if (csrfToken && !forceRefresh) {
+        return csrfToken;
+      }
+
+      const response = await window.fetch(`${API_BASE}/api/csrf-token`, {
+        method: 'GET',
+        credentials: 'include'
+      });
+      const data = await response.json();
+      csrfToken = data.csrf_token || null;
+
+      const tokenInput = document.getElementById('csrf-token');
+      if (tokenInput && csrfToken) {
+        tokenInput.value = csrfToken;
+      }
+
+      return csrfToken;
+    }
+
+    async function apiFetch(url, options = {}) {
+      const requestOptions = { ...options };
+      const method = (requestOptions.method || 'GET').toUpperCase();
+      requestOptions.method = method;
+      requestOptions.credentials = requestOptions.credentials || 'include';
+      requestOptions.headers = { ...(requestOptions.headers || {}) };
+
+      if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+        const token = await ensureCsrfToken();
+        if (token) {
+          requestOptions.headers['X-CSRF-Token'] = token;
+        }
+      }
+
+      return window.fetch(url, requestOptions);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      ensureCsrfToken().catch((error) => {
+        console.error('Failed to initialize CSRF token:', error);
+      });
+    });
 
     async function login() {
       const zeusPIN = document.getElementById('zeus-pin').value.trim();
@@ -265,7 +310,7 @@
         console.log('1. User submitted credentials');
         
         // Call backend /api/login
-        const response = await fetch(`${API_BASE}/api/login`, {
+        const response = await apiFetch(`${API_BASE}/api/login`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },

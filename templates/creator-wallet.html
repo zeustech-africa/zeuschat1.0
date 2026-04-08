@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Creator Wallet - ZeusChat</title>
+    <link rel="stylesheet" href="/static/ghost.css">
+    <link rel="stylesheet" href="/static/mobile.css">
+</head>
+<body>
+    <div class="wallet-container">
+        <div class="wallet-header">
+            <h1>💼 Creator Wallet</h1>
+            <p>Track your Ghost Community earnings and weekly payouts.</p>
+            <div class="wallet-actions">
+                <button onclick="window.location.href='/ghost-ultimate'" class="secondary-action">Back to Feed</button>
+            </div>
+        </div>
+
+        <div class="wallet-grid">
+            <div class="wallet-card">
+                <div class="wallet-label">Available Balance</div>
+                <div class="wallet-value" id="walletBalance">R0.00</div>
+            </div>
+            <div class="wallet-card">
+                <div class="wallet-label">Total Earned</div>
+                <div class="wallet-value" id="walletTotalEarned">R0.00</div>
+            </div>
+            <div class="wallet-card">
+                <div class="wallet-label">Pending Payout</div>
+                <div class="wallet-value" id="walletPending">R0.00</div>
+            </div>
+            <div class="wallet-card">
+                <div class="wallet-label">Total Withdrawn</div>
+                <div class="wallet-value" id="walletWithdrawn">R0.00</div>
+            </div>
+        </div>
+
+        <div class="wallet-weekly-card">
+            <h2>Weekly Earnings</h2>
+            <div id="weeklyEarningsList" class="weekly-list">
+                <div class="empty-state">Loading weekly earnings...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadWallet() {
+            try {
+                const response = await fetch('/api/ghost/wallet', { credentials: 'include' });
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || 'Failed to load wallet');
+                }
+
+                const wallet = data.wallet || {};
+                document.getElementById('walletBalance').textContent = `R${Number(wallet.balance || 0).toFixed(2)}`;
+                document.getElementById('walletTotalEarned').textContent = `R${Number(wallet.total_earned || 0).toFixed(2)}`;
+                document.getElementById('walletPending').textContent = `R${Number(wallet.pending_payout || 0).toFixed(2)}`;
+                document.getElementById('walletWithdrawn').textContent = `R${Number(wallet.total_withdrawn || 0).toFixed(2)}`;
+
+                const weekly = data.weekly_earnings || [];
+                const list = document.getElementById('weeklyEarningsList');
+                if (!weekly.length) {
+                    list.innerHTML = '<div class="empty-state">No weekly earnings yet.</div>';
+                    return;
+                }
+
+                list.innerHTML = weekly.map((item) => `
+                    <div class="weekly-row">
+                        <div>
+                            <div class="weekly-range">${item.week_start} → ${item.week_end}</div>
+                            <div class="weekly-sub">Revenue: R${Number(item.total_revenue || 0).toFixed(2)} | Commission: R${Number(item.zeuschat_commission || 0).toFixed(2)}</div>
+                        </div>
+                        <div class="weekly-payout">R${Number(item.creator_payout || 0).toFixed(2)}</div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                document.getElementById('weeklyEarningsList').innerHTML = `<div class="empty-state">${error.message}</div>`;
+            }
+        }
+
+        loadWallet();
+    </script>
+</body>
+</html>

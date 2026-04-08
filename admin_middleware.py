@@ -2,7 +2,7 @@ import sqlite3
 import json
 import os
 from functools import wraps
-from flask import session, jsonify, request
+from flask import session, jsonify, request, redirect
 from datetime import datetime
 
 DATABASE_PATH = os.environ.get('DATABASE_PATH', 'zeuschat.db')
@@ -10,6 +10,7 @@ DATABASE_PATH = os.environ.get('DATABASE_PATH', 'zeuschat.db')
 def get_db_connection():
     """Get database connection"""
     conn = sqlite3.connect(DATABASE_PATH)
+    conn.execute('PRAGMA foreign_keys=ON')
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -35,23 +36,29 @@ def require_approved_user(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         user_id = session.get('user_id')
+        is_html_page = request.path.endswith('.html')
+
         if not user_id:
+            if is_html_page:
+                return redirect('/login')
             return jsonify({'error': 'Not authenticated'}), 401
-        
+
         with get_db_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
                 SELECT status FROM user_approvals WHERE user_id = ?
             ''', (user_id,))
             approval = cursor.fetchone()
-            
+
             if not approval or approval['status'] != 'approved':
+                if is_html_page:
+                    return redirect('/pending-approval')
                 return jsonify({
                     'error': 'Account pending approval',
                     'message': 'Please message admin for assistance',
                     'redirect': '/pending-approval'
                 }), 403
-        
+
         return f(*args, **kwargs)
     return decorated_function
 

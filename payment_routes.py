@@ -8,13 +8,27 @@ from admin_middleware import get_db_connection, require_approved_user, user_has_
 
 payment_bp = Blueprint('payment', __name__)
 
-PAYFAST_MERCHANT_ID = os.environ.get('PAYFAST_MERCHANT_ID', '10000100')
-PAYFAST_MERCHANT_KEY = os.environ.get('PAYFAST_MERCHANT_KEY', '46f0cd694581a')
+PAYFAST_MERCHANT_ID = os.environ.get('PAYFAST_MERCHANT_ID')
+PAYFAST_MERCHANT_KEY = os.environ.get('PAYFAST_MERCHANT_KEY')
 PAYFAST_PASSPHRASE = os.environ.get('PAYFAST_PASSPHRASE', '')
-PAYFAST_TEST_MODE = os.environ.get('PAYFAST_TEST_MODE', 'true').lower() == 'true'
+PAYFAST_TEST_MODE = os.environ.get('PAYFAST_TEST_MODE', 'false').lower() == 'true'
 
 PAYFAST_URL = 'https://sandbox.payfast.co.za/eng/process' if PAYFAST_TEST_MODE else 'https://www.payfast.co.za/eng/process'
 PAYFAST_SUBSCRIPTION_URL = 'https://sandbox.payfast.co.za/eng/process' if PAYFAST_TEST_MODE else 'https://www.payfast.co.za/eng/process'
+
+
+def validate_payment_config():
+    """Validate PayFast configuration before serving payment routes."""
+    if PAYFAST_TEST_MODE:
+        print('⚠️ PayFast running in TEST MODE - not suitable for production')
+        return
+
+    if not PAYFAST_MERCHANT_ID or not PAYFAST_MERCHANT_KEY:
+        raise ValueError(
+            'Production payment credentials missing: set PAYFAST_MERCHANT_ID and PAYFAST_MERCHANT_KEY or enable PAYFAST_TEST_MODE=true for development.'
+        )
+
+    print('✅ PayFast configured for PRODUCTION')
 
 
 def generate_payfast_signature(data):

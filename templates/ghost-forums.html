@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <title>Ghost Forums - ZeusChat</title>
+    <link rel="stylesheet" href="/static/mobile.css">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: radial-gradient(circle at top, rgba(212,175,55,0.16), transparent 28%), #060606;
+            color: #fff;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+        .forum-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 24px 20px 96px;
+        }
+        .header {
+            margin-bottom: 20px;
+            padding: 24px;
+            border-radius: 18px;
+            background: rgba(17, 17, 17, 0.95);
+            border: 1px solid rgba(212, 175, 55, 0.22);
+        }
+        .header h1 {
+            margin: 0 0 8px;
+            color: #d4af37;
+        }
+        .header p {
+            margin: 0 0 16px;
+            color: rgba(255,255,255,0.72);
+        }
+        .button-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .create-btn,
+        .secondary-btn,
+        .submit-btn,
+        .reply-btn,
+        .vote-btn,
+        .nav-item-mobile {
+            border: none;
+            border-radius: 999px;
+            cursor: pointer;
+            font-weight: 700;
+        }
+        .create-btn,
+        .submit-btn {
+            background: linear-gradient(135deg, #d4af37 0%, #b8960c 100%);
+            color: #0a0a0a;
+            padding: 12px 22px;
+        }
+        .secondary-btn {
+            background: rgba(255,255,255,0.08);
+            color: #fff;
+            padding: 12px 18px;
+        }
+        .forum-card,
+        .forum-detail,
+        .composer-card,
+        .post-card,
+        .reply-card {
+            background: rgba(17, 17, 17, 0.95);
+            border: 1px solid rgba(212,175,55,0.18);
+            border-radius: 16px;
+        }
+        .forum-card {
+            padding: 20px;
+            margin-bottom: 14px;
+            transition: transform 0.2s ease, border-color 0.2s ease;
+            cursor: pointer;
+        }
+        .forum-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(212,175,55,0.4);
+        }
+        .forum-name {
+            color: #d4af37;
+            font-size: 18px;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+        .forum-description {
+            color: rgba(255,255,255,0.74);
+            font-size: 14px;
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+        .forum-stats,
+        .post-meta,
+        .reply-meta {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            font-size: 12px;
+            color: rgba(255,255,255,0.48);
+        }
+        .hidden { display: none !important; }
+        .composer-card,
+        .forum-detail {
+            padding: 18px;
+            margin-bottom: 16px;
+        }
+        .stack {
+            display: grid;
+            gap: 12px;
+        }
+        input[type="text"], textarea, select {
+            width: 100%;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.04);
+            color: #fff;
+            padding: 12px 14px;
+            font: inherit;
+        }
+        textarea {
+            min-height: 110px;
+            resize: vertical;
+        }
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: rgba(255,255,255,0.78);
+            font-size: 14px;
+        }
+        .post-card {
+            padding: 18px;
+            margin-bottom: 12px;
+        }
+        .post-title {
+            font-size: 17px;
+            font-weight: 800;
+            color: #d4af37;
+            margin-bottom: 8px;
+        }
+        .post-content,
+        .reply-content {
+            color: rgba(255,255,255,0.82);
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+        .anonymous-badge,
+        .private-badge,
+        .pinned-badge,
+        .locked-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(212,175,55,0.14);
+            color: #f3d268;
+            padding: 4px 9px;
+            border-radius: 999px;
+            font-size: 11px;
+            margin-right: 8px;
+        }
+        .locked-badge { background: rgba(239,68,68,0.14); color: #fda4af; }
+        .vote-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .vote-btn,
+        .reply-btn {
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+            padding: 7px 12px;
+            font-size: 13px;
+        }
+        .vote-up { color: #34d399; }
+        .vote-down { color: #f87171; }
+        .reply-list {
+            margin-top: 12px;
+            display: grid;
+            gap: 10px;
+        }
+        .reply-card {
+            padding: 12px 14px;
+            background: rgba(25, 25, 35, 0.95);
+        }
+        .mobile-bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            gap: 8px;
+            justify-content: space-around;
+            padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+            background: rgba(5, 5, 5, 0.96);
+            border-top: 1px solid rgba(212,175,55,0.15);
+            backdrop-filter: blur(10px);
+        }
+        .nav-item-mobile {
+            flex: 1;
+            padding: 10px 8px;
+            background: transparent;
+            color: rgba(255,255,255,0.7);
+        }
+        .nav-item-mobile.active {
+            color: #0a0a0a;
+            background: linear-gradient(135deg, #d4af37 0%, #b8960c 100%);
+        }
+        .status-note {
+            color: rgba(255,255,255,0.55);
+            font-size: 13px;
+            margin-top: 6px;
+        }
+        @media (min-width: 769px) {
+            .mobile-only { display: none !important; }
+        }
+        @media (max-width: 768px) {
+            .forum-container { padding: 16px 14px 96px; }
+            .header { padding: 18px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="forum-container">
+        <div class="header">
+            <h1>👻 Ghost Forums</h1>
+            <p>Speak your mind. No judgment. Admin monitored.</p>
+            <div class="button-row">
+                <button class="create-btn" id="showCreateForumBtn">+ Create New Forum</button>
+                <button class="secondary-btn" id="backToForumsBtn">All Forums</button>
+                <button class="secondary-btn" onclick="window.location.href='/chat.html'">Chats</button>
+            </div>
+        </div>
+
+        <div class="composer-card hidden" id="createForumCard">
+            <div class="stack">
+                <input type="text" id="forumName" placeholder="Forum name">
+                <textarea id="forumDescription" placeholder="Forum description"></textarea>
+                <input type="text" id="forumCategory" placeholder="Category (optional)">
+                <label class="checkbox-row"><input type="checkbox" id="forumPrivate"> Private forum</label>
+                <div class="button-row">
+                    <button class="submit-btn" id="createForumBtn">Create Forum</button>
+                    <button class="secondary-btn" id="cancelCreateForumBtn">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="forumListSection">
+            <div id="forumsList"></div>
+        </div>
+
+        <div id="forumDetailSection" class="hidden">
+            <div class="forum-detail" id="forumDetailCard"></div>
+
+            <div class="composer-card">
+                <div class="stack">
+                    <input type="text" id="postTitle" placeholder="Post title">
+                    <textarea id="postContent" placeholder="Share what is on your mind..."></textarea>
+                    <label class="checkbox-row"><input type="checkbox" id="postAnonymous" checked> Post anonymously</label>
+                    <button class="submit-btn" id="createPostBtn">Publish Post</button>
+                </div>
+            </div>
+
+            <div id="postsList"></div>
+        </div>
+    </div>
+
+    <div class="mobile-bottom-nav mobile-only">
+        <button class="nav-item-mobile" data-page="chat">💬 Chats</button>
+        <button class="nav-item-mobile" data-page="market">🏪 Market</button>
+        <button class="nav-item-mobile active" data-page="forums">👻 Forums</button>
+        <button class="nav-item-mobile" data-page="profile">👤 Profile</button>
+        <button class="nav-item-mobile" data-page="settings">⚙️ Settings</button>
+    </div>
+
+    <script>
+        const initialForumId = {{ forum_id|tojson }};
+        let csrfToken = null;
+        let activeForumId = initialForumId;
+
+        async function ensureCsrfToken(forceRefresh = false) {
+            if (csrfToken && !forceRefresh) return csrfToken;
+            const response = await window.fetch('/api/csrf-token', { method: 'GET', credentials: 'include' });
+            const data = await response.json();
+            csrfToken = data.csrf_token || null;
+            return csrfToken;
+        }
+
+        async function apiFetch(url, options = {}) {
+            const requestOptions = { ...options };
+            const method = (requestOptions.method || 'GET').toUpperCase();
+            requestOptions.method = method;
+            requestOptions.credentials = requestOptions.credentials || 'include';
+            requestOptions.headers = { ...(requestOptions.headers || {}) };
+
+            if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+                const token = await ensureCsrfToken();
+                if (token) requestOptions.headers['X-CSRF-Token'] = token;
+            }
+
+            return window.fetch(url, requestOptions);
+        }
+
+        function escapeHtml(value) {
+            const div = document.createElement('div');
+            div.textContent = value || '';
+            return div.innerHTML;
+        }
+
+        function showForumList() {
+            document.getElementById('forumListSection').classList.remove('hidden');
+            document.getElementById('forumDetailSection').classList.add('hidden');
+            document.getElementById('createForumCard').classList.add('hidden');
+            activeForumId = null;
+            history.replaceState({}, '', '/ghost-forums');
+        }
+
+        async function loadForums() {
+            const response = await apiFetch('/api/forums');
+            const data = await response.json();
+            const forums = data.forums || [];
+            const forumsList = document.getElementById('forumsList');
+
+            if (!forums.length) {
+                forumsList.innerHTML = '<div class="forum-card"><div class="forum-name">No forums yet</div><div class="forum-description">Create the first Ghost Forum and start the conversation.</div></div>';
+                return;
+            }
+
+            forumsList.innerHTML = forums.map((forum) => `
+                <div class="forum-card" data-forum-id="${forum.id}">
+                    <div class="forum-name">${escapeHtml(forum.name)}</div>
+                    <div class="forum-description">${escapeHtml(forum.description || '')}</div>
+                    <div style="margin-bottom:10px;">
+                        ${forum.is_private ? '<span class="private-badge">Private</span>' : ''}
+                        <span class="anonymous-badge">${escapeHtml(forum.category || 'general')}</span>
+                    </div>
+                    <div class="forum-stats">
+                        <span>📝 ${forum.post_count || 0} posts</span>
+                        <span>👥 ${forum.member_count || 0} members</span>
+                        <span>🕐 ${new Date(forum.created_at).toLocaleDateString()}</span>
+                    </div>
+                </div>
+            `).join('');
+
+            forumsList.querySelectorAll('.forum-card').forEach((card) => {
+                card.addEventListener('click', () => viewForum(card.getAttribute('data-forum-id')));
+            });
+        }
+
+        async function viewForum(forumId) {
+            const response = await apiFetch(`/api/forums/${forumId}`);
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                alert(data.error || 'Failed to load forum');
+                return;
+            }
+
+            activeForumId = Number(forumId);
+            history.replaceState({}, '', `/ghost-forums/forum/${forumId}`);
+            document.getElementById('forumListSection').classList.add('hidden');
+            document.getElementById('forumDetailSection').classList.remove('hidden');
+            document.getElementById('createForumCard').classList.add('hidden');
+
+            const forum = data.forum;
+            document.getElementById('forumDetailCard').innerHTML = `
+                <div class="forum-name">${escapeHtml(forum.name)}</div>
+                <div class="forum-description">${escapeHtml(forum.description || '')}</div>
+                <div style="margin-bottom:10px;">
+                    ${forum.is_private ? '<span class="private-badge">Private forum</span>' : ''}
+                    <span class="anonymous-badge">${escapeHtml(forum.category || 'general')}</span>
+                </div>
+                <div class="forum-stats">
+                    <span>👥 ${forum.member_count || 0} members</span>
+                    <span>📝 ${forum.post_count || 0} posts</span>
+                    <span>🕐 Updated ${new Date(forum.updated_at || forum.created_at).toLocaleString()}</span>
+                </div>
+                <div class="status-note">Posts can be anonymous. Admins can still moderate everything.</div>
+            `;
+
+            renderPosts(data.posts || []);
+        }
+
+        function renderPosts(posts) {
+            const postsList = document.getElementById('postsList');
+            if (!posts.length) {
+                postsList.innerHTML = '<div class="post-card"><div class="post-title">No posts yet</div><div class="post-content">Be the first to start this discussion.</div></div>';
+                return;
+            }
+
+            postsList.innerHTML = posts.map((post) => `
+                <div class="post-card" data-post-id="${post.id}">
+                    <div>
+                        ${post.is_pinned ? '<span class="pinned-badge">Pinned</span>' : ''}
+                        ${post.is_locked ? '<span class="locked-badge">Locked</span>' : ''}
+                        ${post.is_anonymous ? '<span class="anonymous-badge">Anonymous</span>' : ''}
+                    </div>
+                    <div class="post-title">${escapeHtml(post.title)}</div>
+                    <div class="post-content">${escapeHtml(post.content)}</div>
+                    <div class="post-meta">
+                        <span>By ${escapeHtml(post.author_label || 'Anonymous')}</span>
+                        <span>${new Date(post.created_at).toLocaleString()}</span>
+                        <span>${post.reply_count || 0} replies</span>
+                    </div>
+                    <div class="vote-buttons">
+                        <button class="vote-btn vote-up" data-action="vote-up">▲ ${post.upvotes || 0}</button>
+                        <button class="vote-btn vote-down" data-action="vote-down">▼ ${post.downvotes || 0}</button>
+                        <button class="reply-btn" data-action="toggle-replies">Replies</button>
+                        ${post.is_locked ? '' : '<button class="reply-btn" data-action="reply">Reply</button>'}
+                    </div>
+                    <div class="reply-list hidden"></div>
+                </div>
+            `).join('');
+        }
+
+        async function createForum() {
+            const payload = {
+                name: document.getElementById('forumName').value.trim(),
+                description: document.getElementById('forumDescription').value.trim(),
+                category: document.getElementById('forumCategory').value.trim(),
+                is_private: document.getElementById('forumPrivate').checked,
+            };
+
+            const response = await apiFetch('/api/forums/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                alert(data.error || 'Failed to create forum');
+                return;
+            }
+
+            document.getElementById('forumName').value = '';
+            document.getElementById('forumDescription').value = '';
+            document.getElementById('forumCategory').value = '';
+            document.getElementById('forumPrivate').checked = false;
+            document.getElementById('createForumCard').classList.add('hidden');
+            await loadForums();
+            await viewForum(data.forum_id);
+        }
+
+        async function createPost() {
+            if (!activeForumId) return;
+            const payload = {
+                title: document.getElementById('postTitle').value.trim(),
+                content: document.getElementById('postContent').value.trim(),
+                is_anonymous: document.getElementById('postAnonymous').checked,
+            };
+
+            const response = await apiFetch(`/api/forums/${activeForumId}/posts`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                alert(data.error || 'Failed to create post');
+                return;
+            }
+
+            document.getElementById('postTitle').value = '';
+            document.getElementById('postContent').value = '';
+            document.getElementById('postAnonymous').checked = true;
+            await viewForum(activeForumId);
+        }
+
+        async function loadReplies(postCard) {
+            const postId = postCard.getAttribute('data-post-id');
+            const replyList = postCard.querySelector('.reply-list');
+            const response = await apiFetch(`/api/forum-posts/${postId}/replies`);
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                alert(data.error || 'Failed to load replies');
+                return;
+            }
+
+            const replies = data.replies || [];
+            replyList.innerHTML = replies.map((reply) => `
+                <div class="reply-card">
+                    <div class="reply-content">${escapeHtml(reply.content)}</div>
+                    <div class="reply-meta">
+                        <span>${escapeHtml(reply.author_label || 'Anonymous')}</span>
+                        <span>${new Date(reply.created_at).toLocaleString()}</span>
+                    </div>
+                </div>
+            `).join('');
+            replyList.classList.remove('hidden');
+        }
+
+        async function replyToPost(postCard) {
+            const content = window.prompt('Reply:');
+            if (!content) return;
+            const isAnonymous = window.confirm('Post this reply anonymously?');
+            const postId = postCard.getAttribute('data-post-id');
+            const response = await apiFetch(`/api/forum-posts/${postId}/replies`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content, is_anonymous: isAnonymous }),
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                alert(data.error || 'Failed to reply');
+                return;
+            }
+            await viewForum(activeForumId);
+            const refreshedCard = document.querySelector(`[data-post-id="${postId}"]`);
+            if (refreshedCard) await loadReplies(refreshedCard);
+        }
+
+        async function voteOnPost(postCard, voteType) {
+            const postId = postCard.getAttribute('data-post-id');
+            const response = await apiFetch(`/api/forum-posts/${postId}/vote`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ vote_type: voteType }),
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                alert(data.error || 'Failed to vote');
+                return;
+            }
+            const upBtn = postCard.querySelector('[data-action="vote-up"]');
+            const downBtn = postCard.querySelector('[data-action="vote-down"]');
+            if (upBtn) upBtn.textContent = `▲ ${data.upvotes || 0}`;
+            if (downBtn) downBtn.textContent = `▼ ${data.downvotes || 0}`;
+        }
+
+        function attachGlobalHandlers() {
+            document.getElementById('showCreateForumBtn').addEventListener('click', () => {
+                document.getElementById('createForumCard').classList.toggle('hidden');
+            });
+            document.getElementById('cancelCreateForumBtn').addEventListener('click', () => {
+                document.getElementById('createForumCard').classList.add('hidden');
+            });
+            document.getElementById('createForumBtn').addEventListener('click', createForum);
+            document.getElementById('createPostBtn').addEventListener('click', createPost);
+            document.getElementById('backToForumsBtn').addEventListener('click', async () => {
+                showForumList();
+                await loadForums();
+            });
+
+            document.getElementById('postsList').addEventListener('click', async (event) => {
+                const button = event.target.closest('button');
+                if (!button) return;
+                const postCard = button.closest('.post-card');
+                if (!postCard) return;
+
+                const action = button.getAttribute('data-action');
+                if (action === 'vote-up') {
+                    await voteOnPost(postCard, 1);
+                } else if (action === 'vote-down') {
+                    await voteOnPost(postCard, -1);
+                } else if (action === 'reply') {
+                    await replyToPost(postCard);
+                } else if (action === 'toggle-replies') {
+                    const replyList = postCard.querySelector('.reply-list');
+                    if (!replyList.classList.contains('hidden') && replyList.innerHTML.trim()) {
+                        replyList.classList.add('hidden');
+                    } else {
+                        await loadReplies(postCard);
+                    }
+                }
+            });
+
+            document.querySelectorAll('.nav-item-mobile').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const page = button.getAttribute('data-page');
+                    const routes = {
+                        chat: '/chat.html',
+                        market: '/ghost-market',
+                        forums: '/ghost-forums',
+                        profile: '/profile.html',
+                        settings: '/settings.html',
+                    };
+                    window.location.href = routes[page] || '/chat.html';
+                });
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            await ensureCsrfToken();
+            attachGlobalHandlers();
+            await loadForums();
+            if (initialForumId) {
+                await viewForum(initialForumId);
+            }
+        });
+    </script>
+</body>
+</html>

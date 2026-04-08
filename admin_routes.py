@@ -1,9 +1,30 @@
 from flask import Blueprint, request, jsonify, session, render_template, redirect, url_for, current_app
+import bcrypt
 import hashlib
 import json
 from admin_middleware import admin_required, get_db_connection, log_admin_action
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
+
+
+def is_legacy_sha256_hash(stored_hash):
+    return bool(stored_hash) and len(stored_hash) == 64 and all(c in '0123456789abcdef' for c in stored_hash.lower())
+
+
+def verify_admin_password(password, stored_hash):
+    if not stored_hash:
+        return False
+
+    if stored_hash.startswith('$2a$') or stored_hash.startswith('$2b$') or stored_hash.startswith('$2y$'):
+        try:
+            return bcrypt.checkpw(password.encode(), stored_hash.encode())
+        except ValueError:
+            return False
+
+    if is_legacy_sha256_hash(stored_hash):
+        return hashlib.sha256(password.encode()).hexdigest() == stored_hash
+
+    return False
 
 
 @admin_bp.route('/login')
@@ -27,23 +48,25 @@ def admin_login():
     if not username or not password:
         return jsonify({'error': 'Username and password required'}), 400
 
-    password_hash = hashlib.sha256(password.encode()).hexdigest()
-
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
             '''
-            SELECT id, username, role, permissions
+            SELECT id, username, role, permissions, password_hash
             FROM admin_users
-            WHERE username = ? AND password_hash = ?
+            WHERE username = ?
             ''',
-            (username, password_hash),
+            (username,),
         )
         admin = cursor.fetchone()
 
-        if not admin:
+        if not admin or not verify_admin_password(password, admin['password_hash']):
             log_admin_action(None, 'failed_login', details={'username': username}, ip_address=request.remote_addr)
             return jsonify({'error': 'Invalid credentials'}), 401
+
+        if is_legacy_sha256_hash(admin['password_hash']):
+            upgraded_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+            cursor.execute('UPDATE admin_users SET password_hash = ? WHERE id = ?', (upgraded_hash, admin['id']))
 
         cursor.execute('UPDATE admin_users SET last_login = CURRENT_TIMESTAMP WHERE id = ?', (admin['id'],))
         conn.commit()
@@ -1480,3 +1503,443 @@ def admin_reject_seller(user_id):
     )
 
     return jsonify({'success': True, 'message': 'Seller rejected'})
+
+
+# ============================================================
+# USER FEEDBACK MANAGEMENT
+# ============================================================
+
+@admin_bp.route('/api/feedback', methods=['GET'])
+@admin_required
+def get_feedback():
+    """List user feedback, optionally filtered by status."""
+    status = request.args.get('status', 'pending')
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        if status == 'all':
+            cursor.execute('''
+                SELECT f.*, u.zeus_pin, u.full_name, u.email
+                FROM user_feedback f
+                LEFT JOIN users u ON f.user_id = u.id
+                ORDER BY f.created_at DESC
+            ''')
+        else:
+            cursor.execute('''
+                SELECT f.*, u.zeus_pin, u.full_name, u.email
+                FROM user_feedback f
+                LEFT JOIN users u ON f.user_id = u.id
+                WHERE f.status = ?
+                ORDER BY f.created_at DESC
+            ''', (status,))
+        feedback = cursor.fetchall()
+
+    return jsonify({
+        'success': True,
+        'feedback': [dict(f) for f in feedback]
+    }), 200
+
+
+@admin_bp.route('/api/feedback/<int:feedback_id>/status', methods=['PUT'])
+@admin_required
+def update_feedback_status(feedback_id):
+    """Update the status and optional admin notes on a feedback item."""
+    data = request.get_json() or {}
+    status = data.get('status', '').strip()
+    admin_notes = data.get('admin_notes', '').strip()
+
+    valid_statuses = {'pending', 'read', 'resolved', 'dismissed'}
+    if status not in valid_statuses:
+        return jsonify({'error': f'Invalid status. Must be one of: {", ".join(sorted(valid_statuses))}'}), 400
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE user_feedback
+            SET status = ?,
+                admin_notes = ?,
+                resolved_at = CASE WHEN ? IN ('resolved', 'dismissed') THEN CURRENT_TIMESTAMP ELSE resolved_at END
+            WHERE id = ?
+        ''', (status, admin_notes, status, feedback_id))
+        if cursor.rowcount == 0:
+            return jsonify({'error': 'Feedback item not found'}), 404
+        conn.commit()
+
+    return jsonify({'success': True}), 200
+
+
+# ============================================================
+# GHOST FORUMS MODERATION
+# ============================================================
+
+@admin_bp.route('/api/forums', methods=['GET'])
+@admin_required
+def admin_list_forums():
+    """List all ghost forums for moderation."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT gf.*, u.full_name AS creator_name, u.zeus_pin AS creator_pin,
+                   (SELECT COUNT(*) FROM forum_posts fp WHERE fp.forum_id = gf.id) AS live_post_count,
+                   (SELECT COUNT(*) FROM forum_members fm WHERE fm.forum_id = gf.id) AS live_member_count
+            FROM ghost_forums gf
+            JOIN users u ON gf.creator_id = u.id
+            ORDER BY gf.updated_at DESC, gf.created_at DESC
+        ''')
+        forums = cursor.fetchall()
+
+    return jsonify({
+        'success': True,
+        'forums': [
+            {
+                **dict(forum),
+                'post_count': forum['live_post_count'],
+                'member_count': forum['live_member_count'],
+            }
+            for forum in forums
+        ]
+    }), 200
+
+
+@admin_bp.route('/api/forums/<int:forum_id>/posts', methods=['GET'])
+@admin_required
+def admin_list_forum_posts(forum_id):
+    """List forum posts with author identities for moderation."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT fp.*, u.full_name, u.zeus_pin, gf.name AS forum_name
+            FROM forum_posts fp
+            JOIN users u ON fp.user_id = u.id
+            JOIN ghost_forums gf ON fp.forum_id = gf.id
+            WHERE fp.forum_id = ?
+            ORDER BY fp.is_pinned DESC, fp.created_at DESC
+        ''', (forum_id,))
+        posts = cursor.fetchall()
+
+    return jsonify({'success': True, 'posts': [dict(post) for post in posts]}), 200
+
+
+@admin_bp.route('/api/forum-posts/<int:post_id>/moderate', methods=['PUT'])
+@admin_required
+def admin_moderate_forum_post(post_id):
+    """Pin, lock, unlock, or delete a forum post."""
+    data = request.get_json() or {}
+    action = (data.get('action') or '').strip().lower()
+    valid_actions = {'pin', 'unpin', 'lock', 'unlock', 'delete'}
+    if action not in valid_actions:
+        return jsonify({'error': 'Invalid moderation action'}), 400
+
+    admin_id = session.get('admin_id')
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT forum_id, title, user_id FROM forum_posts WHERE id = ?', (post_id,))
+        post = cursor.fetchone()
+        if not post:
+            return jsonify({'error': 'Post not found'}), 404
+
+        if action == 'delete':
+            cursor.execute('DELETE FROM forum_votes WHERE post_id = ?', (post_id,))
+            cursor.execute('DELETE FROM forum_replies WHERE post_id = ?', (post_id,))
+            cursor.execute('DELETE FROM forum_posts WHERE id = ?', (post_id,))
+        elif action == 'pin':
+            cursor.execute('UPDATE forum_posts SET is_pinned = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?', (post_id,))
+        elif action == 'unpin':
+            cursor.execute('UPDATE forum_posts SET is_pinned = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?', (post_id,))
+        elif action == 'lock':
+            cursor.execute('UPDATE forum_posts SET is_locked = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?', (post_id,))
+        elif action == 'unlock':
+            cursor.execute('UPDATE forum_posts SET is_locked = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?', (post_id,))
+
+        cursor.execute('''
+            UPDATE ghost_forums
+            SET post_count = (
+                    SELECT COUNT(*) FROM forum_posts WHERE forum_id = ?
+                ),
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''', (post['forum_id'], post['forum_id']))
+        conn.commit()
+
+    log_admin_action(
+        admin_id,
+        'forum_post_moderated',
+        target_user_id=post['user_id'],
+        details={'post_id': post_id, 'forum_id': post['forum_id'], 'title': post['title'], 'action': action},
+        ip_address=request.remote_addr,
+    )
+
+    return jsonify({'success': True}), 200
+
+
+@admin_bp.route('/api/forum-replies/<int:reply_id>', methods=['DELETE'])
+@admin_required
+def admin_delete_forum_reply(reply_id):
+    """Delete a forum reply as part of moderation."""
+    admin_id = session.get('admin_id')
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT post_id, user_id FROM forum_replies WHERE id = ?', (reply_id,))
+        reply = cursor.fetchone()
+        if not reply:
+            return jsonify({'error': 'Reply not found'}), 404
+
+        cursor.execute('DELETE FROM forum_replies WHERE id = ?', (reply_id,))
+        cursor.execute('''
+            UPDATE forum_posts
+            SET reply_count = (
+                    SELECT COUNT(*) FROM forum_replies WHERE post_id = ?
+                ),
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''', (reply['post_id'], reply['post_id']))
+        conn.commit()
+
+    log_admin_action(
+        admin_id,
+        'forum_reply_deleted',
+        target_user_id=reply['user_id'],
+        details={'reply_id': reply_id, 'post_id': reply['post_id']},
+        ip_address=request.remote_addr,
+    )
+
+    return jsonify({'success': True}), 200
+
+
+# ============================================================
+# ADMIN GHOST COMMUNITY MODERATION
+# ============================================================
+
+@admin_bp.route('/api/ghost/pending', methods=['GET'])
+@admin_required
+def admin_ghost_pending():
+    """Get posts pending AI/admin review for Ghost Ultimate."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT gp.*, u.zeus_pin, u.email, u.full_name,
+                   (SELECT COUNT(*) FROM ghost_reports WHERE post_id = gp.id) AS report_count
+            FROM ghost_posts gp
+            JOIN users u ON gp.user_id = u.id
+            WHERE gp.status IN ('pending_ai', 'pending_review')
+            ORDER BY gp.created_at ASC
+        ''')
+        posts = cursor.fetchall()
+    return jsonify({'success': True, 'posts': [dict(p) for p in posts]}), 200
+
+
+@admin_bp.route('/api/ghost/posts/<int:post_id>/approve', methods=['PUT', 'POST'])
+@admin_required
+def admin_ghost_approve(post_id):
+    admin_id = session['admin_id']
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('UPDATE ghost_posts SET status = \"approved\", ai_approved = 1 WHERE id = ?', (post_id,))
+        if cursor.rowcount == 0:
+            return jsonify({'error': 'Post not found'}), 404
+
+        cursor.execute('SELECT user_id FROM ghost_posts WHERE id = ?', (post_id,))
+        result = cursor.fetchone()
+        if result:
+            cursor.execute(
+                '''
+                INSERT INTO admin_messages (user_id, message, is_from_admin, admin_id)
+                VALUES (?, ?, 1, ?)
+                ''',
+                (result['user_id'], '✅ Your Ghost Post has been approved and is now live!', admin_id),
+            )
+
+        cursor.execute('UPDATE moderation_queue SET status = \"approved\" WHERE post_id = ?', (post_id,))
+        conn.commit()
+
+    return jsonify({'success': True}), 200
+
+
+@admin_bp.route('/api/ghost/posts/<int:post_id>/reject', methods=['PUT', 'POST'])
+@admin_required
+def admin_ghost_reject(post_id):
+    admin_id = session['admin_id']
+    data = request.get_json() or {}
+    reason = (data.get('reason') or 'No reason provided').strip()
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('UPDATE ghost_posts SET status = \"rejected\", ai_approved = 0 WHERE id = ?', (post_id,))
+        if cursor.rowcount == 0:
+            return jsonify({'error': 'Post not found'}), 404
+
+        cursor.execute('SELECT user_id FROM ghost_posts WHERE id = ?', (post_id,))
+        result = cursor.fetchone()
+        if result:
+            cursor.execute(
+                '''
+                INSERT INTO admin_messages (user_id, message, is_from_admin, admin_id)
+                VALUES (?, ?, 1, ?)
+                ''',
+                (result['user_id'], f'❌ Your Ghost Post was rejected.\nReason: {reason}', admin_id),
+            )
+
+        cursor.execute('UPDATE moderation_queue SET status = \"rejected\" WHERE post_id = ?', (post_id,))
+        conn.commit()
+
+    return jsonify({'success': True}), 200
+
+
+@admin_bp.route('/api/ghost/reports', methods=['GET'])
+@admin_required
+def admin_ghost_reports():
+    """Get pending user reports for Ghost Ultimate posts."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT gr.*, gp.title, gp.user_id AS creator_user_id, u.zeus_pin AS reporter_pin,
+                   (SELECT zeus_pin FROM users WHERE id = gp.user_id) AS creator_pin
+            FROM ghost_reports gr
+            JOIN ghost_posts gp ON gr.post_id = gp.id
+            JOIN users u ON gr.reporter_id = u.id
+            WHERE gr.status = 'pending'
+            ORDER BY gr.created_at ASC
+        ''')
+        reports = cursor.fetchall()
+    return jsonify({'success': True, 'reports': [dict(r) for r in reports]}), 200
+
+
+@admin_bp.route('/api/ghost/creators', methods=['GET'])
+@admin_required
+def admin_ghost_creators():
+    """Get top Ghost Community creators ranked by earnings."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            SELECT cw.user_id,
+                   cw.balance,
+                   cw.total_earned,
+                   cw.total_withdrawn,
+                   cw.pending_payout,
+                   u.zeus_pin,
+                   u.full_name,
+                   u.ghost_banned,
+                   u.ghost_ban_expires,
+                   (
+                       SELECT COUNT(*)
+                       FROM ghost_posts gp
+                       WHERE gp.user_id = u.id
+                   ) AS post_count
+            FROM creator_wallets cw
+            JOIN users u ON cw.user_id = u.id
+            ORDER BY cw.total_earned DESC, cw.balance DESC
+            LIMIT 50
+            '''
+        )
+        creators = cursor.fetchall()
+
+    return jsonify({'success': True, 'creators': [dict(c) for c in creators]}), 200
+
+
+@admin_bp.route('/api/ghost/reports/<int:report_id>/resolve', methods=['PUT'])
+@admin_required
+def admin_ghost_resolve_report(report_id):
+    """Resolve a Ghost Community report."""
+    admin_id = session['admin_id']
+    data = request.get_json() or {}
+    action = (data.get('action') or 'resolved').strip().lower()
+    allowed_statuses = {'dismissed', 'action_taken', 'resolved'}
+    status = action if action in allowed_statuses else 'resolved'
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            UPDATE ghost_reports
+            SET status = ?,
+                resolved_by = ?,
+                resolved_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            ''',
+            (status, admin_id, report_id),
+        )
+        if cursor.rowcount == 0:
+            return jsonify({'error': 'Report not found'}), 404
+        conn.commit()
+
+    return jsonify({'success': True, 'status': status}), 200
+
+
+@admin_bp.route('/api/ghost/banned', methods=['GET'])
+@admin_required
+def admin_ghost_banned_users():
+    """List users currently banned from Ghost Community."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            SELECT u.id,
+                   u.zeus_pin,
+                   u.full_name,
+                   u.email,
+                   u.ghost_ban_reason,
+                   u.ghost_ban_expires,
+                   (
+                       SELECT COUNT(*)
+                       FROM ghost_posts gp
+                       WHERE gp.user_id = u.id
+                   ) AS remaining_posts
+            FROM users u
+            WHERE u.ghost_banned = 1
+            ORDER BY u.ghost_ban_expires DESC, u.id DESC
+            '''
+        )
+        users = cursor.fetchall()
+
+    return jsonify({'success': True, 'users': [dict(user) for user in users]}), 200
+
+
+@admin_bp.route('/api/ghost/users/<int:user_id>/ban', methods=['PUT', 'POST'])
+@admin_required
+def admin_ghost_ban_user(user_id):
+    admin_id = session['admin_id']
+    data = request.get_json() or {}
+    reason = (data.get('reason') or 'No reason provided').strip()
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            UPDATE users
+            SET ghost_banned = 1,
+                ghost_ban_reason = ?,
+                ghost_ban_expires = datetime('now', '+30 days')
+            WHERE id = ?
+            ''',
+            (reason, user_id),
+        )
+        if cursor.rowcount == 0:
+            return jsonify({'error': 'User not found'}), 404
+
+        cursor.execute('DELETE FROM ghost_posts WHERE user_id = ?', (user_id,))
+        cursor.execute(
+            '''
+            INSERT INTO admin_messages (user_id, message, is_from_admin, admin_id)
+            VALUES (?, ?, 1, ?)
+            ''',
+            (
+                user_id,
+                f'🚫 You have been banned from Ghost Community.\nReason: {reason}\nBan expires in 30 days.',
+                admin_id,
+            ),
+        )
+        conn.commit()
+
+    log_admin_action(
+        admin_id,
+        'ghost_user_banned',
+        target_user_id=user_id,
+        details={'reason': reason},
+        ip_address=request.remote_addr,
+    )
+
+    return jsonify({'success': True}), 200

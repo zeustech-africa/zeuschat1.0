@@ -103,6 +103,11 @@
     button, a, .clickable {
         min-height: 44px;
     }
+
+    /* Hidden feature - ready to enable by removing this class */
+    .feature-hidden {
+      display: none !important;
+    }
 }
   </style>
   <link rel="stylesheet" href="/static/mobile.css">
@@ -129,7 +134,8 @@
       <p>• Web App (Desktop & Mobile Browser)</p>
     </div>
 
-    <div class="section">
+    <!-- Hidden launch-gated section: remove feature-hidden to re-enable -->
+    <div class="section feature-hidden">
       <h2>Coming Soon</h2>
       <p>• Android App</p>
       <p>• iOS App</p>

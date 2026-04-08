@@ -121,6 +121,45 @@
       left: 0;
       z-index: 20;
     }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 48px;
+      height: 26px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #444;
+      transition: .2s;
+      border-radius: 26px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .2s;
+      border-radius: 50%;
+    }
+    .switch input:checked + .slider {
+      background-color: #d4af37;
+    }
+    .switch input:checked + .slider:before {
+      transform: translateX(22px);
+    }
     @keyframes modalFadeIn {
       from { opacity: 0; transform: scale(0.95); }
       to { opacity: 1; transform: scale(1); }
@@ -211,6 +250,11 @@
     button, a, .clickable {
         min-height: 44px;
     }
+
+    /* Hidden feature - ready to enable by removing this class */
+    .feature-hidden {
+      display: none !important;
+    }
 }
   </style>
   <link rel="stylesheet" href="/static/mobile.css">
@@ -218,11 +262,13 @@
 <body>
   <div class="container">
     <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
-      <button class="back-btn" onclick="window.location.href='chat.html'">Back</button>
+      <button class="back-btn" onclick="window.location.href='chat.html'" data-i18n="chats">Chats</button>
       <button class="back-btn" onclick="window.location.href='/ghost-market'">Ghost Market</button>
+      <button class="back-btn" onclick="window.location.href='/ghost-forums'">Ghost Forums</button>
+      <button class="back-btn" onclick="window.location.href='/ghost-ultimate'">Ghost Ultimate</button>
     </div>
     <div class="section">
-      <div class="section-title">Privacy</div>
+      <div class="section-title" data-i18n="privacy">Privacy</div>
       <div class="setting">
         <div class="setting-label">Last seen & online</div>
         <select class="setting-value" onchange="saveSetting('lastSeen', this.value)">
@@ -265,7 +311,7 @@
       </div>
     </div>
     <div class="section">
-      <div class="section-title">Security</div>
+      <div class="section-title" data-i18n="security">Security</div>
       <div class="setting">
         <div class="setting-label">PIN-to-View (for files & voice notes)</div>
         <select class="setting-value" onchange="saveSetting('pinToView', this.value)">
@@ -281,7 +327,7 @@
     
     <!-- 🔔 NOTIFICATION SETTINGS SECTION -->
     <div class="section">
-      <div class="section-title">🔔 Notifications</div>
+      <div class="section-title">🔔 <span data-i18n="notifications">Notifications</span></div>
       <div class="setting">
         <div class="setting-label">Notification Type</div>
         <select id="notification-type" class="setting-value" onchange="saveNotificationSetting()">
@@ -299,6 +345,70 @@
         <div style="font-size: 0.85em; color: #888; margin-top: 5px;">
           When disabled, you appear offline to contacts
         </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">📡 <span data-i18n="data_saver">Data Saver</span></div>
+      <div class="setting">
+        <div>
+          <div class="setting-label">Data Saver Mode</div>
+          <div style="font-size: 12px; color: #888;">Reduce data usage by up to 80%</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="dataSaverToggle">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="setting" id="imageQualityGroup">
+        <div>
+          <div class="setting-label" data-i18n="image_quality">Image Quality</div>
+          <div style="font-size: 12px; color: #888;">Lower quality = less data used</div>
+        </div>
+        <select id="imageQuality" class="setting-value">
+          <option value="low" data-i18n="low">Low</option>
+          <option value="medium" data-i18n="medium">Medium</option>
+          <option value="high" data-i18n="high">High</option>
+        </select>
+      </div>
+      <div class="setting">
+        <div>
+          <div class="setting-label">Auto-download Images</div>
+          <div style="font-size: 12px; color: #888;">Automatically download images</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="autoDownloadImages">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="setting">
+        <div>
+          <div class="setting-label">Auto-download Videos</div>
+          <div style="font-size: 12px; color: #888;">Automatically download videos (data heavy)</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="autoDownloadVideos">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">🌍 Language / Lugha / Èdè / Ulimi / Harshe / Asụsụ / ቋንቋ</div>
+      <div class="setting">
+        <div>
+          <div class="setting-label" data-i18n="language">Language</div>
+          <div style="font-size: 12px; color: #888;" data-i18n="select_language">Select Language</div>
+        </div>
+        <select id="languageSelect" class="setting-value" aria-label="Language selector">
+          <option value="en">English</option>
+          <option value="sw">Kiswahili</option>
+          <option value="yo">Yoruba</option>
+          <option value="zu">isiZulu</option>
+          <option value="ha">Hausa</option>
+          <option value="ig">Igbo</option>
+          <option value="am">አማርኛ (Amharic)</option>
+        </select>
       </div>
     </div>
     
@@ -328,7 +438,7 @@
       </div>
     </div>
     <div class="section">
-      <div class="section-title">💬 Help & Feedback</div>
+      <div class="section-title">💬 <span data-i18n="help">Help</span> & Feedback</div>
       <div style="padding: 12px;">
         <p style="color: #888; font-size: 13px; margin-bottom: 12px;">
           Need help or have feedback? Share your thoughts with our team.
@@ -366,8 +476,8 @@
 
     <!-- ✅ ONLY NEW SECTION — Log Out & Delete Account -->
     <div class="section">
-      <div class="section-title">Account</div>
-      <button class="btn logout-btn" onclick="logout()">Log Out</button>
+      <div class="section-title" data-i18n="settings">Settings</div>
+      <button class="btn logout-btn" onclick="logout()" data-i18n="logout">Logout</button>
       <button class="btn delete-btn" onclick="deleteAccount()">Delete Account</button>
       <div class="warning">
         🔒 Log out: Ends session, keeps all data.<br>
@@ -375,7 +485,7 @@
       </div>
     </div>
 
-    <button class="btn" onclick="saveAllSettings()">Save and Continue</button>
+    <button class="btn" onclick="saveAllSettings()" data-i18n="get_started">Get Started</button>
   </div>
 
     <!-- Dual Upgrade Modal -->
@@ -407,6 +517,180 @@
     </div>
 
   <script>
+    const API_BASE = window.location.origin;
+    let csrfToken = null;
+    let dataSaverState = {
+      data_saver_mode: false,
+      auto_download_images: false,
+      auto_download_videos: false,
+      image_quality: 'medium',
+    };
+
+    async function ensureCsrfToken(forceRefresh = false) {
+      if (csrfToken && !forceRefresh) {
+        return csrfToken;
+      }
+
+      const response = await window.fetch(`${API_BASE}/api/csrf-token`, {
+        method: 'GET',
+        credentials: 'include'
+      });
+      const data = await response.json();
+      csrfToken = data.csrf_token || null;
+      return csrfToken;
+    }
+
+    async function apiFetch(url, options = {}) {
+      const requestOptions = { ...options };
+      const method = (requestOptions.method || 'GET').toUpperCase();
+      requestOptions.method = method;
+      requestOptions.credentials = requestOptions.credentials || 'include';
+      requestOptions.headers = { ...(requestOptions.headers || {}) };
+
+      if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+        const token = await ensureCsrfToken();
+        if (token) {
+          requestOptions.headers['X-CSRF-Token'] = token;
+        }
+      }
+
+      return window.fetch(url, requestOptions);
+    }
+
+    const SUPPORTED_LANGUAGES = ['en', 'sw', 'yo', 'zu', 'ha', 'ig', 'am'];
+    let currentTranslations = {};
+
+    function normalizeLanguage(lang) {
+      return SUPPORTED_LANGUAGES.includes(lang) ? lang : 'en';
+    }
+
+    function applyTranslations() {
+      document.querySelectorAll('[data-i18n]').forEach((element) => {
+        const key = element.getAttribute('data-i18n');
+        const value = currentTranslations[key];
+        if (!value) return;
+        element.textContent = value;
+      });
+
+      document.querySelectorAll('[data-i18n-placeholder]').forEach((element) => {
+        const key = element.getAttribute('data-i18n-placeholder');
+        const value = currentTranslations[key];
+        if (!value) return;
+        element.placeholder = value;
+      });
+    }
+
+    async function getServerLanguage() {
+      try {
+        const response = await apiFetch('/api/user/language', { method: 'GET' });
+        const data = await response.json();
+        if (!response.ok || !data.success) return null;
+        return normalizeLanguage(data.language || 'en');
+      } catch (_error) {
+        return null;
+      }
+    }
+
+    async function saveLanguagePreference(language) {
+      const payload = { language: normalizeLanguage(language) };
+      try {
+        await apiFetch('/api/user/language', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } catch (error) {
+        console.error('Failed to save language preference:', error);
+      }
+    }
+
+    async function loadLanguage(language, persistToServer = false) {
+      const selected = normalizeLanguage(language);
+      try {
+        const response = await window.fetch(`/static/locales/${selected}.json`, { cache: 'no-cache' });
+        if (!response.ok) {
+          throw new Error(`Failed to load locale: ${selected}`);
+        }
+
+        currentTranslations = await response.json();
+        applyTranslations();
+        document.documentElement.lang = selected;
+
+        const languageSelect = document.getElementById('languageSelect');
+        if (languageSelect) {
+          languageSelect.value = selected;
+        }
+
+        localStorage.setItem('zeuschat_language', selected);
+        sessionStorage.setItem('zeuschat_language', selected);
+
+        if (persistToServer) {
+          await saveLanguagePreference(selected);
+        }
+      } catch (error) {
+        console.error('Failed to load language:', error);
+      }
+    }
+
+    async function loadDataSaverSettings() {
+      try {
+        const response = await apiFetch('/api/user/data-saver-settings', { method: 'GET' });
+        const data = await response.json();
+        if (!response.ok || !data.success) return;
+
+        dataSaverState = {
+          data_saver_mode: !!data.data_saver_mode,
+          auto_download_images: !!data.auto_download_images,
+          auto_download_videos: !!data.auto_download_videos,
+          image_quality: data.image_quality || 'medium',
+        };
+
+        document.getElementById('dataSaverToggle').checked = dataSaverState.data_saver_mode;
+        document.getElementById('imageQuality').value = dataSaverState.image_quality;
+        document.getElementById('autoDownloadImages').checked = dataSaverState.auto_download_images;
+        document.getElementById('autoDownloadVideos').checked = dataSaverState.auto_download_videos;
+        document.getElementById('imageQualityGroup').style.display = dataSaverState.data_saver_mode ? 'flex' : 'none';
+
+        sessionStorage.setItem('data_saver_mode', dataSaverState.data_saver_mode ? 'true' : 'false');
+        sessionStorage.setItem('data_saver_image_quality', dataSaverState.image_quality);
+        sessionStorage.setItem('auto_download_images', dataSaverState.auto_download_images ? 'true' : 'false');
+        sessionStorage.setItem('auto_download_videos', dataSaverState.auto_download_videos ? 'true' : 'false');
+      } catch (error) {
+        console.error('Failed to load data saver settings:', error);
+      }
+    }
+
+    async function saveDataSaverSettings() {
+      const payload = {
+        data_saver_mode: document.getElementById('dataSaverToggle').checked,
+        image_quality: document.getElementById('imageQuality').value,
+        auto_download_images: document.getElementById('autoDownloadImages').checked,
+        auto_download_videos: document.getElementById('autoDownloadVideos').checked,
+      };
+
+      document.getElementById('imageQualityGroup').style.display = payload.data_saver_mode ? 'flex' : 'none';
+
+      try {
+        const response = await apiFetch('/api/user/data-saver-settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          console.error('Failed to save data saver settings:', data.error || 'Unknown error');
+          return;
+        }
+
+        sessionStorage.setItem('data_saver_mode', payload.data_saver_mode ? 'true' : 'false');
+        sessionStorage.setItem('data_saver_image_quality', payload.image_quality);
+        sessionStorage.setItem('auto_download_images', payload.auto_download_images ? 'true' : 'false');
+        sessionStorage.setItem('auto_download_videos', payload.auto_download_videos ? 'true' : 'false');
+      } catch (error) {
+        console.error('Failed to save data saver settings:', error);
+      }
+    }
+
     // Authentication guard
     const isLoggedIn = sessionStorage.getItem('user_logged_in') === 'true';
     const userPin = sessionStorage.getItem('user_zeus_pin');
@@ -416,7 +700,19 @@
     }
 
     // Load saved settings on page load
-    window.addEventListener('DOMContentLoaded', () => {
+    window.addEventListener('DOMContentLoaded', async () => {
+      ensureCsrfToken().catch((error) => {
+        console.error('Failed to initialize CSRF token:', error);
+      });
+
+      const savedLanguage = normalizeLanguage(localStorage.getItem('zeuschat_language') || 'en');
+      const serverLanguage = await getServerLanguage();
+      await loadLanguage(serverLanguage || savedLanguage, false);
+
+      document.getElementById('languageSelect')?.addEventListener('change', async (event) => {
+        await loadLanguage(event.target.value, true);
+      });
+
       const settings = JSON.parse(localStorage.getItem('settings')) || {};
       document.querySelector('select[onchange*="lastSeen"]').value = settings.lastSeen || 'myContacts';
       document.querySelector('select[onchange*="profilePhoto"]').value = settings.profilePhoto || 'myContacts';
@@ -441,6 +737,13 @@
       if (pinViewToggle) {
         pinViewToggle.checked = pinViewEnabled;
       }
+
+      await loadDataSaverSettings();
+
+      document.getElementById('dataSaverToggle')?.addEventListener('change', saveDataSaverSettings);
+      document.getElementById('imageQuality')?.addEventListener('change', saveDataSaverSettings);
+      document.getElementById('autoDownloadImages')?.addEventListener('change', saveDataSaverSettings);
+      document.getElementById('autoDownloadVideos')?.addEventListener('change', saveDataSaverSettings);
       
       // Load blocked contacts list
       loadBlockedContacts();
@@ -479,7 +782,7 @@
           }
 
           try {
-            const response = await fetch(endpoint, { method: 'POST', credentials: 'include' });
+            const response = await apiFetch(endpoint, { method: 'POST', credentials: 'include' });
             const result = await response.json();
             if (response.ok && result.redirect_url) {
               window.location.href = result.redirect_url;
@@ -493,7 +796,7 @@
       }
 
       document.getElementById('cloudBackupToggle')?.addEventListener('click', async () => {
-        const response = await fetch('/api/user/has-feature/cloud_backup_10gb');
+        const response = await apiFetch('/api/user/has-feature/cloud_backup_10gb');
         const data = await response.json();
         if (!data.has_access) {
           showUpgradeModal('cloud_backup');
@@ -567,7 +870,7 @@
       const API_BASE = window.location.origin;
       const userPin = sessionStorage.getItem('user_zeus_pin');
       
-      fetch(`${API_BASE}/api/update-online-status`, {
+      apiFetch(`${API_BASE}/api/update-online-status`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -612,7 +915,7 @@
       const API_BASE = window.location.origin;
       const userPin = sessionStorage.getItem('user_zeus_pin');
       
-      fetch(`${API_BASE}/api/save-user-settings`, {
+      apiFetch(`${API_BASE}/api/save-user-settings`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -656,7 +959,7 @@
 
       try {
         const API_BASE = window.location.origin;
-        const response = await fetch(`${API_BASE}/api/delete-account`, {
+        const response = await apiFetch(`${API_BASE}/api/delete-account`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -684,7 +987,7 @@
     async function loadBlockedContacts() {
       const API_BASE = window.location.origin;
       try {
-        const response = await fetch(`${API_BASE}/api/get-blocked-contacts`, {
+        const response = await apiFetch(`${API_BASE}/api/get-blocked-contacts`, {
           method: 'GET',
           credentials: 'include'
         });
@@ -727,7 +1030,7 @@
 
       const API_BASE = window.location.origin;
       try {
-        const response = await fetch(`${API_BASE}/api/unblock-from-settings`, {
+        const response = await apiFetch(`${API_BASE}/api/unblock-from-settings`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -765,7 +1068,7 @@
 
       const API_BASE = window.location.origin;
       try {
-        const response = await fetch(`${API_BASE}/api/submit-feedback`, {
+        const response = await apiFetch(`${API_BASE}/api/submit-feedback`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },

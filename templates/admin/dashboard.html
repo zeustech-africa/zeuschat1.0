@@ -283,6 +283,22 @@
             background: #2563eb;
         }
 
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-warning:hover {
+            background: #d97706;
+        }
+
         .btn-refresh {
             background: #64748b;
             color: white;
@@ -446,6 +462,100 @@
             color: #94a3b8;
         }
 
+        .moderation-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .mod-tab-btn {
+            padding: 10px 20px;
+            background: #f1f5f9;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #334155;
+            font-weight: 600;
+        }
+
+        .mod-tab-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .mod-tab-content {
+            display: none;
+        }
+
+        .mod-tab-content.active {
+            display: block;
+        }
+
+        .pending-post-card,
+        .moderation-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .ghost-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .ghost-action-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-width: 150px;
+        }
+
+        .ghost-notes-input {
+            width: 100%;
+            margin-top: 12px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid #cbd5e1;
+            resize: vertical;
+            min-height: 88px;
+            font-family: inherit;
+            font-size: 14px;
+        }
+
+        .ghost-meta-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px 18px;
+            margin-top: 14px;
+        }
+
+        .ghost-meta-grid p,
+        .moderation-card p {
+            margin-bottom: 8px;
+            color: #334155;
+        }
+
+        .ghost-section-title {
+            margin: 20px 0 12px;
+            color: #1e293b;
+        }
+
+        .empty-state {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            color: #94a3b8;
+            border: 1px solid #e2e8f0;
+        }
+
         /* ========== RESPONSIVE ========== */
         @media (max-width: 768px) {
             .sidebar {
@@ -570,6 +680,7 @@
             <div class="nav-item" data-tab="messages">💬 Messages <span class="nav-badge" id="unreadMessagesBadge" style="display:none">0</span></div>
             <div class="nav-item" data-tab="subscriptions">📅 Subscriptions</div>
             <div class="nav-item" data-tab="ghostMarket">🏪 Ghost Market <span class="nav-badge" id="ghostMarketBadge" style="display:none">0</span></div>
+            <div class="nav-item" data-tab="ghostModeration">👻 Ghost Moderation <span class="nav-badge" id="ghostPendingBadge" style="display:none">0</span></div>
         </div>
         <button class="logout-btn" onclick="logout()">🚪 Logout</button>
     </div>
@@ -677,11 +788,78 @@
             <h3 style="margin: 30px 0 10px;">Pending Items for Approval</h3>
             <div id="ghostMarketList"><div class="loading">Loading...</div></div>
         </div>
+
+        <!-- Ghost Moderation Tab -->
+        <div id="tab-ghostModeration" class="tab-content">
+            <div class="page-header">
+                <h1>👻 Ghost Community Moderation</h1>
+                <p>Review pending posts, handle reports, and manage creators</p>
+            </div>
+
+            <div class="moderation-tabs">
+                <button class="mod-tab-btn active" data-mod-tab="pending">Pending Review</button>
+                <button class="mod-tab-btn" data-mod-tab="reports">User Reports</button>
+                <button class="mod-tab-btn" data-mod-tab="creators">Top Creators</button>
+                <button class="mod-tab-btn" data-mod-tab="banned">Banned Users</button>
+            </div>
+
+            <div id="modPending" class="mod-tab-content active">
+                <h3 class="ghost-section-title">📝 Posts Awaiting Approval</h3>
+                <div id="pendingPostsList"><div class="loading">Loading...</div></div>
+            </div>
+
+            <div id="modReports" class="mod-tab-content">
+                <h3 class="ghost-section-title">🚩 User Reports</h3>
+                <div id="reportsList"><div class="loading">Loading...</div></div>
+            </div>
+
+            <div id="modCreators" class="mod-tab-content">
+                <h3 class="ghost-section-title">💰 Top Earning Creators</h3>
+                <div id="creatorsList"><div class="loading">Loading...</div></div>
+            </div>
+
+            <div id="modBanned" class="mod-tab-content">
+                <h3 class="ghost-section-title">🚫 Banned from Ghost Community</h3>
+                <div id="bannedList"><div class="loading">Loading...</div></div>
+            </div>
+        </div>
     </div>
 
     <script>
         let currentUser = null;
         let refreshInterval = null;
+        let adminCsrfToken = null;
+
+        async function ensureAdminCsrfToken(forceRefresh = false) {
+            if (adminCsrfToken && !forceRefresh) return adminCsrfToken;
+
+            const response = await fetch('/api/csrf-token', {
+                method: 'GET',
+                credentials: 'include'
+            });
+            const data = await response.json();
+            adminCsrfToken = data.csrf_token || null;
+            return adminCsrfToken;
+        }
+
+        async function adminJsonFetch(url, options = {}) {
+            const requestOptions = {
+                credentials: 'include',
+                ...options,
+                headers: {
+                    ...(options.headers || {})
+                }
+            };
+
+            if ((requestOptions.method || 'GET').toUpperCase() !== 'GET') {
+                const token = await ensureAdminCsrfToken();
+                if (token) {
+                    requestOptions.headers['X-CSRF-Token'] = token;
+                }
+            }
+
+            return fetch(url, requestOptions);
+        }
 
         // Check session
         async function checkSession() {
@@ -741,6 +919,8 @@
                     document.getElementById('activityFeed').innerHTML = activityHtml || '<div style="padding:20px;text-align:center;color:#94a3b8;">No recent activity</div>';
                 }
             } catch (error) { console.error('Stats error:', error); }
+
+            loadGhostPendingBadge();
         }
 
         // Load users
@@ -1156,6 +1336,315 @@ Message Stats: ${data.message_stats.total} total / ${data.message_stats.user_mes
             return div.innerHTML;
         }
 
+        function setGhostPendingBadge(count) {
+            const badge = document.getElementById('ghostPendingBadge');
+            if (!badge) return;
+
+            if (count > 0) {
+                badge.textContent = count;
+                badge.style.display = 'inline-block';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        async function loadGhostPendingBadge() {
+            try {
+                const response = await fetch('/admin/api/ghost/pending');
+                const data = await response.json();
+                if (data.success) {
+                    setGhostPendingBadge(data.posts.length || 0);
+                }
+            } catch (error) {
+                console.error('Ghost badge error:', error);
+            }
+        }
+
+        async function loadPendingPosts() {
+            const container = document.getElementById('pendingPostsList');
+            container.innerHTML = '<div class="loading">Loading...</div>';
+
+            try {
+                const response = await fetch('/admin/api/ghost/pending');
+                const data = await response.json();
+
+                if (data.success && data.posts.length > 0) {
+                    const postsHtml = data.posts.map(post => {
+                        const typeLabel = post.is_paid ? `💰 Paid - R${Number(post.price || 0).toFixed(2)}` : '⭐ Free';
+                        const mediaLink = post.media_url
+                            ? `<p><strong>Media:</strong> <a href="/${escapeHtml(post.media_url)}" target="_blank" rel="noopener noreferrer">View Media</a></p>`
+                            : '';
+
+                        return `
+                            <div class="pending-post-card">
+                                <div class="ghost-card-header">
+                                    <div style="flex:1; min-width:260px;">
+                                        <h4 style="font-size:18px; color:#0f172a; margin-bottom:10px;">${escapeHtml(post.title)}</h4>
+                                        <p><strong>Creator:</strong> ${escapeHtml(post.zeus_pin)} (${escapeHtml(post.full_name)})</p>
+                                        <p><strong>Type:</strong> ${typeLabel}</p>
+                                        ${mediaLink}
+                                        <p><strong>Content:</strong> ${escapeHtml(post.content || 'No text content')}</p>
+                                        <div class="ghost-meta-grid">
+                                            <p><strong>Status:</strong> ${escapeHtml(post.status)}</p>
+                                            <p><strong>Reports:</strong> ${Number(post.report_count || 0)}</p>
+                                            <p><strong>Created:</strong> ${new Date(post.created_at).toLocaleString()}</p>
+                                            <p><strong>Expires:</strong> ${new Date(post.expires_at).toLocaleString()}</p>
+                                        </div>
+                                    </div>
+                                    <div class="ghost-action-stack">
+                                        <button class="btn-approve" onclick="approveGhostPost(${post.id})">✓ Approve</button>
+                                        <button class="btn-reject" onclick="rejectGhostPost(${post.id})">✗ Reject</button>
+                                    </div>
+                                </div>
+                                <textarea id="modNotes_${post.id}" class="ghost-notes-input" placeholder="Admin notes (optional)"></textarea>
+                            </div>
+                        `;
+                    }).join('');
+
+                    container.innerHTML = postsHtml;
+                    setGhostPendingBadge(data.posts.length);
+                } else {
+                    container.innerHTML = '<div class="empty-state">No pending posts</div>';
+                    setGhostPendingBadge(0);
+                }
+            } catch (error) {
+                container.innerHTML = '<div class="loading">Error loading posts</div>';
+            }
+        }
+
+        async function loadReports() {
+            const container = document.getElementById('reportsList');
+            container.innerHTML = '<div class="loading">Loading...</div>';
+
+            try {
+                const response = await fetch('/admin/api/ghost/reports');
+                const data = await response.json();
+
+                if (data.success && data.reports.length > 0) {
+                    const reportsHtml = data.reports.map(report => `
+                        <div class="moderation-card">
+                            <p><strong>Reported Post:</strong> ${escapeHtml(report.title)}</p>
+                            <p><strong>Creator PIN:</strong> ${escapeHtml(report.creator_pin || 'Unknown')}</p>
+                            <p><strong>Reporter PIN:</strong> ${escapeHtml(report.reporter_pin || 'Unknown')}</p>
+                            <p><strong>Reason:</strong> ${escapeHtml(report.reason)}</p>
+                            <p><strong>Details:</strong> ${escapeHtml(report.details || 'None')}</p>
+                            <p><strong>Submitted:</strong> ${new Date(report.created_at).toLocaleString()}</p>
+                            <div style="margin-top:15px; display:flex; gap:10px; flex-wrap:wrap;">
+                                <button class="btn-approve" onclick="resolveReport(${report.id}, 'dismissed')">Dismiss Report</button>
+                                <button class="btn-reject" onclick="resolveReport(${report.id}, 'action_taken')">Action Taken</button>
+                                <button class="btn-warning" onclick="banCreatorFromGhost(${report.creator_user_id})">🚫 Ban Creator</button>
+                            </div>
+                        </div>
+                    `).join('');
+
+                    container.innerHTML = reportsHtml;
+                } else {
+                    container.innerHTML = '<div class="empty-state">No pending reports</div>';
+                }
+            } catch (error) {
+                container.innerHTML = '<div class="loading">Error loading reports</div>';
+            }
+        }
+
+        async function loadTopCreators() {
+            const container = document.getElementById('creatorsList');
+            container.innerHTML = '<div class="loading">Loading...</div>';
+
+            try {
+                const response = await fetch('/admin/api/ghost/creators');
+                const data = await response.json();
+
+                if (data.success && data.creators.length > 0) {
+                    const creatorsHtml = `
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Creator PIN</th>
+                                    <th>Name</th>
+                                    <th>Total Earned</th>
+                                    <th>Balance</th>
+                                    <th>Posts</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.creators.map(creator => `
+                                    <tr>
+                                        <td>${escapeHtml(creator.zeus_pin)}</td>
+                                        <td>${escapeHtml(creator.full_name)}</td>
+                                        <td>R${Number(creator.total_earned || 0).toFixed(2)}</td>
+                                        <td>R${Number(creator.balance || 0).toFixed(2)}</td>
+                                        <td>${Number(creator.post_count || 0)}</td>
+                                        <td>
+                                            <span class="status-badge ${creator.ghost_banned ? 'status-banned' : 'status-approved'}">
+                                                ${creator.ghost_banned ? 'Banned' : 'Active'}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            ${creator.ghost_banned ? '' : `<button class="btn-warning" onclick="banCreatorFromGhost(${creator.user_id})">Ban Creator</button>`}
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+
+                    container.innerHTML = creatorsHtml;
+                } else {
+                    container.innerHTML = '<div class="empty-state">No creators yet</div>';
+                }
+            } catch (error) {
+                container.innerHTML = '<div class="loading">Error loading creators</div>';
+            }
+        }
+
+        async function loadBannedUsers() {
+            const container = document.getElementById('bannedList');
+            container.innerHTML = '<div class="loading">Loading...</div>';
+
+            try {
+                const response = await fetch('/admin/api/ghost/banned');
+                const data = await response.json();
+
+                if (data.success && data.users.length > 0) {
+                    const bannedHtml = `
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>PIN</th>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Reason</th>
+                                    <th>Ban Expires</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.users.map(user => `
+                                    <tr>
+                                        <td>${escapeHtml(user.zeus_pin)}</td>
+                                        <td>${escapeHtml(user.full_name)}</td>
+                                        <td>${escapeHtml(user.email)}</td>
+                                        <td>${escapeHtml(user.ghost_ban_reason || 'No reason recorded')}</td>
+                                        <td>${user.ghost_ban_expires ? new Date(user.ghost_ban_expires).toLocaleString() : 'Unknown'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+
+                    container.innerHTML = bannedHtml;
+                } else {
+                    container.innerHTML = '<div class="empty-state">No banned users</div>';
+                }
+            } catch (error) {
+                container.innerHTML = '<div class="loading">Error loading banned users</div>';
+            }
+        }
+
+        async function approveGhostPost(postId) {
+            const notes = document.getElementById(`modNotes_${postId}`)?.value || '';
+            if (!confirm('Approve this post for Ghost Community?')) return;
+
+            try {
+                const response = await adminJsonFetch(`/admin/api/ghost/posts/${postId}/approve`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ notes })
+                });
+
+                if (response.ok) {
+                    loadPendingPosts();
+                    loadTopCreators();
+                } else {
+                    alert('Failed to approve post');
+                }
+            } catch (error) {
+                alert('Failed to approve post');
+            }
+        }
+
+        async function rejectGhostPost(postId) {
+            const reason = prompt('Enter rejection reason (sent to creator):');
+            if (!reason) return;
+
+            try {
+                const response = await adminJsonFetch(`/admin/api/ghost/posts/${postId}/reject`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason })
+                });
+
+                if (response.ok) {
+                    loadPendingPosts();
+                } else {
+                    alert('Failed to reject post');
+                }
+            } catch (error) {
+                alert('Failed to reject post');
+            }
+        }
+
+        async function resolveReport(reportId, action) {
+            try {
+                const response = await adminJsonFetch(`/admin/api/ghost/reports/${reportId}/resolve`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action })
+                });
+
+                if (response.ok) {
+                    loadReports();
+                    loadPendingPosts();
+                } else {
+                    alert('Failed to resolve report');
+                }
+            } catch (error) {
+                alert('Failed to resolve report');
+            }
+        }
+
+        async function banCreatorFromGhost(userId) {
+            const reason = prompt('Enter ban reason:');
+            if (!reason) return;
+
+            try {
+                const response = await adminJsonFetch(`/admin/api/ghost/users/${userId}/ban`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason })
+                });
+
+                if (response.ok) {
+                    alert('User banned from Ghost Community');
+                    loadReports();
+                    loadTopCreators();
+                    loadBannedUsers();
+                    loadPendingPosts();
+                } else {
+                    alert('Failed to ban creator');
+                }
+            } catch (error) {
+                alert('Failed to ban creator');
+            }
+        }
+
+        document.querySelectorAll('.mod-tab-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const tab = button.dataset.modTab;
+                document.querySelectorAll('.mod-tab-btn').forEach(item => item.classList.remove('active'));
+                document.querySelectorAll('.mod-tab-content').forEach(content => content.classList.remove('active'));
+
+                button.classList.add('active');
+                document.getElementById(`mod${tab.charAt(0).toUpperCase() + tab.slice(1)}`).classList.add('active');
+
+                if (tab === 'pending') loadPendingPosts();
+                else if (tab === 'reports') loadReports();
+                else if (tab === 'creators') loadTopCreators();
+                else if (tab === 'banned') loadBannedUsers();
+            });
+        });
+
         // Tab switching
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', () => {
@@ -1172,6 +1661,7 @@ Message Stats: ${data.message_stats.total} total / ${data.message_stats.user_mes
                 else if (tab === 'messages') loadMessagingUsers();
                 else if (tab === 'subscriptions') loadSubscriptions();
                 else if (tab === 'ghostMarket') { loadGhostMarketPending(); loadGhostMarketSellers(); }
+                else if (tab === 'ghostModeration') { loadPendingPosts(); }
             });
         });
 
@@ -1309,7 +1799,9 @@ Message Stats: ${data.message_stats.total} total / ${data.message_stats.user_mes
         // Initialize
         async function init() {
             if (await checkSession()) {
+                ensureAdminCsrfToken().catch((error) => console.error('Failed to initialize admin CSRF token:', error));
                 loadStats();
+                loadGhostPendingBadge();
                 refreshInterval = setInterval(loadStats, 30000);
             }
         }

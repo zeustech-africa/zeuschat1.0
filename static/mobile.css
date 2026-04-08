@@ -14,11 +14,25 @@
 
 /* Base Mobile Styles */
 @media (max-width: 768px) {
+    html,
+    body {
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
     body {
         background: var(--bg-dark);
         padding: 0;
         margin: 0;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, sans-serif;
+    }
+
+    img,
+    video,
+    canvas,
+    svg {
+        max-width: 100%;
+        height: auto;
     }
 
     /* Hide desktop sidebar on mobile */

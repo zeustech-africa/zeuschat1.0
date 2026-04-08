@@ -82,15 +82,6 @@ CREATE TABLE IF NOT EXISTS admin_audit_log (
   FOREIGN KEY (admin_id) REFERENCES admin_users(id)
 );
 
-INSERT OR IGNORE INTO admin_users (username, password_hash, email, role, permissions)
-VALUES (
-  'superadmin',
-  '142787a065bc8eaf6bedf5e1221cce84dd759fb1e9503c375927bb0028ecc9c4',
-  'admin@zeuschat.co.za',
-  'super_admin',
-  '{"can_approve_users": true, "can_ban_users": true, "can_approve_payments": true, "can_manage_admins": true, "can_view_logs": true}'
-);
-
 CREATE INDEX IF NOT EXISTS idx_user_approvals_status ON user_approvals(status);
 CREATE INDEX IF NOT EXISTS idx_user_approvals_user_id ON user_approvals(user_id);
 CREATE INDEX IF NOT EXISTS idx_admin_messages_user_id ON admin_messages(user_id);

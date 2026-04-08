@@ -129,6 +129,34 @@
     .chat-item.has-unread {
       background: rgba(212, 175, 55, 0.08);
     }
+    .image-blurred {
+      max-width: 220px;
+      min-height: 120px;
+      border-radius: 10px;
+      background: rgba(20, 20, 20, 0.8);
+      border: 1px dashed rgba(212, 175, 55, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      margin-bottom: 6px;
+      text-align: center;
+      padding: 10px;
+    }
+    .image-blurred .image-placeholder {
+      font-size: 12px;
+      color: #d4af37;
+      line-height: 1.4;
+    }
+    .message-image {
+      max-width: 220px;
+      border-radius: 10px;
+      display: block;
+      margin-bottom: 6px;
+    }
+    .message-caption {
+      margin-top: 4px;
+    }
     /* WhatsApp-Style Unread Badge with Enhanced Pulse */
     .unread-badge {
       position: absolute;
@@ -469,6 +497,55 @@
       align-items: center;
       justify-content: center;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    }
+    .voice-btn {
+      background: rgba(30, 30, 30, 0.9);
+      border: 1px solid rgba(212, 175, 55, 0.45);
+      color: #d4af37;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .voice-btn.recording {
+      background-color: #ef4444;
+      color: #fff;
+      border-color: #ef4444;
+      animation: voicePulse 1s infinite;
+    }
+    @keyframes voicePulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.6; }
+      100% { opacity: 1; }
+    }
+    .message-actions {
+      margin-top: 4px;
+      display: flex;
+      justify-content: flex-end;
+    }
+    .translate-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 12px;
+      color: #d4af37;
+      opacity: 0.7;
+      transition: opacity 0.2s ease;
+      padding: 0;
+    }
+    .translate-btn:hover {
+      opacity: 1;
+    }
+    .message-translation {
+      font-size: 12px;
+      color: #d4af37;
+      margin-top: 4px;
+      padding-top: 4px;
+      border-top: 1px solid rgba(212, 175, 55, 0.2);
     }
     .footer {
       height: 64px;
@@ -825,6 +902,11 @@
     .message-input {
       padding: 10px;
     }
+
+    /* Hidden feature - ready to enable by removing this class */
+    .feature-hidden {
+      display: none !important;
+    }
 }
   </style>
   <link rel="stylesheet" href="/static/mobile.css">
@@ -859,13 +941,13 @@
         <!-- Sound Test Button -->
         <button id="test-sound-btn" onclick="testNotificationSound()" title="Test Notification Sound" style="background:transparent;border:1px solid #FFD700;color:#FFD700;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:12px;margin-left:8px;">🔊</button>
       </div>
-      <input class="search" placeholder="Search or start new chat"/>
+      <input class="search" placeholder="Type a message..." data-i18n-placeholder="type_message"/>
       <button class="admin-inbox-btn" id="admin-inbox-btn" onclick="openAdminInbox()">ZeusChat Admin Inbox</button>
       <div class="chat-list" id="chat-list">
         <!-- Chats loaded from localStorage -->
       </div>
       <button class="new-chat" id="new-chat-btn" onclick="window.location.href='/add-contact.html'" style="position:relative;">
-        + New Chat
+        + <span data-i18n="chats">Chats</span>
         <span id="badge-new-chat" class="notification-badge" style="display:none;"></span>
       </button>
       <div class="nav-item" onclick="window.location.href='/ghost-market'" style="margin: 10px 16px; padding: 10px 12px; border-radius: 10px; background: rgba(17,24,39,0.8); border: 1px solid rgba(212,175,55,0.25); cursor: pointer; display: flex; align-items: center; gap: 10px;">
@@ -943,7 +1025,7 @@
                   <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
               </svg>
           </div>
-          <h2 style="color: #fff; margin-bottom: 10px; font-size: 24px;">Select a chat</h2>
+          <h2 style="color: #fff; margin-bottom: 10px; font-size: 24px;" data-i18n="chats">Chats</h2>
           <p style="color: #888; font-size: 16px; max-width: 400px;">
               Add a contact to begin secure communication<br>
               or click on an existing contact from your list
@@ -969,7 +1051,7 @@
               <div class="chat-user">
                   <div class="avatar">?</div>
                   <div>
-                      <div id="chat-header-name">Select a chat</div>
+                      <div id="chat-header-name" data-i18n="chats">Chats</div>
                       <!-- BBM Feature: Status Color Indicator -->
                       <div class="status">—<span id="status-color-indicator" style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:6px;vertical-align:middle;background:#888;"></span></div>
                   </div>
@@ -978,9 +1060,10 @@
                   <!-- BBM Feature: PING Button -->
                   <div class="icon" onclick="sendPing()" title="Send PING nudge">📳</div>
                   <div class="icon" onclick="toggleStatusPicker()" title="Set your status">😊</div>
-                  <div class="icon" onclick="alert('📹 Coming Soon')">📹</div>
-                  <div class="icon" onclick="alert('📞 Coming Soon')">📞</div>
-                  <div class="icon" onclick="alert('⋯ Coming Soon')">⋯</div>
+                  <!-- Hidden launch-gated actions: remove feature-hidden to re-enable -->
+                  <div class="icon feature-hidden" onclick="alert('📹 Coming Soon')">📹</div>
+                  <div class="icon feature-hidden" onclick="alert('📞 Coming Soon')">📞</div>
+                  <div class="icon feature-hidden" onclick="alert('⋯ Coming Soon')">⋯</div>
               </div>
           </div>
             <div class="status-legend">
@@ -991,12 +1074,12 @@
               <span>✗ Failed - wrong PIN</span>
             </div>
             <!-- Connection Indicator (WhatsApp-style) -->
-            <div id="connection-indicator" style="display:none;background:#ff9800;color:white;text-align:center;padding:4px;font-size:12px;">
-              Connecting...
+            <div id="connection-indicator" style="display:none;background:#ff9800;color:white;text-align:center;padding:4px;font-size:12px;" data-i18n="typing">
+              typing...
             </div>
             <!-- Typing Indicator (WhatsApp-style) -->
-            <div id="typing-indicator" style="display:none;padding:8px;color:#4CAF50;font-size:13px;font-style:italic;">
-              User is typing...
+            <div id="typing-indicator" style="display:none;padding:8px;color:#4CAF50;font-size:13px;font-style:italic;" data-i18n="typing">
+              typing...
             </div>
             <div id="typingIndicator" class="typing-indicator mobile-only" style="display:none;">
               <span class="typing-dot"></span>
@@ -1014,15 +1097,20 @@
               <label id="attachFileBtn" class="feature-locked" for="file-upload" style="cursor:pointer;font-size:20px;">📎<span class="pro-badge" style="margin-left:4px;">PRO</span></label>
               <input type="file" id="file-upload" class="file-input">
               <span id="emoji-toggle" style="font-size:20px;cursor:pointer;">😊</span>
-              <span id="voiceNoteBtn" class="feature-locked" style="font-size:20px;cursor:pointer;">🎤<span class="pro-badge" style="margin-left:4px;">PRO</span></span>
-              <input id="message-input" placeholder="Message (self-destructs after TTL)" onkeydown="if(event.key==='Enter'){event.preventDefault();sendMessage()}" oninput="handleTypingStart()" onblur="handleTypingStop()"/>
+              <!-- Hidden launch-gated action: remove feature-hidden to re-enable -->
+              <span id="voiceNoteBtn" class="feature-locked feature-hidden" style="font-size:20px;cursor:pointer;">🎤<span class="pro-badge" style="margin-left:4px;">PRO</span></span>
+              <input id="message-input" placeholder="Type a message..." data-i18n-placeholder="type_message" onkeydown="if(event.key==='Enter'){event.preventDefault();sendMessage()}" oninput="handleTypingStart()" onblur="handleTypingStop()"/>
               <select class="ttl" id="ttl-selector">
                 <option value="5">5s PRO</option>
                 <option value="15">15s PRO</option>
                   <option value="30" selected>30s</option>
                 <option value="45">45s PRO</option>
               </select>
-              <button id="scheduleMsgBtn" class="ttl feature-locked" type="button">⏰<span class="pro-badge" style="margin-left:4px;">PRO</span></button>
+              <!-- Hidden launch-gated action: remove feature-hidden to re-enable -->
+              <button id="scheduleMsgBtn" class="ttl feature-locked feature-hidden" type="button">⏰<span class="pro-badge" style="margin-left:4px;">PRO</span></button>
+              <button id="voiceRecordBtn" class="voice-btn" type="button" title="Record voice message" aria-label="Record voice message">
+                <span class="voice-icon">🎤</span>
+              </button>
               <button class="send" id="send-message-btn">➤</button>
           </div>
       </div>
@@ -1630,8 +1718,8 @@
         <div style="color:#a3a3a3; text-align:center; padding-top:24px;">Loading messages...</div>
       </div>
       <div class="admin-inbox-input">
-        <textarea id="admin-inbox-input" placeholder="Reply to admin..."></textarea>
-        <button class="admin-inbox-send" onclick="sendAdminInboxMessage()">Send</button>
+        <textarea id="admin-inbox-input" placeholder="Type a message..." data-i18n-placeholder="type_message"></textarea>
+        <button class="admin-inbox-send" onclick="sendAdminInboxMessage()" data-i18n="send">Send</button>
       </div>
     </div>
   </div>
@@ -1672,30 +1760,337 @@
       </style>
 
   <div class="footer">
-    <div onclick="try { console.log('📡 Updates clicked'); alert('🚀 Coming Soon in ZeusChat 1.1'); } catch(e) { console.error('Error:', e); }">
+    <!-- Hidden launch-gated nav item: remove feature-hidden to re-enable -->
+    <div class="feature-hidden" onclick="try { console.log('📡 Updates clicked'); alert('🚀 Coming Soon in ZeusChat 1.1'); } catch(e) { console.error('Error:', e); }">
       <div class="footer-icon">📡</div>
       Updates
     </div>
-    <div onclick="try { console.log('📞 Calls clicked'); alert('🚀 Coming Soon in ZeusChat 1.1'); } catch(e) { console.error('Error:', e); }">
+    <!-- Hidden launch-gated nav item: remove feature-hidden to re-enable -->
+    <div class="feature-hidden" onclick="try { console.log('📞 Calls clicked'); alert('🚀 Coming Soon in ZeusChat 1.1'); } catch(e) { console.error('Error:', e); }">
       <div class="footer-icon">📞</div>
       Calls
     </div>
     <div onclick="try { console.log('👤 Profile clicked'); const isLoggedIn = sessionStorage.getItem('user_logged_in') === 'true'; if (!isLoggedIn) { sessionStorage.setItem('return_url', window.location.href); window.location.href = '/login.html'; } else { window.location.href = '/profile.html'; } } catch(e) { console.error('Error:', e); }">
       <div class="footer-icon">👤</div>
-      Profile
+      <span data-i18n="profile">Profile</span>
     </div>
     <div class="active" onclick="try { console.log('💬 Chats clicked (already here)'); } catch(e) { console.error('Error:', e); }">
       <div class="footer-icon">💬</div>
-      Chats
+      <span data-i18n="chats">Chats</span>
     </div>
     <div onclick="try { console.log('⚙️ Settings clicked'); const isLoggedIn = sessionStorage.getItem('user_logged_in') === 'true'; if (!isLoggedIn) { sessionStorage.setItem('return_url', window.location.href); window.location.href = '/login.html'; } else { window.location.href = '/settings.html'; } } catch(e) { console.error('Error:', e); }">
       <div class="footer-icon">⚙️</div>
-      Settings
+      <span data-i18n="settings">Settings</span>
     </div>
   </div>
 
   <script>
     // ============ GLOBAL STATE ============
+    const API_BASE = window.location.origin;
+    let csrfToken = null;
+    let dataSaverMode = false;
+    let dataSaverImageQuality = 'medium';
+    let autoDownloadImages = false;
+    let autoDownloadVideos = false;
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let messageActionHandlersBound = false;
+    const SUPPORTED_LANGUAGES = ['en', 'sw', 'yo', 'zu', 'ha', 'ig', 'am'];
+    let currentTranslations = {};
+
+    function normalizeLanguage(lang) {
+      return SUPPORTED_LANGUAGES.includes(lang) ? lang : 'en';
+    }
+
+    function t(key, fallback = '') {
+      return currentTranslations[key] || fallback;
+    }
+
+    function getCurrentLanguage() {
+      return normalizeLanguage(localStorage.getItem('zeuschat_language') || document.documentElement.lang || 'en');
+    }
+
+    function applyTranslations() {
+      document.querySelectorAll('[data-i18n]').forEach((element) => {
+        const key = element.getAttribute('data-i18n');
+        const value = currentTranslations[key];
+        if (!value) return;
+        element.textContent = value;
+      });
+
+      document.querySelectorAll('[data-i18n-placeholder]').forEach((element) => {
+        const key = element.getAttribute('data-i18n-placeholder');
+        const value = currentTranslations[key];
+        if (!value) return;
+        element.placeholder = value;
+      });
+    }
+
+    async function saveLanguagePreference(language) {
+      try {
+        await apiFetch('/api/user/language', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ language: normalizeLanguage(language) }),
+        });
+      } catch (error) {
+        console.error('Failed to save language preference:', error);
+      }
+    }
+
+    async function getServerLanguage() {
+      try {
+        const response = await apiFetch('/api/user/language', { method: 'GET' });
+        const data = await response.json();
+        if (!response.ok || !data.success) return null;
+        return normalizeLanguage(data.language || 'en');
+      } catch (_error) {
+        return null;
+      }
+    }
+
+    async function loadLanguage(language, persistToServer = false) {
+      const selected = normalizeLanguage(language);
+
+      try {
+        const response = await window.fetch(`/static/locales/${selected}.json`, { cache: 'no-cache' });
+        if (!response.ok) {
+          throw new Error(`Failed to load locale: ${selected}`);
+        }
+
+        currentTranslations = await response.json();
+        applyTranslations();
+        document.documentElement.lang = selected;
+        localStorage.setItem('zeuschat_language', selected);
+        sessionStorage.setItem('zeuschat_language', selected);
+
+        if (persistToServer) {
+          await saveLanguagePreference(selected);
+        }
+      } catch (error) {
+        console.error('Failed to load language:', error);
+      }
+    }
+
+    async function ensureCsrfToken(forceRefresh = false) {
+      if (csrfToken && !forceRefresh) {
+        return csrfToken;
+      }
+
+      const response = await window.fetch(`${API_BASE}/api/csrf-token`, {
+        method: 'GET',
+        credentials: 'include'
+      });
+      const data = await response.json();
+      csrfToken = data.csrf_token || null;
+      return csrfToken;
+    }
+
+    async function apiFetch(url, options = {}) {
+      const requestOptions = { ...options };
+      const method = (requestOptions.method || 'GET').toUpperCase();
+      requestOptions.method = method;
+      requestOptions.credentials = requestOptions.credentials || 'include';
+      requestOptions.headers = { ...(requestOptions.headers || {}) };
+
+      if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+        const token = await ensureCsrfToken();
+        if (token) {
+          requestOptions.headers['X-CSRF-Token'] = token;
+        }
+      }
+
+      return window.fetch(url, requestOptions);
+    }
+
+    async function loadDataSaverSettings() {
+      try {
+        const response = await apiFetch('/api/user/data-saver-settings', {
+          method: 'GET',
+          credentials: 'include'
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          return;
+        }
+
+        dataSaverMode = !!data.data_saver_mode;
+        dataSaverImageQuality = data.image_quality || 'medium';
+        autoDownloadImages = !!data.auto_download_images;
+        autoDownloadVideos = !!data.auto_download_videos;
+
+        sessionStorage.setItem('data_saver_mode', dataSaverMode ? 'true' : 'false');
+        sessionStorage.setItem('data_saver_image_quality', dataSaverImageQuality);
+        sessionStorage.setItem('auto_download_images', autoDownloadImages ? 'true' : 'false');
+        sessionStorage.setItem('auto_download_videos', autoDownloadVideos ? 'true' : 'false');
+      } catch (error) {
+        console.error('Failed to load data saver settings:', error);
+      }
+    }
+
+    function extractImageUrl(message) {
+      const fileUrl = (message.file_url || '').trim();
+      if (fileUrl && /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?|$)/i.test(fileUrl)) {
+        return fileUrl;
+      }
+
+      const content = (message.content || '').trim();
+      if (/^https?:\/\/\S+\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?|$)/i.test(content)) {
+        return content;
+      }
+
+      return '';
+    }
+
+    function renderImage(imageUrl, quality) {
+      if (dataSaverMode && quality !== 'high') {
+        return `<div class="image-blurred" data-src="${escapeHtml(imageUrl)}"><div class="image-placeholder">📷 Tap to load (${escapeHtml(quality)} quality)</div></div>`;
+      }
+      return `<img src="${escapeHtml(imageUrl)}" class="message-image" loading="lazy" alt="Shared image">`;
+    }
+
+    function setVoiceButtonState(isRecording) {
+      const voiceBtn = document.getElementById('voiceRecordBtn');
+      if (!voiceBtn) return;
+
+      voiceBtn.classList.toggle('recording', isRecording);
+      voiceBtn.innerHTML = isRecording
+        ? '<span class="voice-icon">⏹️</span>'
+        : '<span class="voice-icon">🎤</span>';
+    }
+
+    async function toggleVoiceRecording() {
+      const voiceBtn = document.getElementById('voiceRecordBtn');
+      if (!voiceBtn) return;
+
+      if (!navigator.mediaDevices || !window.MediaRecorder) {
+        alert('Voice recording is not supported on this device/browser.');
+        return;
+      }
+
+      if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          mediaRecorder = new MediaRecorder(stream);
+          audioChunks = [];
+
+          mediaRecorder.ondataavailable = (event) => {
+            if (event.data && event.data.size > 0) {
+              audioChunks.push(event.data);
+            }
+          };
+
+          mediaRecorder.onstop = async () => {
+            const blobType = mediaRecorder.mimeType || 'audio/webm';
+            const audioBlob = new Blob(audioChunks, { type: blobType });
+            const formData = new FormData();
+            formData.append('audio', audioBlob, 'voice-note.webm');
+            formData.append('language', getCurrentLanguage());
+
+            try {
+              const response = await apiFetch('/api/transcribe-voice', {
+                method: 'POST',
+                body: formData,
+              });
+              const data = await response.json();
+              if (!response.ok || !data.success) {
+                throw new Error(data.error || 'Failed to transcribe voice note');
+              }
+
+              const messageInput = document.getElementById('message-input');
+              if (messageInput) {
+                messageInput.value = data.text || '';
+                messageInput.focus();
+              }
+            } catch (error) {
+              console.error('Voice transcription failed:', error);
+              alert('Voice transcription failed. Please try again.');
+            } finally {
+              stream.getTracks().forEach((track) => track.stop());
+              setVoiceButtonState(false);
+            }
+          };
+
+          mediaRecorder.start();
+          setVoiceButtonState(true);
+        } catch (error) {
+          console.error('Unable to start voice recording:', error);
+          alert('Microphone access denied or unavailable.');
+          setVoiceButtonState(false);
+        }
+
+        return;
+      }
+
+      mediaRecorder.stop();
+      setVoiceButtonState(false);
+    }
+
+    function setupMessageActionHandlers() {
+      if (messageActionHandlersBound) {
+        return;
+      }
+
+      const messagesContainer = document.getElementById('messages');
+      if (!messagesContainer) {
+        return;
+      }
+
+      messagesContainer.addEventListener('click', async (event) => {
+        const btn = event.target.closest('.translate-btn');
+        if (!btn) {
+          return;
+        }
+
+        const messageNode = btn.closest('.msg');
+        const messageText = messageNode?.querySelector('.message-text');
+        if (!messageNode || !messageText) {
+          return;
+        }
+
+        const originalText = btn.getAttribute('data-message-text') || '';
+        if (!originalText.trim()) {
+          return;
+        }
+
+        const existingTranslation = messageNode.querySelector('.message-translation');
+        if (existingTranslation) {
+          existingTranslation.remove();
+          return;
+        }
+
+        try {
+          const response = await apiFetch('/api/translate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              text: originalText,
+              target_lang: getCurrentLanguage(),
+            }),
+          });
+
+          const data = await response.json();
+          if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Translation failed');
+          }
+
+          const translationDiv = document.createElement('div');
+          translationDiv.className = 'message-translation';
+          translationDiv.innerHTML = `<small>📖 ${escapeHtml(data.translated_text || '')}</small>`;
+          messageText.insertAdjacentElement('afterend', translationDiv);
+        } catch (error) {
+          console.error('Translation failed:', error);
+          alert('Translation failed. Please try again.');
+        }
+      });
+
+      messageActionHandlersBound = true;
+    }
+
+    ensureCsrfToken().catch((error) => {
+      console.error('Failed to initialize CSRF token:', error);
+    });
+
     let currentChatPartner = null;
     let isChatActive = false;
     
@@ -1784,7 +2179,7 @@
 
     async function loadUserPlan() {
       try {
-        const response = await fetch('/api/user/subscription', { credentials: 'include' });
+        const response = await apiFetch('/api/user/subscription', { credentials: 'include' });
         const data = await response.json();
         const badge = document.getElementById('userPlanBadge');
         const planName = document.getElementById('planName');
@@ -1867,7 +2262,7 @@
 
     async function hasFeatureAccess(featureName) {
       try {
-        const response = await fetch(`/api/user/has-feature/${featureName}`, { credentials: 'include' });
+        const response = await apiFetch(`/api/user/has-feature/${featureName}`, { credentials: 'include' });
         const data = await response.json();
         return !!data.has_access;
       } catch (_error) {
@@ -1924,7 +2319,7 @@
             return;
           }
           try {
-            const response = await fetch(endpoint, { method: 'POST', credentials: 'include' });
+            const response = await apiFetch(endpoint, { method: 'POST', credentials: 'include' });
             const result = await response.json();
             if (response.ok && result.redirect_url) {
               window.location.href = result.redirect_url;
@@ -2136,7 +2531,7 @@
         console.log('🔗 userPin:', userPin);
         
         // Fetch contacts
-        const response = await fetch(`${API_BASE}/api/get-contacts?user_pin=${encodeURIComponent(userPin)}`, {
+        const response = await apiFetch(`${API_BASE}/api/get-contacts?user_pin=${encodeURIComponent(userPin)}`, {
           method: 'GET',
           credentials: 'include'
         });
@@ -2154,7 +2549,7 @@
           console.log('✅ Contacts found! Count:', data.contacts.length);
           
           // Fetch unread counts
-          const unreadResponse = await fetch(`${API_BASE}/api/get-unread-counts?user_pin=${userPin}`, {
+          const unreadResponse = await apiFetch(`${API_BASE}/api/get-unread-counts?user_pin=${userPin}`, {
             credentials: 'include'
           });
           const unreadData = await unreadResponse.json();
@@ -2323,7 +2718,7 @@
       
       try {
         const API_BASE = window.location.origin;
-        const response = await fetch(`${API_BASE}/api/block-contact`, {
+        const response = await apiFetch(`${API_BASE}/api/block-contact`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -2353,7 +2748,7 @@
       
       try {
         const API_BASE = window.location.origin;
-        const response = await fetch(`${API_BASE}/api/remove-contact`, {
+        const response = await apiFetch(`${API_BASE}/api/remove-contact`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -2388,7 +2783,7 @@
       
       try {
         const API_BASE = window.location.origin;
-        const response = await fetch(`${API_BASE}/api/get-messages?contact_pin=${encodeURIComponent(contactPin)}`, {
+        const response = await apiFetch(`${API_BASE}/api/get-messages?contact_pin=${encodeURIComponent(contactPin)}`, {
           method: 'GET',
           credentials: 'include'
         });
@@ -2513,10 +2908,21 @@
         ttlStatusColor = '#ff9800';  // Orange for last minute
         ttlStatusText = `⏱️ 1m left`;
       }
+
+      const imageUrl = extractImageUrl(message);
+      let renderedMessageBody = escapeHtml(message.content || '');
+      if (imageUrl) {
+        const caption = (message.content || '').trim();
+        const includeCaption = caption && caption !== imageUrl;
+        renderedMessageBody = `${renderImage(imageUrl, dataSaverImageQuality)}${includeCaption ? `<div class="message-caption">${escapeHtml(caption)}</div>` : ''}`;
+      }
       
       messageDiv.innerHTML = `
         <div class="message-text" style="-webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;">
-          ${escapeHtml(message.content)}
+          ${renderedMessageBody}
+        </div>
+        <div class="message-actions">
+          <button class="translate-btn" type="button">🌐 Translate</button>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;font-size:11px;${isOwnMessage ? 'color:#888;' : 'color:#aaa;'}">
           <span>${new Date(message.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
@@ -2524,9 +2930,23 @@
           ${isOwnMessage ? `<span class="message-status">${statusIcon}</span><span class="message-status-label" style="margin-left:6px;color:#aaa;">${statusText}</span>${seenTimestamp}` : ''}
         </div>
       `;
+
+      const translateBtn = messageDiv.querySelector('.translate-btn');
+      if (translateBtn) {
+        translateBtn.setAttribute('data-message-id', message.id ? String(message.id) : '');
+        translateBtn.setAttribute('data-message-text', message.content || '');
+      }
       
       messagesContainer.appendChild(messageDiv);
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+      messageDiv.querySelectorAll('.image-blurred').forEach((preview) => {
+        preview.addEventListener('click', () => {
+          const src = preview.getAttribute('data-src');
+          if (!src) return;
+          preview.outerHTML = `<img src="${escapeHtml(src)}" class="message-image" loading="lazy" alt="Shared image">`;
+        });
+      });
       
       // BBM Feature: Right-click context menu for delete everywhere
       messageDiv.addEventListener('contextmenu', (e) => {
@@ -2562,7 +2982,7 @@
           deleteForMeBtn.style.background = 'transparent';
         });
         deleteForMeBtn.addEventListener('click', async () => {
-          await fetch(`${API_BASE}/api/delete-message`, {
+          await apiFetch(`${API_BASE}/api/delete-message`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -2677,7 +3097,7 @@
     // Function to record missed (unread, expired) messages
     async function recordMissedMessage(messageId) {
       try {
-        const response = await fetch(`${API_BASE}/api/record-message-missed`, {
+        const response = await apiFetch(`${API_BASE}/api/record-message-missed`, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({message_ids: [messageId]}),
@@ -2696,7 +3116,7 @@
     // Function to get TTL statistics
     async function getTTLStatistics() {
       try {
-        const response = await fetch(`${API_BASE}/api/get-ttl-statistics`, {
+        const response = await apiFetch(`${API_BASE}/api/get-ttl-statistics`, {
           credentials: 'include'
         });
         
@@ -2720,7 +3140,7 @@
     // Function to get messages expiring soon
     async function getExpiringMessages(thresholdSeconds = 300) {
       try {
-        const response = await fetch(`${API_BASE}/api/get-ttl-expiring?threshold_seconds=${thresholdSeconds}`, {
+        const response = await apiFetch(`${API_BASE}/api/get-ttl-expiring?threshold_seconds=${thresholdSeconds}`, {
           credentials: 'include'
         });
         
@@ -2801,7 +3221,7 @@
       
       try {
         const API_BASE = window.location.origin;
-        const response = await fetch(`${API_BASE}/api/get-contact-requests`, {
+        const response = await apiFetch(`${API_BASE}/api/get-contact-requests`, {
           method: 'GET',
           credentials: 'include'
         });
@@ -2951,7 +3371,7 @@
       
       try {
         const API_BASE = window.location.origin;
-        const response = await fetch(`${API_BASE}/api/send-message`, {
+        const response = await apiFetch(`${API_BASE}/api/send-message`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -3105,7 +3525,7 @@
     async function markMessagesViewed(messageIds) {
       try {
         const API_BASE = window.location.origin;
-        const response = await fetch(`${API_BASE}/api/mark-message-viewed`, {
+        const response = await apiFetch(`${API_BASE}/api/mark-message-viewed`, {
           method: 'POST',
           credentials: 'include',
           headers: {
@@ -3599,7 +4019,7 @@
       
       try {
         const API_BASE = window.location.origin;
-        const response = await fetch(`${API_BASE}/api/get-unread-counts?user_pin=${userPin}`, {
+        const response = await apiFetch(`${API_BASE}/api/get-unread-counts?user_pin=${userPin}`, {
           credentials: 'include'
         });
         const data = await response.json();
@@ -3648,7 +4068,7 @@
       
       try {
         const API_BASE = window.location.origin;
-        const response = await fetch(`${API_BASE}/api/get-unread-counts?user_pin=${encodeURIComponent(userPin)}`, {
+        const response = await apiFetch(`${API_BASE}/api/get-unread-counts?user_pin=${encodeURIComponent(userPin)}`, {
           credentials: 'include'
         });
         const data = await response.json();
@@ -3739,7 +4159,7 @@
     async function deleteMessageAndNotify(messageId, senderPin, reason) {
       try {
         // Delete message from database
-        await fetch('/api/delete-message-security', {
+        await apiFetch('/api/delete-message-security', {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -3750,7 +4170,7 @@
         });
         
         // Notify sender
-        await fetch('/api/notify-delivery-failed', {
+        await apiFetch('/api/notify-delivery-failed', {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -3900,7 +4320,7 @@
           console.log(`⏱️ [pollNewMessages] Polling ALL messages (no chat selected)`);
         }
         
-        const response = await fetch(url, {
+        const response = await apiFetch(url, {
           credentials: 'include'
         });
         const data = await response.json();
@@ -3967,7 +4387,7 @@
 
       try {
         const API_BASE = window.location.origin;
-        const response = await fetch(`${API_BASE}/api/get-messages?contact_pin=${encodeURIComponent(currentChat)}`, {
+        const response = await apiFetch(`${API_BASE}/api/get-messages?contact_pin=${encodeURIComponent(currentChat)}`, {
           credentials: 'include'
         });
         const data = await response.json();
@@ -4353,17 +4773,17 @@
           indicator.style.display = 'none';
           break;
         case 'connecting':
-          indicator.textContent = 'Connecting...';
+          indicator.textContent = t('typing', 'Connecting...');
           indicator.style.display = 'block';
           indicator.style.backgroundColor = '#ff9800';
           break;
         case 'reconnecting':
-          indicator.textContent = `Reconnecting... (${reconnectAttempts})`;
+          indicator.textContent = `${t('typing', 'Reconnecting...')} (${reconnectAttempts})`;
           indicator.style.display = 'block';
           indicator.style.backgroundColor = '#ff9800';
           break;
         case 'disconnected':
-          indicator.textContent = 'No connection';
+          indicator.textContent = t('offline', 'Offline');
           indicator.style.display = 'block';
           indicator.style.backgroundColor = '#f44336';
           break;
@@ -4429,7 +4849,7 @@
     
     function sendQueuedMessage(msgData) {
       // Retry sending a message that was queued due to connection failure
-      fetch(`${API_BASE}/api/send-message`, {
+      apiFetch(`${API_BASE}/api/send-message`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(msgData),
@@ -4503,7 +4923,7 @@
       
       if (typing) {
         indicator.style.display = 'block';
-        indicator.textContent = `${currentChatPartner?.full_name || 'User'} is typing...`;
+        indicator.textContent = `${currentChatPartner?.full_name || 'User'} ${t('typing', 'typing...')}`;
       } else {
         indicator.style.display = 'none';
       }
@@ -4516,7 +4936,7 @@
     async function loadContactStatus(contactPin, contactElement) {
       try {
         const API_BASE = window.location.origin;
-        const response = await fetch(`${API_BASE}/api/get-user-status/${contactPin}`, {
+        const response = await apiFetch(`${API_BASE}/api/get-user-status/${contactPin}`, {
           credentials: 'include'
         });
         const data = await response.json();
@@ -4525,11 +4945,11 @@
           const statusDiv = contactElement.querySelector('.contact-status');
           if (statusDiv) {
             if (data.status === 'online') {
-              statusDiv.innerHTML = '<span style="color: #28a745; font-size: 0.85em;">● Online</span>';
+              statusDiv.innerHTML = `<span style="color: #28a745; font-size: 0.85em;">● ${escapeHtml(t('online', 'Online'))}</span>`;
             } else if (data.status === 'offline' && data.last_seen_formatted) {
               statusDiv.innerHTML = `<span style="color: #888; font-size: 0.85em;">Last seen ${data.last_seen_formatted}</span>`;
             } else {
-              statusDiv.innerHTML = '<span style="color: #888; font-size: 0.85em;">Offline</span>';
+              statusDiv.innerHTML = `<span style="color: #888; font-size: 0.85em;">${escapeHtml(t('offline', 'Offline'))}</span>`;
             }
           }
         }
@@ -4555,7 +4975,7 @@
       
       try {
         const API_BASE = window.location.origin;
-        await fetch(`${API_BASE}/api/update-online-status`, {
+        await apiFetch(`${API_BASE}/api/update-online-status`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -4588,7 +5008,7 @@
       if (!contactPin || !userPin) return;
       
       const API_BASE = window.location.origin;
-      fetch(`${API_BASE}/api/typing-indicator`, {
+      apiFetch(`${API_BASE}/api/typing-indicator`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -4613,7 +5033,7 @@
             font-style: italic;
             font-size: 0.9em;
           `;
-          div.textContent = 'Typing...';
+          div.textContent = t('typing', 'typing...');
           const messagesContainer = document.getElementById('messages');
           if (messagesContainer) {
             messagesContainer.appendChild(div);
@@ -4635,7 +5055,7 @@
           clearTimeout(typingTimeout);
           typingTimeout = setTimeout(() => {
             const API_BASE = window.location.origin;
-            fetch(`${API_BASE}/api/typing-indicator`, {
+            apiFetch(`${API_BASE}/api/typing-indicator`, {
               method: 'POST',
               credentials: 'include',
               headers: { 'Content-Type': 'application/json' },
@@ -4682,6 +5102,12 @@
       console.log('✅ Authenticated:', userPin);
       console.log('✅ User ID from session:', userId);
 
+      const savedLanguage = normalizeLanguage(localStorage.getItem('zeuschat_language') || 'en');
+      const serverLanguage = await getServerLanguage();
+      await loadLanguage(serverLanguage || savedLanguage, false);
+
+      await loadDataSaverSettings();
+
       // Show audio unlock banner if needed
       showAudioUnlockBanner();
       
@@ -4690,6 +5116,8 @@
       // CRITICAL: Show empty state by default (no contact selected)
       showEmptyState();
       console.log('📭 Empty state initialized');
+
+      setupMessageActionHandlers();
 
       setupProFeatureGuards();
       loadUserPlan();
@@ -4786,6 +5214,12 @@
         if (voiceBtn) {
           voiceBtn.addEventListener('click', recordVoiceNote, false);
           console.log('✅ Voice note button listener attached');
+        }
+
+        const voiceRecordBtn = document.getElementById('voiceRecordBtn');
+        if (voiceRecordBtn) {
+          voiceRecordBtn.addEventListener('click', toggleVoiceRecording, false);
+          console.log('✅ Voice record button listener attached');
         }
         
         // File upload
@@ -4918,7 +5352,7 @@
       console.log('📄 readyState:', document.readyState);
       
       // Run the same initialization logic
-      setTimeout(() => {
+      setTimeout(async () => {
         console.log('🔄 [FALLBACK] Running deferred initialization...');
         
         // Check authentication
@@ -4935,6 +5369,11 @@
         }
         
         console.log('✅ [FALLBACK] Authenticated:', userPin);
+        const savedLanguage = normalizeLanguage(localStorage.getItem('zeuschat_language') || 'en');
+        const serverLanguage = await getServerLanguage();
+        await loadLanguage(serverLanguage || savedLanguage, false);
+        await loadDataSaverSettings();
+        setupMessageActionHandlers();
         console.log('✅ [FALLBACK] Calling loadChats()...');
         
         // Load contacts
@@ -4963,7 +5402,7 @@
       if (!log) return;
 
       try {
-        const response = await fetch('/api/user/admin-messages', { credentials: 'include' });
+        const response = await apiFetch('/api/user/admin-messages', { credentials: 'include' });
         if (!response.ok) {
           log.innerHTML = '<div style="color:#ef4444;text-align:center;padding-top:24px;">Failed to load admin messages.</div>';
           return;
@@ -5019,7 +5458,7 @@
       if (!message) return;
 
       try {
-        const response = await fetch('/api/user/admin-messages', {
+        const response = await apiFetch('/api/user/admin-messages', {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -5066,7 +5505,7 @@
       try {
         console.log(`📳 [PING] Sending PING to ${currentChatPartner.full_name} (${receiverPin})`);
         
-        const response = await fetch(`${API_BASE}/api/bbm-send-ping`, {
+        const response = await apiFetch(`${API_BASE}/api/bbm-send-ping`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -5106,7 +5545,7 @@
       const userId = sessionStorage.getItem('user_id');
       
       try {
-        const response = await fetch(`${API_BASE}/api/bbm-update-status`, {
+        const response = await apiFetch(`${API_BASE}/api/bbm-update-status`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -5165,7 +5604,7 @@
       const userId = sessionStorage.getItem('user_id');
       
       try {
-        const response = await fetch(`${API_BASE}/api/delete-message`, {
+        const response = await apiFetch(`${API_BASE}/api/delete-message`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -5197,7 +5636,7 @@
     // BBM Feature 6: Load and display contact status (available/away/busy)
     async function loadContactStatuses() {
       try {
-        const response = await fetch(`${API_BASE}/api/bbm-get-contacts-status`, {
+        const response = await apiFetch(`${API_BASE}/api/bbm-get-contacts-status`, {
           method: 'GET',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' }
@@ -5234,7 +5673,7 @@
     // BBM Feature 7: Ignore contact request (not block, just silent ignore)
     async function ignoreContactRequest(contactId) {
       try {
-        const response = await fetch(`${API_BASE}/api/decline-contact`, {
+        const response = await apiFetch(`${API_BASE}/api/decline-contact`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -5401,7 +5840,7 @@
       try {
         const startTime = performance.now();
         const response = await Promise.race([
-          fetch(`${API_BASE}/api/check-network-quality`, { method: 'GET', credentials: 'include' }),
+          apiFetch(`${API_BASE}/api/check-network-quality`, { method: 'GET', credentials: 'include' }),
           new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
         ]);
         
@@ -5442,7 +5881,7 @@
         }
         
         // Also call server-side queue processor
-        await fetch(`${API_BASE}/api/process-message-queue`, {
+        await apiFetch(`${API_BASE}/api/process-message-queue`, {
           method: 'POST',
           credentials: 'include'
         });
@@ -5459,7 +5898,7 @@
         const nextAttempt = queuedMsg.attempts + 1;
         const delay = Math.min(baseDelay * Math.pow(2, queuedMsg.attempts - 1), 30 * 60 * 1000);  // Max 30 min
         
-        const response = await fetch(`${API_BASE}/api/send-message`, {
+        const response = await apiFetch(`${API_BASE}/api/send-message`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -5507,7 +5946,7 @@
       
       // Try to send immediately
       try {
-        const response = await fetch(`${API_BASE}/api/send-message`, {
+        const response = await apiFetch(`${API_BASE}/api/send-message`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -5637,7 +6076,7 @@
 
   async function getVapidPublicKey() {
     try {
-      const res = await fetch('/api/push/vapid-public-key');
+      const res = await apiFetch('/api/push/vapid-public-key');
       if (!res.ok) return null;
       const { publicKey } = await res.json();
       return publicKey || null;
@@ -5661,7 +6100,7 @@
 
       const authKey = subscription.getKey('auth');
       const p256dhKey = subscription.getKey('p256dh');
-      const response = await fetch('/api/push/subscribe', {
+      const response = await apiFetch('/api/push/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -5691,7 +6130,7 @@
       if (pushSubscription) {
         const endpoint = pushSubscription.endpoint;
         await pushSubscription.unsubscribe();
-        await fetch('/api/push/unsubscribe', {
+        await apiFetch('/api/push/unsubscribe', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ endpoint })
@@ -5987,7 +6426,7 @@
 
   async function checkUnlockStatus() {
     try {
-      const response = await fetch('/api/check-unlock');
+      const response = await apiFetch('/api/check-unlock');
       const data = await response.json();
       if (data && data.requires_unlock) {
         window.location.href = '/unlock';

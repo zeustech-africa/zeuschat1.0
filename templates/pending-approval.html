@@ -34,6 +34,94 @@
       z-index: -1;
     }
 
+    .while-you-wait-card {
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 20px;
+    }
+
+    .wyw-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(212,175,55,0.3);
+    }
+
+    .wyw-icon {
+      font-size: 20px;
+    }
+
+    .wyw-title {
+      color: #D4AF37;
+      font-size: 12px;
+      letter-spacing: 2px;
+    }
+
+    .wyw-list {
+      margin-bottom: 16px;
+    }
+
+    .wyw-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .wyw-item-icon {
+      color: #D4AF37;
+      font-size: 12px;
+    }
+
+    .wyw-item-text {
+      color: rgba(255,255,255,0.8);
+      font-size: 13px;
+    }
+
+    .wyw-quote {
+      text-align: center;
+      font-size: 11px;
+      color: rgba(255,255,255,0.4);
+      font-style: italic;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes glowPulse {
+      0% {
+        box-shadow: 0 0 5px rgba(212,175,55,0.3);
+      }
+      50% {
+        box-shadow: 0 0 20px rgba(212,175,55,0.6);
+      }
+      100% {
+        box-shadow: 0 0 5px rgba(212,175,55,0.3);
+      }
+    }
+
+    .premium-card {
+      animation: fadeInUp 0.6s ease;
+    }
+
+    .premium-card:hover {
+      animation: glowPulse 1.5s infinite;
+    }
+
 /* Mobile Responsive Styles */
 @media (max-width: 768px) {
     body {
@@ -146,6 +234,36 @@
         <div class="step">1. Registration complete</div>
         <div class="step active">2. Admin review in progress</div>
         <div class="step">3. Full access enabled</div>
+      </div>
+    </div>
+
+    <div class="card premium-card">
+      <div class="while-you-wait-card">
+        <div class="wyw-header">
+          <span class="wyw-icon">📚</span>
+          <span class="wyw-title">WHILE YOU WAIT</span>
+        </div>
+        <div class="wyw-list">
+          <div class="wyw-item">
+            <span class="wyw-item-icon">✦</span>
+            <span class="wyw-item-text">Read the Ghost Manifesto</span>
+          </div>
+          <div class="wyw-item">
+            <span class="wyw-item-icon">✦</span>
+            <span class="wyw-item-text">Explore Ghost Market rules</span>
+          </div>
+          <div class="wyw-item">
+            <span class="wyw-item-icon">✦</span>
+            <span class="wyw-item-text">Join our exclusive waitlist</span>
+          </div>
+          <div class="wyw-item">
+            <span class="wyw-item-icon">✦</span>
+            <span class="wyw-item-text">Follow us on social media</span>
+          </div>
+        </div>
+        <div class="wyw-quote">
+          "Good things come to those who wait. Great things come to those who become Ghosts."
+        </div>
       </div>
     </div>
 

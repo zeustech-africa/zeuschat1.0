@@ -269,6 +269,95 @@
             display: block;
         }
 
+        .why-verify-card {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            border: 1px solid #D4AF37;
+            border-radius: 20px;
+            padding: 24px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .why-verify-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .why-verify-title {
+            color: #D4AF37;
+            font-size: 14px;
+            letter-spacing: 3px;
+            margin-bottom: 16px;
+        }
+
+        .why-verify-text {
+            color: white;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .why-verify-text strong {
+            color: #D4AF37;
+        }
+
+        .why-verify-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(212,175,55,0.2);
+            border-radius: 40px;
+            padding: 6px 16px;
+            margin-bottom: 16px;
+        }
+
+        .badge-icon {
+            color: #D4AF37;
+            font-weight: bold;
+        }
+
+        .badge-text {
+            color: white;
+            font-size: 12px;
+        }
+
+        .why-verify-footer {
+            color: rgba(255,255,255,0.4);
+            font-size: 11px;
+            font-style: italic;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes glowPulse {
+            0% {
+                box-shadow: 0 0 5px rgba(212,175,55,0.3);
+            }
+            50% {
+                box-shadow: 0 0 20px rgba(212,175,55,0.6);
+            }
+            100% {
+                box-shadow: 0 0 5px rgba(212,175,55,0.3);
+            }
+        }
+
+        .premium-card {
+            animation: fadeInUp 0.6s ease;
+        }
+
+        .premium-card:hover {
+            animation: glowPulse 1.5s infinite;
+        }
+
         @media (max-width: 640px) {
             .card {
                 padding: 20px;
@@ -392,6 +481,23 @@
 
             <div class="manual-review-note">
                 Manual face comparison required: your uploaded ID and selfie will be reviewed by admin before approval.
+            </div>
+
+            <div class="why-verify-card premium-card">
+                <div class="why-verify-icon">🛡️</div>
+                <div class="why-verify-title">WHY WE VERIFY</div>
+                <div class="why-verify-text">
+                    ZeusChat is a <strong>zero-troll, zero-scam</strong> platform.
+                    Every Ghost is a <strong>real person</strong>.
+                    No bots. No fakes. No scammers.
+                </div>
+                <div class="why-verify-badge">
+                    <span class="badge-icon">✓</span>
+                    <span class="badge-text">Verified Ghost</span>
+                </div>
+                <div class="why-verify-footer">
+                    We verify once. You're anonymous forever.
+                </div>
             </div>
 
             <div class="upload-area">

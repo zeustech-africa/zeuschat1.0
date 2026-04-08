@@ -63,13 +63,26 @@
       justify-content: center;
       align-items: center;
     }
-    .box {
-      background: #222;
-      border-radius: 12px;
-      padding: 24px;
+
+    .otp-shell {
       width: 100%;
-      max-width: 600px;
+      max-width: 1080px;
+      display: flex;
+      gap: 24px;
+      align-items: stretch;
+      justify-content: center;
+    }
+
+    .box {
+      background: rgba(24, 24, 24, 0.86);
+      backdrop-filter: blur(14px);
+      border-radius: 24px;
+      padding: 32px;
+      width: 100%;
+      max-width: 640px;
       text-align: left;
+      border: 1px solid rgba(212,175,55,0.18);
+      box-shadow: 0 24px 72px rgba(0, 0, 0, 0.4);
     }
     .box-title {
       font-size: 20px;
@@ -128,6 +141,104 @@
       font-size: 13px;
       color: #ff9999;
       display: none;
+    }
+
+    .ghost-town-card {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border: 1px solid rgba(212,175,55,0.3);
+      border-radius: 24px;
+      padding: 28px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      width: 100%;
+      max-width: 320px;
+      animation: fadeInUp 0.6s ease;
+    }
+
+    .ghost-town-card::before {
+      content: "👻";
+      position: absolute;
+      font-size: 120px;
+      opacity: 0.05;
+      bottom: -20px;
+      right: -20px;
+      pointer-events: none;
+    }
+
+    .ghost-town-icon {
+      font-size: 56px;
+      margin-bottom: 16px;
+    }
+
+    .ghost-town-title {
+      color: #D4AF37;
+      font-size: 18px;
+      letter-spacing: 4px;
+      margin-bottom: 12px;
+    }
+
+    .ghost-town-quote {
+      color: white;
+      font-size: 14px;
+      font-style: italic;
+      margin-bottom: 20px;
+    }
+
+    .ghost-town-population {
+      background: rgba(0,0,0,0.5);
+      border-radius: 40px;
+      padding: 8px 16px;
+      display: inline-flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .population-label {
+      color: rgba(255,255,255,0.6);
+      font-size: 12px;
+    }
+
+    .population-count {
+      color: #D4AF37;
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .ghost-town-footer {
+      color: rgba(255,255,255,0.4);
+      font-size: 11px;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes glowPulse {
+      0% {
+        box-shadow: 0 0 5px rgba(212,175,55,0.3);
+      }
+      50% {
+        box-shadow: 0 0 20px rgba(212,175,55,0.6);
+      }
+      100% {
+        box-shadow: 0 0 5px rgba(212,175,55,0.3);
+      }
+    }
+
+    .premium-card {
+      animation: fadeInUp 0.6s ease;
+    }
+
+    .premium-card:hover {
+      animation: glowPulse 1.5s infinite;
     }
 
 /* Mobile Responsive Styles */
@@ -208,6 +319,16 @@
         max-width: 85%;
     }
 
+    .otp-shell {
+      flex-direction: column;
+      max-width: 640px;
+    }
+
+    .ghost-town-card {
+      max-width: 100%;
+      order: -1;
+    }
+
     body {
         font-size: 14px;
     }
@@ -232,28 +353,52 @@
   </div>
 
   <div class="container">
-    <div class="box">
-      <div class="box-title">Verify your email</div>
-      <div class="box-subtitle">Enter the 6-digit code we sent to <span id="emailDisplay"></span></div>
+    <div class="otp-shell">
+      <div class="box premium-card">
+        <div class="box-title">Verify your email</div>
+        <div class="box-subtitle">Enter the 6-digit code we sent to <span id="emailDisplay"></span></div>
 
-      <div class="input-group">
-        <input type="text" id="otp" placeholder="000000" maxlength="6" autocomplete="off" value="123456">
+        <div class="input-group">
+          <input type="text" id="otp" placeholder="000000" maxlength="6" autocomplete="off" value="123456">
+        </div>
+
+        <button class="btn" id="verifyBtn" onclick="verifyOTP()">Verify & Continue</button>
+
+        <div id="errorMsg" class="error"></div>
+
+        <div class="note" style="background: #2a2a1a; border-color: #FFD700;">
+          <strong>Test Mode Active:</strong><br />
+          Default code: <strong>123456</strong><br />
+          This will generate your unique Zeus-PIN for secure messaging.
+        </div>
       </div>
 
-      <button class="btn" id="verifyBtn" onclick="verifyOTP()">Verify & Continue</button>
-
-      <div id="errorMsg" class="error"></div>
-
-      <div class="note" style="background: #2a2a1a; border-color: #FFD700;">
-        <strong>🧪 Test Mode Active:</strong><br />
-        Default code: <strong>123456</strong><br />
-        This will generate your unique Zeus-PIN for secure messaging.
+      <div class="ghost-town-card premium-card">
+        <div class="ghost-town-icon">🏚️</div>
+        <div class="ghost-town-title">GHOST TOWN</div>
+        <div class="ghost-town-quote">
+          "Where words disappear, but legends are born."
+        </div>
+        <div class="ghost-town-population">
+          <span class="population-label">Population</span>
+          <span class="population-count" id="populationCount">10,437</span>
+        </div>
+        <div class="ghost-town-footer">
+          Every Ghost has a story. What will yours be?
+        </div>
       </div>
     </div>
   </div>
 
   <script>
     const API_BASE = window.location.origin;
+    let currentPopulation = 10437;
+
+    setInterval(() => {
+      const increment = Math.floor(Math.random() * 5) + 1;
+      currentPopulation += increment;
+      document.getElementById('populationCount').textContent = currentPopulation.toLocaleString();
+    }, 30000);
 
     // Enforce step-locked flow: Must come from emailinput.html
     const pendingEmail = localStorage.getItem('pending_email');

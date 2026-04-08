@@ -162,6 +162,98 @@
             color: #FFD700;
         }
 
+        .coming-soon-card {
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .coming-soon-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(212,175,55,0.3);
+        }
+
+        .coming-soon-icon {
+            font-size: 20px;
+        }
+
+        .coming-soon-title {
+            color: #D4AF37;
+            font-size: 12px;
+            letter-spacing: 2px;
+        }
+
+        .coming-soon-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .coming-soon-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+        }
+
+        .item-icon {
+            font-size: 20px;
+        }
+
+        .item-name {
+            font-size: 10px;
+            color: rgba(255,255,255,0.7);
+            text-align: center;
+        }
+
+        .coming-soon-footer {
+            text-align: center;
+            font-size: 10px;
+            color: rgba(255,255,255,0.4);
+            font-style: italic;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes glowPulse {
+            0% {
+                box-shadow: 0 0 5px rgba(212,175,55,0.3);
+            }
+            50% {
+                box-shadow: 0 0 20px rgba(212,175,55,0.6);
+            }
+            100% {
+                box-shadow: 0 0 5px rgba(212,175,55,0.3);
+            }
+        }
+
+        .premium-card {
+            animation: fadeInUp 0.6s ease;
+        }
+
+        .premium-card:hover {
+            animation: glowPulse 1.5s infinite;
+        }
+
         @media (max-height: 700px) {
             .profile-form {
                 max-height: calc(100vh - 100px);
@@ -248,6 +340,10 @@
         max-width: 85%;
     }
 
+    .coming-soon-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
     body {
         font-size: 14px;
     }
@@ -290,6 +386,42 @@
             <p class="info-text" style="margin-top: 18px; color: #cbd5e1;">
                 Next step: after saving your profile, you will upload your ID and selfie on a separate verification page.
             </p>
+
+            <div class="coming-soon-card premium-card">
+                <div class="coming-soon-header">
+                    <span class="coming-soon-icon">🔮</span>
+                    <span class="coming-soon-title">COMING TO GHOST TOWN</span>
+                </div>
+                <div class="coming-soon-grid">
+                    <div class="coming-soon-item">
+                        <span class="item-icon">🎤</span>
+                        <span class="item-name">Voice Notes</span>
+                    </div>
+                    <div class="coming-soon-item">
+                        <span class="item-icon">📹</span>
+                        <span class="item-name">Video Calls</span>
+                    </div>
+                    <div class="coming-soon-item">
+                        <span class="item-icon">👥</span>
+                        <span class="item-name">Group Chats</span>
+                    </div>
+                    <div class="coming-soon-item">
+                        <span class="item-icon">💰</span>
+                        <span class="item-name">Send Money</span>
+                    </div>
+                    <div class="coming-soon-item">
+                        <span class="item-icon">💘</span>
+                        <span class="item-name">Ghost Dating</span>
+                    </div>
+                    <div class="coming-soon-item">
+                        <span class="item-icon">🤖</span>
+                        <span class="item-name">AI Assistant</span>
+                    </div>
+                </div>
+                <div class="coming-soon-footer">
+                    Early access to all new features. You're early. You're elite.
+                </div>
+            </div>
             
             <button class="btn" id="submitBtn" onclick="completeRegistration()">✅ Save & Continue</button>
             <div class="loading" id="loading">⏳ Creating account...</div>

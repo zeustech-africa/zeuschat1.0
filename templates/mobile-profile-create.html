@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#D4AF37">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ZeusChat">
+  <title>Create Profile — ZeusChat</title>
+  <link rel="stylesheet" href="/static/mobile.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Georgia', -apple-system, BlinkMacSystemFont, 'Segoe UI', serif;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0d0d0d 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    .container { max-width: 420px; width: 100%; padding-bottom: 40px; }
+    .card {
+      background: rgba(10,10,10,0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 32px;
+      padding: 40px 28px;
+      border: 1px solid rgba(212,175,55,0.3);
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8), 0 0 20px rgba(212,175,55,0.08);
+    }
+    .logo { text-align: center; margin-bottom: 24px; }
+    .logo-icon { font-size: 38px; display: block; margin-bottom: 8px; }
+    .logo h1 { font-size: 28px; color: #D4AF37; letter-spacing: 4px; font-weight: 700; }
+    .logo-tagline { font-size: 11px; color: rgba(212,175,55,0.7); letter-spacing: 3px; margin-top: 4px; }
+    .step-label {
+      font-size: 12px; color: rgba(212,175,55,0.6); letter-spacing: 2px;
+      text-align: center; margin-bottom: 20px; text-transform: uppercase;
+    }
+    .pin-box {
+      background: rgba(212,175,55,0.06); border: 1px solid rgba(212,175,55,0.2);
+      border-radius: 16px; padding: 16px; text-align: center; margin-bottom: 20px;
+    }
+    .pin-label { font-size: 11px; color: rgba(255,255,255,0.4); letter-spacing: 2px; margin-bottom: 6px; }
+    .pin-value { font-size: 22px; font-weight: 700; color: #D4AF37; letter-spacing: 3px; }
+    .pin-warn { font-size: 11px; color: rgba(255,255,255,0.35); margin-top: 6px; }
+    .avatar-wrap { text-align: center; margin-bottom: 22px; }
+    .avatar-wrap img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(212,175,55,0.3); }
+    .avatar-label {
+      display: inline-block; cursor: pointer; margin-top: 10px;
+      font-size: 12px; color: rgba(212,175,55,0.7); border: 1px solid rgba(212,175,55,0.3);
+      border-radius: 20px; padding: 8px 16px;
+    }
+    .avatar-label:hover { background: rgba(212,175,55,0.08); }
+    .input-group { margin-bottom: 16px; }
+    .input-group label {
+      display: block; font-size: 11px; color: rgba(255,255,255,0.5);
+      letter-spacing: 2px; margin-bottom: 8px; text-transform: uppercase;
+    }
+    .input-group input {
+      width: 100%; padding: 14px 16px; background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(212,175,55,0.25); border-radius: 14px;
+      color: #fff; font-size: 16px; outline: none; transition: border-color 0.2s;
+    }
+    .input-group input:focus { border-color: #D4AF37; }
+    .btn {
+      width: 100%; padding: 16px;
+      background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%);
+      color: #0a0a0a; border: none; border-radius: 40px; font-size: 16px;
+      font-weight: 700; cursor: pointer; letter-spacing: 1px; text-transform: uppercase;
+      transition: all 0.3s; margin-top: 8px;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(212,175,55,0.4); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .loading { display: none; text-align: center; color: #D4AF37; font-size: 13px; margin-top: 12px; }
+    .floating-ghost {
+      position: fixed; font-size: 22px; opacity: 0.08;
+      animation: ghostFloat 6s ease-in-out infinite; pointer-events: none; z-index: 0;
+    }
+    @keyframes ghostFloat {
+      0%, 100% { transform: translateY(0px) rotate(-5deg); }
+      50% { transform: translateY(-18px) rotate(5deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="floating-ghost" style="top:8%;left:6%;">👻</div>
+  <div class="floating-ghost" style="bottom:12%;right:7%;animation-delay:2s;">👻</div>
+
+  <div class="container">
+    <div class="card">
+      <div class="logo">
+        <span class="logo-icon">🔐</span>
+        <h1>ZEUSCHAT</h1>
+        <div class="logo-tagline">CREATE YOUR GHOST PROFILE</div>
+      </div>
+
+      <div class="step-label">Step 3 of 4 — Create Profile</div>
+
+      <div class="pin-box">
+        <div class="pin-label">YOUR ZEUS-PIN</div>
+        <div class="pin-value" id="zeusPin">ZT-XXXX-XXXX</div>
+        <div class="pin-warn">⚠️ Save this PIN. You need it to log in.</div>
+      </div>
+
+      <div class="avatar-wrap">
+        <img id="profilePreview"
+          src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 150'%3E%3Crect fill='%23111' width='150' height='150'/%3E%3Ctext fill='%23D4AF37' font-size='80' x='50%25' y='50%25' text-anchor='middle' dy='.3em'%3E👤%3C/text%3E%3C/svg%3E"
+          alt="Profile Photo">
+        <input type="file" id="profilePic" accept="image/*" style="display:none;">
+        <label for="profilePic" class="avatar-label">📁 Upload Photo (optional)</label>
+      </div>
+
+      <div class="input-group">
+        <label>Full Name</label>
+        <input type="text" id="fullName" placeholder="Your full name" autocomplete="name">
+      </div>
+
+      <div class="input-group">
+        <label>Password</label>
+        <input type="password" id="password" placeholder="Minimum 6 characters" autocomplete="new-password">
+      </div>
+
+      <div class="input-group">
+        <label>Confirm Password</label>
+        <input type="password" id="confirmPassword" placeholder="Repeat your password" autocomplete="new-password">
+      </div>
+
+      <button class="btn" id="submitBtn" onclick="completeRegistration()">✅ Save &amp; Continue</button>
+      <div class="loading" id="loading">⏳ Creating account...</div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin;
+
+    const myZeusPin = localStorage.getItem('my_zeus_pin');
+    const registrationEmail = localStorage.getItem('registration_email');
+
+    if (!myZeusPin || !registrationEmail) {
+      window.location.href = '/mobile/email';
+    } else {
+      document.getElementById('zeusPin').textContent = myZeusPin;
+    }
+
+    document.getElementById('profilePic').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = ev => { document.getElementById('profilePreview').src = ev.target.result; };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function completeRegistration() {
+      const fullName = document.getElementById('fullName').value.trim();
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+      const email = localStorage.getItem('registration_email');
+      const zeusPin = localStorage.getItem('my_zeus_pin');
+      const submitBtn = document.getElementById('submitBtn');
+      const loading = document.getElementById('loading');
+
+      if (!fullName || !password || !confirmPassword) { alert('❌ Please fill all required fields'); return; }
+      if (password.length < 6) { alert('❌ Password must be at least 6 characters'); return; }
+      if (password !== confirmPassword) { alert('❌ Passwords do not match'); return; }
+
+      let profilePic = '';
+      const profilePicInput = document.getElementById('profilePic');
+      if (profilePicInput.files.length > 0) {
+        try { profilePic = await fileToBase64(profilePicInput.files[0]); }
+        catch { alert('❌ Error reading image file'); return; }
+      }
+
+      submitBtn.disabled = true;
+      loading.style.display = 'block';
+
+      try {
+        const response = await fetch(`${API_BASE}/api/complete-registration`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ email, zeus_pin: zeusPin, password, full_name: fullName, profile_pic: profilePic })
+        });
+
+        const data = await response.json();
+        if (response.ok && data.success) {
+          localStorage.setItem('user_full_name', fullName);
+          localStorage.setItem('user_zeus_pin', zeusPin);
+          localStorage.setItem('user_profile_pic', profilePic);
+          localStorage.setItem('user_logged_in', 'true');
+          sessionStorage.setItem('user_full_name', fullName);
+          sessionStorage.setItem('user_zeus_pin', zeusPin);
+          sessionStorage.setItem('user_logged_in', 'true');
+          localStorage.setItem('temp_zeus_pin', zeusPin);
+          window.location.href = '/mobile/kyc?pin=' + encodeURIComponent(zeusPin);
+        } else {
+          throw new Error(data.error || 'Registration failed');
+        }
+      } catch (error) {
+        alert('❌ ' + (error.message || 'Failed to create profile'));
+        submitBtn.disabled = false;
+        loading.style.display = 'none';
+      }
+    }
+
+    document.getElementById('confirmPassword').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') completeRegistration();
+    });
+  </script>
+</body>
+</html>

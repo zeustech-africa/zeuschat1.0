@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#D4AF37">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ZeusChat">
+  <title>Pending Approval — ZeusChat</title>
+  <link rel="stylesheet" href="/static/mobile.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Georgia', -apple-system, BlinkMacSystemFont, 'Segoe UI', serif;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0d0d0d 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 16px;
+      overflow-y: auto;
+    }
+    .container { max-width: 420px; width: 100%; padding-bottom: 40px; }
+    .top-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 20px; margin-bottom: 16px;
+      background: rgba(10,10,10,0.9); border-radius: 20px;
+      border: 1px solid rgba(212,175,55,0.2);
+    }
+    .top-bar-title { color: #D4AF37; font-size: 16px; font-weight: 700; letter-spacing: 3px; }
+    .badge {
+      background: rgba(212,175,55,0.15); color: #D4AF37;
+      border: 1px solid rgba(212,175,55,0.3); border-radius: 20px;
+      padding: 4px 12px; font-size: 11px; letter-spacing: 1px;
+    }
+    .card {
+      background: rgba(10,10,10,0.95);
+      border-radius: 24px;
+      padding: 24px 20px;
+      border: 1px solid rgba(212,175,55,0.2);
+      box-shadow: 0 10px 30px -8px rgba(0,0,0,0.6);
+      margin-bottom: 16px;
+    }
+    .section-title {
+      font-size: 11px; color: rgba(212,175,55,0.6); letter-spacing: 2px;
+      text-transform: uppercase; margin-bottom: 14px;
+      padding-bottom: 10px; border-bottom: 1px solid rgba(212,175,55,0.1);
+    }
+    .account-title { font-size: 20px; color: rgba(255,255,255,0.9); margin-bottom: 6px; }
+    .account-sub { font-size: 13px; color: rgba(255,255,255,0.45); margin-bottom: 20px; line-height: 1.5; }
+    .timeline { display: flex; flex-direction: column; gap: 10px; }
+    .timeline-step {
+      display: flex; align-items: center; gap: 12px;
+      font-size: 13px; color: rgba(255,255,255,0.4); padding: 10px 14px;
+      background: rgba(255,255,255,0.02); border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .timeline-step::before { content: '○'; color: rgba(212,175,55,0.3); font-size: 14px; flex-shrink: 0; }
+    .timeline-step.active {
+      color: #D4AF37; background: rgba(212,175,55,0.06);
+      border-color: rgba(212,175,55,0.2);
+    }
+    .timeline-step.active::before { content: '●'; color: #D4AF37; }
+    .timeline-step.done { color: rgba(100,200,100,0.9); }
+    .timeline-step.done::before { content: '✓'; color: rgba(100,200,100,0.8); font-size: 12px; }
+    .wyw-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; font-size: 13px; color: rgba(255,255,255,0.7); }
+    .wyw-dot { color: #D4AF37; font-size: 8px; margin-top: 5px; flex-shrink: 0; }
+    .msg-log {
+      min-height: 80px; max-height: 160px; overflow-y: auto;
+      background: rgba(255,255,255,0.02); border-radius: 12px; padding: 12px;
+      margin-bottom: 12px; font-size: 13px; line-height: 1.6;
+    }
+    .msg-empty { color: rgba(255,255,255,0.25); font-style: italic; font-size: 12px; }
+    .msg-row { margin-bottom: 8px; }
+    .msg-row.from-admin { color: rgba(212,175,55,0.9); }
+    .msg-row.from-user { color: rgba(255,255,255,0.7); text-align: right; }
+    textarea {
+      width: 100%; padding: 12px; background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(212,175,55,0.2); border-radius: 14px;
+      color: #fff; font-size: 14px; resize: none; outline: none;
+      font-family: inherit; margin-bottom: 10px; transition: border-color 0.2s;
+    }
+    textarea:focus { border-color: #D4AF37; }
+    .btn {
+      width: 100%; padding: 14px;
+      background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%);
+      color: #0a0a0a; border: none; border-radius: 40px; font-size: 14px;
+      font-weight: 700; cursor: pointer; letter-spacing: 1px; text-transform: uppercase;
+      transition: all 0.3s;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .upgrades-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .upgrade-item {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(212,175,55,0.15);
+      border-radius: 14px; padding: 14px; text-align: center;
+    }
+    .upgrade-item strong { display: block; font-size: 13px; color: rgba(255,255,255,0.8); margin-bottom: 6px; }
+    .upgrade-price { font-size: 12px; color: rgba(212,175,55,0.6); margin-bottom: 10px; }
+    .upgrade-btn {
+      padding: 8px 14px; background: transparent; color: #D4AF37;
+      border: 1px solid rgba(212,175,55,0.35); border-radius: 20px;
+      font-size: 12px; cursor: pointer;
+    }
+    .upgrade-btn:hover { background: rgba(212,175,55,0.08); }
+    .logout-btn {
+      padding: 8px 16px; background: transparent; color: rgba(255,255,255,0.5);
+      border: 1px solid rgba(255,255,255,0.15); border-radius: 20px;
+      font-size: 12px; cursor: pointer;
+    }
+    .logout-btn:hover { border-color: rgba(255,50,50,0.4); color: rgba(255,100,100,0.8); }
+    .floating-ghost {
+      position: fixed; font-size: 20px; opacity: 0.07;
+      animation: ghostFloat 6s ease-in-out infinite; pointer-events: none; z-index: 0;
+    }
+    @keyframes ghostFloat {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-14px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="floating-ghost" style="top:10%;left:5%;">👻</div>
+  <div class="floating-ghost" style="bottom:12%;right:6%;animation-delay:3s;">👻</div>
+
+  <div class="container">
+    <!-- Top Bar -->
+    <div class="top-bar">
+      <div class="top-bar-title">ZEUSCHAT</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="badge">Pending Approval</span>
+        <button class="logout-btn" id="logoutBtn">Logout</button>
+      </div>
+    </div>
+
+    <!-- Status Card -->
+    <div class="card">
+      <div class="section-title">Approval Progress</div>
+      <div class="account-title">Account Under Review</div>
+      <div class="account-sub">Your account is registered and waiting for admin approval. We'll notify you once approved.</div>
+      <div class="timeline">
+        <div class="timeline-step done">Registration complete</div>
+        <div class="timeline-step active">Admin review in progress</div>
+        <div class="timeline-step">Full access enabled</div>
+      </div>
+    </div>
+
+    <!-- While You Wait -->
+    <div class="card">
+      <div class="section-title">📚 While You Wait</div>
+      <div class="wyw-item"><span class="wyw-dot">●</span>Read the Ghost Manifesto</div>
+      <div class="wyw-item"><span class="wyw-dot">●</span>Explore Ghost Market rules</div>
+      <div class="wyw-item"><span class="wyw-dot">●</span>Join our exclusive waitlist</div>
+      <div class="wyw-item"><span class="wyw-dot">●</span>Follow us on social media</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.25);font-style:italic;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05);">
+        "Good things come to those who wait. Great things come to those who become Ghosts."
+      </div>
+    </div>
+
+    <!-- Message Admin -->
+    <div class="card">
+      <div class="section-title">Message Admin</div>
+      <div class="msg-log" id="msgLog"><div class="msg-empty">No messages yet.</div></div>
+      <textarea id="msgInput" rows="2" placeholder="Type a message to admin..."></textarea>
+      <button class="btn" id="msgSend">Send Message</button>
+    </div>
+
+    <!-- Unlocks -->
+    <div class="card">
+      <div class="section-title">Optional One-Off Unlocks</div>
+      <div class="upgrades-grid">
+        <div class="upgrade-item">
+          <strong>Profile Picture</strong>
+          <div class="upgrade-price">R29 one-off</div>
+          <button class="upgrade-btn" onclick="requestUnlock('profile_picture')">Unlock</button>
+        </div>
+        <div class="upgrade-item">
+          <strong>Extended TTL</strong>
+          <div class="upgrade-price">R39 one-off</div>
+          <button class="upgrade-btn" onclick="requestUnlock('extended_ttl')">Unlock</button>
+        </div>
+        <div class="upgrade-item">
+          <strong>PIN Retention</strong>
+          <div class="upgrade-price">R49 one-off</div>
+          <button class="upgrade-btn" onclick="requestUnlock('pin_retention')">Unlock</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function esc(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    async function loadMessages() {
+      try {
+        const response = await fetch('/api/user/admin-messages');
+        if (!response.ok) return;
+        const data = await response.json();
+        const log = document.getElementById('msgLog');
+        if (data.messages && data.messages.length > 0) {
+          log.innerHTML = data.messages.map(m => {
+            const cls = m.from_admin ? 'from-admin' : 'from-user';
+            const prefix = m.from_admin ? '👤 Admin: ' : 'You: ';
+            return `<div class="msg-row ${cls}">${prefix}${esc(m.message)}</div>`;
+          }).join('');
+          log.scrollTop = log.scrollHeight;
+        }
+      } catch {}
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('msgInput');
+      const message = input.value.trim();
+      if (!message) return;
+
+      const response = await fetch('/api/user/admin-messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message }),
+      });
+
+      if (response.ok) {
+        input.value = '';
+        loadMessages();
+      }
+    }
+
+    async function checkStatus() {
+      try {
+        const response = await fetch('/api/user/approval-status');
+        if (!response.ok) return;
+        const data = await response.json();
+        if (data.success && data.is_approved) {
+          window.location.href = '/mobile/chat';
+        }
+      } catch {}
+    }
+
+    function requestUnlock(feature) {
+      let endpoint = '';
+      if (feature === 'profile_picture') endpoint = '/api/user/request-profile-picture-change';
+      if (feature === 'extended_ttl') endpoint = '/api/user/request-extended-ttl';
+      if (feature === 'pin_retention') endpoint = '/api/user/request-pin-retention';
+      if (!endpoint) return;
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = endpoint;
+      document.body.appendChild(form);
+      form.submit();
+    }
+
+    document.getElementById('msgSend').addEventListener('click', sendMessage);
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await fetch('/api/logout', { method: 'POST' });
+      window.location.href = '/mobile/login';
+    });
+
+    loadMessages();
+    checkStatus();
+    setInterval(() => { loadMessages(); checkStatus(); }, 5000);
+  </script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

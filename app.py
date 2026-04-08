@@ -2349,13 +2349,17 @@ def complete_registration_with_kyc():
                 'face_match_score': face_match_score,
                 'auto_verified': str(auto_verified) == '1',
             },
-            ip_address=request.remote_addr,
-        )
+                user_agent = request.headers.get('User-Agent', '')
+                is_mobile_ua = any(kw in user_agent for kw in ('Mobile', 'Android', 'iPhone', 'iPad'))
+                pending_redirect = '/mobile/pending' if is_mobile_ua else '/pending-approval'
 
-        return jsonify(
-            {
-                'success': True,
-                'message': 'Registration successful. Account pending admin approval.',
+                return jsonify({
+                    'success': True,
+                    'message': 'Registration successful. Account pending admin approval.',
+                    'redirect': pending_redirect,
+                    'user_id': user_id,
+                    'approved': False
+                }), 201
                 'redirect': '/pending-approval',
                 'user_id': user_id,
                 'approved': False,
@@ -2915,13 +2919,17 @@ def get_approval_status():
         return jsonify({
             'success': True,
             'status': status,
-            'reviewed_at': reviewed_at,
-            'rejection_reason': rejection_reason,
-            'is_approved': status == 'approved'
-        }), 200
+                user_agent_str = request.headers.get('User-Agent', '')
+                is_mobile_ua = any(kw in user_agent_str for kw in ('Mobile', 'Android', 'iPhone', 'iPad'))
+                pending_redirect = '/mobile/pending' if is_mobile_ua else '/pending-approval'
 
-
-@app.route('/api/user/admin-messages', methods=['GET', 'POST'])
+                if approval_status != 'approved':
+                    session['is_approved'] = False
+                    return jsonify({
+                        'success': True,
+                        'message': 'Account pending approval',
+                        'redirect': pending_redirect,
+                        'approved': False,
 def user_admin_messages():
     """User sends/receives messages to/from admin (works even for pending users)"""
     user_id = session.get('user_id')
@@ -4791,6 +4799,48 @@ def offline_page():
 def mobile_welcome():
     """Mobile-optimized welcome page for PWA installation."""
     return render_template('mobile-welcome.html')
+
+
+@app.route('/mobile/email')
+def mobile_email():
+    """Mobile email input page (step 1 of registration)."""
+    return render_template('mobile-email.html')
+
+
+@app.route('/mobile/otp')
+def mobile_otp():
+    """Mobile OTP verification page (step 2 of registration)."""
+    return render_template('mobile-otp.html')
+
+
+@app.route('/mobile/profile-create')
+def mobile_profile_create():
+    """Mobile profile creation page (step 3 of registration)."""
+    return render_template('mobile-profile-create.html')
+
+
+@app.route('/mobile/kyc')
+def mobile_kyc():
+    """Mobile KYC identity verification page (step 4 of registration)."""
+    return render_template('mobile-kyc.html')
+
+
+@app.route('/mobile/pending')
+def mobile_pending():
+    """Mobile pending approval page."""
+    return render_template('mobile-pending.html')
+
+
+@app.route('/mobile/login')
+def mobile_login():
+    """Mobile login page."""
+    return render_template('mobile-login.html')
+
+
+@app.route('/mobile/chat')
+def mobile_chat():
+    """Mobile chat entry point — redirects to the main dashboard."""
+    return redirect('/dashboard')
 
 
 def keep_alive():

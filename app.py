@@ -2349,22 +2349,19 @@ def complete_registration_with_kyc():
                 'face_match_score': face_match_score,
                 'auto_verified': str(auto_verified) == '1',
             },
-                user_agent = request.headers.get('User-Agent', '')
-                is_mobile_ua = any(kw in user_agent for kw in ('Mobile', 'Android', 'iPhone', 'iPad'))
-                pending_redirect = '/mobile/pending' if is_mobile_ua else '/pending-approval'
+        )
 
-                return jsonify({
-                    'success': True,
-                    'message': 'Registration successful. Account pending admin approval.',
-                    'redirect': pending_redirect,
-                    'user_id': user_id,
-                    'approved': False
-                }), 201
-                'redirect': '/pending-approval',
-                'user_id': user_id,
-                'approved': False,
-            }
-        ), 201
+        user_agent = request.headers.get('User-Agent', '')
+        is_mobile_ua = any(kw in user_agent for kw in ('Mobile', 'Android', 'iPhone', 'iPad'))
+        pending_redirect = '/mobile/pending' if is_mobile_ua else '/pending-approval'
+
+        return jsonify({
+            'success': True,
+            'message': 'Registration successful. Account pending admin approval.',
+            'redirect': pending_redirect,
+            'user_id': user_id,
+            'approved': False,
+        }), 201
     except sqlite3.IntegrityError:
         return jsonify({'error': 'Email or PIN already exists'}), 409
     except Exception as e:
@@ -2919,17 +2916,13 @@ def get_approval_status():
         return jsonify({
             'success': True,
             'status': status,
-                user_agent_str = request.headers.get('User-Agent', '')
-                is_mobile_ua = any(kw in user_agent_str for kw in ('Mobile', 'Android', 'iPhone', 'iPad'))
-                pending_redirect = '/mobile/pending' if is_mobile_ua else '/pending-approval'
+            'is_approved': status == 'approved',
+            'reviewed_at': reviewed_at,
+            'rejection_reason': rejection_reason,
+        }), 200
 
-                if approval_status != 'approved':
-                    session['is_approved'] = False
-                    return jsonify({
-                        'success': True,
-                        'message': 'Account pending approval',
-                        'redirect': pending_redirect,
-                        'approved': False,
+
+@app.route('/api/user/admin-messages', methods=['GET', 'POST'])
 def user_admin_messages():
     """User sends/receives messages to/from admin (works even for pending users)"""
     user_id = session.get('user_id')

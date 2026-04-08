@@ -500,6 +500,12 @@
     <a href="registration.html" class="btn">Get Started</a>
     <!-- ✅ Correct: Log in → login.html -->
     <a href="login.html" class="btn">Log in</a>
+    
+    <div class="install-qr-panel" id="installQrPanel">
+      <div class="install-qr-title">Install On Phone</div>
+      <div id="installQrCode" style="display:flex;justify-content:center;"></div>
+      <div class="install-qr-hint">Scan to open the mobile install page</div>
+    </div>
   </div>
   <div class="footer-links" style="text-align:center;padding:16px 0 20px;font-size:13px;">
     <a href="/terms" style="color:#D4AF37;text-decoration:none;margin:0 8px;opacity:0.7;">Terms</a> |
@@ -508,5 +514,30 @@
     <a href="/ghost-market-policy" style="color:#D4AF37;text-decoration:none;margin:0 8px;opacity:0.7;">Ghost Market Policy</a> |
     <a href="/refund-policy" style="color:#D4AF37;text-decoration:none;margin:0 8px;opacity:0.7;">Refunds</a>
   </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const qrDiv = document.getElementById('installQrCode');
+      const qrPanel = document.getElementById('installQrPanel');
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+
+      if (isMobile && qrPanel) {
+        qrPanel.style.display = 'none';
+        return;
+      }
+
+      if (qrDiv && typeof QRCode !== 'undefined') {
+        new QRCode(qrDiv, {
+          text: window.location.origin + '/mobile',
+          width: 136,
+          height: 136,
+          colorDark: '#111111',
+          colorLight: '#D4AF37',
+          correctLevel: QRCode.CorrectLevel.H
+        });
+      }
+    });
+  </script>
 </body>
 </html>

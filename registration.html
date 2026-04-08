@@ -110,14 +110,14 @@
 
       if (isMobile) {
         if (qrWrapper) qrWrapper.style.display = 'none';
-        window.location.href = '/emailinput.html';
+        window.location.href = '/mobile';
         return;
       }
 
       const qrDiv = document.getElementById('installQrCode');
       if (qrDiv && typeof QRCode !== 'undefined') {
         new QRCode(qrDiv, {
-          text: '/mobile',
+          text: window.location.origin + '/mobile',
           width: 150,
           height: 150,
           colorDark: '#111111',

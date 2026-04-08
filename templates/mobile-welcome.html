@@ -377,8 +377,13 @@
             </div>
 
             <!-- PWA Install Button -->
-            <div class="install-pwa" id="installBtn" style="display: none;">
-                📱 Install App on Home Screen
+            <button id="installBtn" class="install-pwa" style="display: none;">
+                📱 Install ZeusChat App
+            </button>
+
+            <div id="mobileQrWrap" style="display:none; margin-top: 20px;">
+                <div style="color: rgba(212,175,55,0.75); font-size: 11px; letter-spacing: 1px; margin-bottom: 8px;">SCAN TO OPEN MOBILE INSTALL</div>
+                <div id="mobileInstallQr" style="display:flex; justify-content:center;"></div>
             </div>
 
             <div class="footer">
@@ -387,6 +392,7 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script>
         // Get Started button - redirect to registration
         document.getElementById('getStartedBtn').addEventListener('click', () => {
@@ -401,6 +407,23 @@
         // PWA Install Prompt
         let deferredPrompt;
         const installBtn = document.getElementById('installBtn');
+        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+        const mobileQrWrap = document.getElementById('mobileQrWrap');
+
+        if (!isMobile && mobileQrWrap) {
+            mobileQrWrap.style.display = 'block';
+            const qrDiv = document.getElementById('mobileInstallQr');
+            if (qrDiv && typeof QRCode !== 'undefined') {
+                new QRCode(qrDiv, {
+                    text: window.location.origin + '/mobile',
+                    width: 130,
+                    height: 130,
+                    colorDark: '#111111',
+                    colorLight: '#D4AF37',
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            }
+        }
 
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();

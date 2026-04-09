@@ -984,72 +984,89 @@ def approve_kyc(kyc_id):
     admin_id = session['admin_id']
     data = request.get_json() or {}
     notes = (data.get('notes') or '').strip()
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                '''
+                SELECT k.user_id, u.zeus_pin
+                FROM kyc_documents k
+                JOIN users u ON u.id = k.user_id
+                WHERE k.id = ?
+                ''',
+                (kyc_id,),
+            )
+            result = cursor.fetchone()
+            if not result:
+                return jsonify({'error': 'KYC record not found'}), 404
 
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            '''
-            SELECT k.user_id, u.zeus_pin
-            FROM kyc_documents k
-            JOIN users u ON u.id = k.user_id
-            WHERE k.id = ?
-            ''',
-            (kyc_id,),
+            user_id = result['user_id']
+
+            cursor.execute(
+                '''
+                UPDATE kyc_documents
+                SET admin_review_status = 'approved',
+                    reviewed_by = ?,
+                    reviewed_at = CURRENT_TIMESTAMP,
+                    admin_review_notes = ?
+                WHERE id = ?
+                ''',
+                (admin_id, notes, kyc_id),
+            )
+
+            if cursor.rowcount == 0:
+                return jsonify({'error': 'KYC record not found'}), 404
+
+            approval_note = f'KYC Approved: {notes}' if notes else 'KYC Approved'
+            cursor.execute(
+                '''
+                UPDATE user_approvals
+                SET status = 'approved',
+                    reviewed_by = ?,
+                    reviewed_at = CURRENT_TIMESTAMP,
+                    rejection_reason = NULL,
+                    notes = ?
+                WHERE user_id = ?
+                ''',
+                (admin_id, approval_note, user_id),
+            )
+
+            if cursor.rowcount == 0:
+                cursor.execute(
+                    '''
+                    INSERT INTO user_approvals (user_id, status, reviewed_by, reviewed_at, notes)
+                    VALUES (?, 'approved', ?, CURRENT_TIMESTAMP, ?)
+                    ''',
+                    (user_id, admin_id, approval_note),
+                )
+
+            approval_message = (
+                '✅ Your ZeusChat account has been APPROVED!\n\n'
+                f'Your Zeus-PIN {result["zeus_pin"]} is now active and ready to use.\n\n'
+                'Start adding contacts and enjoy secure messaging.'
+            )
+            cursor.execute(
+                '''
+                INSERT INTO admin_messages (user_id, message, is_from_admin, admin_id)
+                VALUES (?, ?, 1, ?)
+                ''',
+                (user_id, approval_message, admin_id),
+            )
+
+            conn.commit()
+
+        log_admin_action(
+            admin_id,
+            'kyc_approved',
+            target_user_id=user_id,
+            details={'kyc_id': kyc_id, 'notes': notes},
+            ip_address=request.remote_addr,
         )
-        result = cursor.fetchone()
-        if not result:
-            return jsonify({'error': 'KYC record not found'}), 404
 
-        user_id = result['user_id']
-
-        cursor.execute(
-            '''
-            UPDATE kyc_documents
-            SET admin_review_status = 'approved',
-                reviewed_by = ?,
-                reviewed_at = CURRENT_TIMESTAMP,
-                admin_review_notes = ?
-            WHERE id = ?
-            ''',
-            (admin_id, notes, kyc_id),
-        )
-
-        cursor.execute(
-            '''
-            INSERT INTO user_approvals (user_id, status, reviewed_by, reviewed_at, notes)
-            VALUES (?, 'approved', ?, CURRENT_TIMESTAMP, ?)
-            ON CONFLICT(user_id) DO UPDATE SET
-                status = 'approved',
-                reviewed_by = excluded.reviewed_by,
-                reviewed_at = CURRENT_TIMESTAMP,
-                notes = excluded.notes
-            ''',
-            (user_id, admin_id, f'KYC Approved: {notes}' if notes else 'KYC Approved'),
-        )
-
-        approval_message = (
-            'Your ZeusChat account has been approved. '
-            f'Your PIN {result["zeus_pin"]} is now active and ready to use.'
-        )
-        cursor.execute(
-            '''
-            INSERT INTO admin_messages (user_id, message, is_from_admin, admin_id)
-            VALUES (?, ?, 1, ?)
-            ''',
-            (user_id, approval_message, admin_id),
-        )
-
-        conn.commit()
-
-    log_admin_action(
-        admin_id,
-        'kyc_approved',
-        target_user_id=user_id,
-        details={'kyc_id': kyc_id, 'notes': notes},
-        ip_address=request.remote_addr,
-    )
-
-    return jsonify({'success': True, 'message': 'KYC approved - user activated'}), 200
+        return jsonify({'success': True, 'message': 'KYC approved - user activated'}), 200
+    except Exception as e:
+        print(f"❌ KYC approval error (kyc_id={kyc_id}, admin_id={admin_id}): {e}")
+        return jsonify({'error': str(e)}), 500
 
 
 @admin_bp.route('/api/kyc/<int:kyc_id>/reject', methods=['PUT'])
@@ -1059,62 +1076,76 @@ def reject_kyc(kyc_id):
     admin_id = session['admin_id']
     data = request.get_json() or {}
     reason = (data.get('reason') or 'No reason provided').strip()
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT user_id FROM kyc_documents WHERE id = ?', (kyc_id,))
+            result = cursor.fetchone()
+            if not result:
+                return jsonify({'error': 'KYC record not found'}), 404
 
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute('SELECT user_id FROM kyc_documents WHERE id = ?', (kyc_id,))
-        result = cursor.fetchone()
-        if not result:
-            return jsonify({'error': 'KYC record not found'}), 404
+            user_id = result['user_id']
 
-        user_id = result['user_id']
+            cursor.execute(
+                '''
+                UPDATE kyc_documents
+                SET admin_review_status = 'rejected',
+                    reviewed_by = ?,
+                    reviewed_at = CURRENT_TIMESTAMP,
+                    admin_review_notes = ?
+                WHERE id = ?
+                ''',
+                (admin_id, reason, kyc_id),
+            )
 
-        cursor.execute(
-            '''
-            UPDATE kyc_documents
-            SET admin_review_status = 'rejected',
-                reviewed_by = ?,
-                reviewed_at = CURRENT_TIMESTAMP,
-                admin_review_notes = ?
-            WHERE id = ?
-            ''',
-            (admin_id, reason, kyc_id),
+            if cursor.rowcount == 0:
+                return jsonify({'error': 'KYC record not found'}), 404
+
+            cursor.execute(
+                '''
+                UPDATE user_approvals
+                SET status = 'rejected',
+                    reviewed_by = ?,
+                    reviewed_at = CURRENT_TIMESTAMP,
+                    rejection_reason = ?,
+                    notes = 'KYC rejected'
+                WHERE user_id = ?
+                ''',
+                (admin_id, reason, user_id),
+            )
+
+            if cursor.rowcount == 0:
+                cursor.execute(
+                    '''
+                    INSERT INTO user_approvals (user_id, status, reviewed_by, reviewed_at, rejection_reason, notes)
+                    VALUES (?, 'rejected', ?, CURRENT_TIMESTAMP, ?, 'KYC rejected')
+                    ''',
+                    (user_id, admin_id, reason),
+                )
+
+            rejection_message = f'Your ZeusChat KYC verification was rejected. Reason: {reason}'
+            cursor.execute(
+                '''
+                INSERT INTO admin_messages (user_id, message, is_from_admin, admin_id)
+                VALUES (?, ?, 1, ?)
+                ''',
+                (user_id, rejection_message, admin_id),
+            )
+
+            conn.commit()
+
+        log_admin_action(
+            admin_id,
+            'kyc_rejected',
+            target_user_id=user_id,
+            details={'kyc_id': kyc_id, 'reason': reason},
+            ip_address=request.remote_addr,
         )
 
-        cursor.execute(
-            '''
-            INSERT INTO user_approvals (user_id, status, reviewed_by, reviewed_at, rejection_reason, notes)
-            VALUES (?, 'rejected', ?, CURRENT_TIMESTAMP, ?, ?)
-            ON CONFLICT(user_id) DO UPDATE SET
-                status = 'rejected',
-                reviewed_by = excluded.reviewed_by,
-                reviewed_at = CURRENT_TIMESTAMP,
-                rejection_reason = excluded.rejection_reason,
-                notes = excluded.notes
-            ''',
-            (user_id, admin_id, reason, 'KYC rejected'),
-        )
-
-        rejection_message = f'Your ZeusChat KYC verification was rejected. Reason: {reason}'
-        cursor.execute(
-            '''
-            INSERT INTO admin_messages (user_id, message, is_from_admin, admin_id)
-            VALUES (?, ?, 1, ?)
-            ''',
-            (user_id, rejection_message, admin_id),
-        )
-
-        conn.commit()
-
-    log_admin_action(
-        admin_id,
-        'kyc_rejected',
-        target_user_id=user_id,
-        details={'kyc_id': kyc_id, 'reason': reason},
-        ip_address=request.remote_addr,
-    )
-
-    return jsonify({'success': True, 'message': 'KYC rejected - user remains inactive'}), 200
+        return jsonify({'success': True, 'message': 'KYC rejected - user remains inactive'}), 200
+    except Exception as e:
+        print(f"❌ KYC rejection error (kyc_id={kyc_id}, admin_id={admin_id}): {e}")
+        return jsonify({'error': str(e)}), 500
 
 
 @admin_bp.route('/api/profile-pic/requests', methods=['GET'])

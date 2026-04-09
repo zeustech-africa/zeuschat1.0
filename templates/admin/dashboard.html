@@ -1045,12 +1045,13 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ notes })
                 });
+                const result = await response.json().catch(() => ({}));
                 if (response.ok) {
                     loadPendingKYC();
                     loadStats();
                     loadPendingApprovals();
                 } else {
-                    alert('Failed to approve KYC');
+                    alert(result.error || 'Failed to approve KYC');
                 }
             } catch (error) {
                 alert('Failed to approve KYC');
@@ -1067,12 +1068,13 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ reason })
                 });
+                const result = await response.json().catch(() => ({}));
                 if (response.ok) {
                     loadPendingKYC();
                     loadStats();
                     loadPendingApprovals();
                 } else {
-                    alert('Failed to reject KYC');
+                    alert(result.error || 'Failed to reject KYC');
                 }
             } catch (error) {
                 alert('Failed to reject KYC');

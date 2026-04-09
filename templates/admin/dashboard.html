@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <meta name="csrf-token" content="">
     <title>ZeusChat Admin Control Room</title>
     <style>
         * {
@@ -663,9 +664,14 @@
     }
 }
     </style>
-  <link rel="stylesheet" href="/static/mobile.css">
+    <link rel="stylesheet" href="/static/mobile.css">
+    <link rel="stylesheet" href="/static/admin-premium.css">
 </head>
 <body>
+        <div class="floating-ghost-admin" style="top: 10%; left: 5%;">👻</div>
+        <div class="floating-ghost-admin" style="bottom: 15%; right: 8%;">👻</div>
+        <div class="floating-ghost-admin" style="top: 30%; right: 15%;">🕯️</div>
+
     <div class="sidebar">
         <div class="sidebar-header">
             <h2>🛡️ ZeusChat</h2>
@@ -839,7 +845,15 @@
             });
             const data = await response.json();
             adminCsrfToken = data.csrf_token || null;
+            const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+            if (csrfMeta && adminCsrfToken) {
+                csrfMeta.setAttribute('content', adminCsrfToken);
+            }
             return adminCsrfToken;
+        }
+
+        function getCsrfToken() {
+            return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || adminCsrfToken || '';
         }
 
         async function adminJsonFetch(url, options = {}) {
@@ -852,7 +866,10 @@
             };
 
             if ((requestOptions.method || 'GET').toUpperCase() !== 'GET') {
-                const token = await ensureAdminCsrfToken();
+                let token = getCsrfToken();
+                if (!token) {
+                    token = await ensureAdminCsrfToken();
+                }
                 if (token) {
                     requestOptions.headers['X-CSRF-Token'] = token;
                 }
@@ -1040,7 +1057,7 @@
             const notes = document.getElementById(`notes_${kycId}`)?.value || '';
             if (!confirm('Approve this KYC and activate user?')) return;
             try {
-                const response = await fetch(`/admin/api/kyc/${kycId}/approve`, {
+                const response = await adminJsonFetch(`/admin/api/kyc/${kycId}/approve`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ notes })
@@ -1063,7 +1080,7 @@
             const reason = prompt('Enter rejection reason (sent to user):');
             if (!reason) return;
             try {
-                const response = await fetch(`/admin/api/kyc/${kycId}/reject`, {
+                const response = await adminJsonFetch(`/admin/api/kyc/${kycId}/reject`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ reason })
@@ -1182,7 +1199,7 @@
             const message = document.getElementById('messageInput').value.trim();
             if (!message || !currentUser) return;
             try {
-                const response = await fetch('/admin/api/messages/send', {
+                const response = await adminJsonFetch('/admin/api/messages/send', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ user_id: currentUser.id, message })
@@ -1199,7 +1216,7 @@
         async function approveUser(userId) {
             if (!confirm('Approve this user?')) return;
             try {
-                await fetch(`/admin/api/users/${userId}/approve`, { method: 'PUT' });
+                await adminJsonFetch(`/admin/api/users/${userId}/approve`, { method: 'PUT' });
                 loadStats(); loadPendingApprovals(); loadUsers();
             } catch (error) { alert('Failed to approve user'); }
         }
@@ -1209,7 +1226,7 @@
             const reason = prompt('Enter rejection reason:');
             if (!reason) return;
             try {
-                await fetch(`/admin/api/users/${userId}/reject`, {
+                await adminJsonFetch(`/admin/api/users/${userId}/reject`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ rejection_reason: reason })
@@ -1229,7 +1246,7 @@
                 return;
             }
             try {
-                await fetch(`/admin/api/users/${userId}/suspend`, {
+                await adminJsonFetch(`/admin/api/users/${userId}/suspend`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ reason, duration_days: durationDays })
@@ -1246,7 +1263,7 @@
             if (!reason) return;
             if (!confirm('Ban this user account? This should only be used for serious violations.')) return;
             try {
-                await fetch(`/admin/api/users/${userId}/ban`, {
+                await adminJsonFetch(`/admin/api/users/${userId}/ban`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ reason })
@@ -1261,7 +1278,7 @@
         async function approvePayment(paymentId) {
             if (!confirm('Approve this payment and unlock feature?')) return;
             try {
-                await fetch(`/admin/api/payments/${paymentId}/approve`, { method: 'PUT' });
+                await adminJsonFetch(`/admin/api/payments/${paymentId}/approve`, { method: 'PUT' });
                 loadStats(); loadPendingPayments();
             } catch (error) { alert('Failed to approve payment'); }
         }
@@ -1271,7 +1288,7 @@
             const reason = prompt('Enter rejection reason:');
             if (!reason) return;
             try {
-                await fetch(`/admin/api/payments/${paymentId}/reject`, {
+                await adminJsonFetch(`/admin/api/payments/${paymentId}/reject`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ reason })
@@ -1328,7 +1345,7 @@ Message Stats: ${data.message_stats.total} total / ${data.message_stats.user_mes
 
         // Logout
         async function logout() {
-            await fetch('/admin/api/logout', { method: 'POST' });
+            await adminJsonFetch('/admin/api/logout', { method: 'POST' });
             window.location.href = '/admin/login';
         }
 
@@ -1740,7 +1757,7 @@ Message Stats: ${data.message_stats.total} total / ${data.message_stats.user_mes
             const notes = notesEl ? notesEl.value : '';
             if (!confirm('Approve this item for Ghost Market?')) return;
             try {
-                const response = await fetch('/admin/api/ghost-market/items/' + itemId + '/approve', {
+                const response = await adminJsonFetch('/admin/api/ghost-market/items/' + itemId + '/approve', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ notes })
@@ -1754,7 +1771,7 @@ Message Stats: ${data.message_stats.total} total / ${data.message_stats.user_mes
             const reason = prompt('Enter rejection reason:');
             if (!reason) return;
             try {
-                const response = await fetch('/admin/api/ghost-market/items/' + itemId + '/reject', {
+                const response = await adminJsonFetch('/admin/api/ghost-market/items/' + itemId + '/reject', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ reason })
@@ -1769,7 +1786,7 @@ Message Stats: ${data.message_stats.total} total / ${data.message_stats.user_mes
             const notes = notesEl ? notesEl.value : '';
             if (!confirm('Approve this seller application?')) return;
             try {
-                const response = await fetch('/admin/api/ghost-market/sellers/' + userId + '/approve', {
+                const response = await adminJsonFetch('/admin/api/ghost-market/sellers/' + userId + '/approve', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ notes })
@@ -1783,7 +1800,7 @@ Message Stats: ${data.message_stats.total} total / ${data.message_stats.user_mes
             const reason = prompt('Enter rejection reason:');
             if (!reason) return;
             try {
-                const response = await fetch('/admin/api/ghost-market/sellers/' + userId + '/reject', {
+                const response = await adminJsonFetch('/admin/api/ghost-market/sellers/' + userId + '/reject', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ reason })
@@ -1797,7 +1814,7 @@ Message Stats: ${data.message_stats.total} total / ${data.message_stats.user_mes
         async function deleteMarketItem(itemId) {
             if (!confirm('Delete this listing permanently? This cannot be undone.')) return;
             try {
-                const response = await fetch('/admin/api/ghost-market/items/' + itemId + '/delete', { method: 'DELETE' });
+                const response = await adminJsonFetch('/admin/api/ghost-market/items/' + itemId + '/delete', { method: 'DELETE' });
                 const data = await response.json();
                 if (response.ok && data.success) {
                     loadGhostMarketPending();
@@ -1811,7 +1828,7 @@ Message Stats: ${data.message_stats.total} total / ${data.message_stats.user_mes
         async function deleteGhostPost(postId) {
             if (!confirm('Delete this post permanently? This cannot be undone.')) return;
             try {
-                const response = await fetch('/admin/api/ghost/posts/' + postId + '/delete', { method: 'DELETE' });
+                const response = await adminJsonFetch('/admin/api/ghost/posts/' + postId + '/delete', { method: 'DELETE' });
                 const data = await response.json();
                 if (response.ok && data.success) {
                     loadPendingPosts();
@@ -1825,7 +1842,7 @@ Message Stats: ${data.message_stats.total} total / ${data.message_stats.user_mes
         async function deleteGhostComment(commentId) {
             if (!confirm('Delete this comment permanently?')) return;
             try {
-                const response = await fetch('/admin/api/ghost/comments/' + commentId + '/delete', { method: 'DELETE' });
+                const response = await adminJsonFetch('/admin/api/ghost/comments/' + commentId + '/delete', { method: 'DELETE' });
                 const data = await response.json();
                 if (!response.ok) alert(data.error || 'Failed to delete comment.');
             } catch (err) { alert('Network error.'); }

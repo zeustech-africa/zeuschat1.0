@@ -741,7 +741,12 @@ def bootstrap_first_admin(cursor):
         INSERT INTO admin_users (username, password_hash, email, role, permissions)
         VALUES (?, ?, ?, 'super_admin', ?)
         ''',
-        (first_admin_username, hash_password(first_admin_password), first_admin_email, DEFAULT_ADMIN_PERMISSIONS),
+        (
+            first_admin_username,
+            bcrypt.hashpw(first_admin_password.encode(), bcrypt.gensalt()).decode(),
+            first_admin_email,
+            DEFAULT_ADMIN_PERMISSIONS,
+        ),
     )
     print('✅ First admin created from environment variables')
 

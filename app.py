@@ -2642,11 +2642,30 @@ def unlock():
         cursor.execute('SELECT password_hash FROM users WHERE id = ?', (user_id,))
         user = cursor.fetchone()
 
-    if not user:
-        return jsonify({'error': 'User not found'}), 404
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
 
-    if not verify_password(password, user['password_hash']):
-        return jsonify({'error': 'Incorrect password'}), 401
+        stored_hash = user['password_hash'] or ''
+        legacy_hash = is_legacy_sha256_hash(stored_hash)
+
+        print(f"🔐 Unlock attempt for user {user_id}")
+        print(f"🔐 Hash type: {'legacy SHA-256' if legacy_hash else 'bcrypt'}")
+
+        if legacy_hash:
+            if hashlib.sha256(password.encode()).hexdigest() != stored_hash:
+                return jsonify({'error': 'Incorrect password'}), 401
+
+            # Migrate legacy SHA-256 hash to bcrypt after successful unlock.
+            new_hash = hash_password(password)
+            cursor.execute('UPDATE users SET password_hash = ? WHERE id = ?', (new_hash, user_id))
+            cursor.execute('DELETE FROM password_migration_queue WHERE user_id = ?', (user_id,))
+            conn.commit()
+        else:
+            try:
+                if not bcrypt.checkpw(password.encode(), stored_hash.encode()):
+                    return jsonify({'error': 'Incorrect password'}), 401
+            except Exception:
+                return jsonify({'error': 'Incorrect password'}), 401
 
     session['password_unlocked'] = True
     session.permanent = True

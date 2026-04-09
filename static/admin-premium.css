@@ -1,0 +1,288 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Premium ZeusChat Admin Theme */
+:root {
+  --admin-bg-0: #070707;
+  --admin-bg-1: #11111a;
+  --admin-bg-2: #171726;
+  --admin-glass: rgba(18, 18, 28, 0.72);
+  --admin-glass-strong: rgba(10, 10, 16, 0.9);
+  --admin-gold: #d4af37;
+  --admin-gold-2: #b8960c;
+  --admin-text: #f6f1df;
+  --admin-muted: rgba(255, 255, 255, 0.68);
+  --admin-border: rgba(212, 175, 55, 0.24);
+  --admin-danger: #ef4444;
+  --admin-success: #10b981;
+}
+
+body {
+  background:
+    radial-gradient(ellipse at 20% 30%, #0f0f1a 0%, transparent 35%),
+    radial-gradient(ellipse at 80% 70%, rgba(212, 175, 55, 0.04) 0%, transparent 40%),
+    linear-gradient(135deg, var(--admin-bg-0) 0%, var(--admin-bg-1) 45%, var(--admin-bg-2) 100%) !important;
+  color: var(--admin-text) !important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 10% 20%, rgba(212, 175, 55, 0.03) 0%, transparent 30%),
+    radial-gradient(circle at 90% 70%, rgba(212, 175, 55, 0.02) 0%, transparent 40%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.floating-ghost,
+.floating-ghost-admin {
+  position: fixed;
+  font-size: 40px;
+  opacity: 0.03;
+  pointer-events: none;
+  z-index: 0;
+  animation: floatGhost 20s infinite ease-in-out;
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.45));
+}
+
+@keyframes floatGhost {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(50px, -30px) rotate(5deg); }
+  50% { transform: translate(-30px, 50px) rotate(-5deg); }
+  75% { transform: translate(40px, 30px) rotate(3deg); }
+}
+
+.sidebar {
+  background: var(--admin-glass-strong) !important;
+  backdrop-filter: blur(12px);
+  border-right: 1px solid var(--admin-border) !important;
+  box-shadow: 8px 0 28px rgba(0, 0, 0, 0.36);
+}
+
+.sidebar-header {
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2) !important;
+}
+
+.sidebar-header h2,
+.sidebar-header .role {
+  color: var(--admin-gold) !important;
+}
+
+.nav-item {
+  color: rgba(255, 255, 255, 0.76) !important;
+}
+
+.nav-item:hover {
+  background: rgba(212, 175, 55, 0.12) !important;
+  color: var(--admin-gold) !important;
+}
+
+.nav-item.active {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.2), rgba(212, 175, 55, 0.06)) !important;
+  border-left: 3px solid var(--admin-gold) !important;
+  color: var(--admin-gold) !important;
+}
+
+.nav-badge,
+#pendingApprovalsBadge,
+#kycPendingBadge,
+#pendingPaymentsBadge,
+#unreadMessagesBadge,
+#ghostPendingBadge,
+#ghostMarketBadge {
+  background: linear-gradient(135deg, #f59e0b, #b45309) !important;
+  color: #111 !important;
+  font-weight: 700;
+}
+
+.main-content {
+  background: rgba(9, 9, 14, 0.55) !important;
+  position: relative;
+  z-index: 1;
+}
+
+.page-header,
+.stat-card,
+.admin-table,
+.message-interface,
+.user-list,
+.chat-window,
+.chat-messages,
+.message-input-area,
+.moderation-card,
+.pending-post-card,
+.ghost-item-card,
+#approvalsList > div,
+#kycList > div,
+#paymentsList > div,
+#subscriptionsList > div,
+#reportsList > div,
+#creatorsList > div,
+#bannedList > div,
+#ghostMarketList > div,
+#ghostMarketSellersList > div,
+#activityFeed,
+div[style*="background:white"] {
+  background: var(--admin-glass) !important;
+  backdrop-filter: blur(11px) !important;
+  border: 1px solid var(--admin-border) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35) !important;
+}
+
+.page-header h1,
+.page-header h3,
+.page-header h2,
+h3,
+h4,
+h5,
+.ghost-section-title {
+  color: var(--admin-gold) !important;
+}
+
+.page-header p,
+.stat-label,
+.user-pin,
+.message-time,
+.filters label,
+.filters span {
+  color: var(--admin-muted) !important;
+}
+
+.stat-number {
+  color: var(--admin-gold) !important;
+  text-shadow: 0 0 18px rgba(212, 175, 55, 0.18);
+}
+
+.btn-approve,
+button.btn-approve {
+  background: linear-gradient(135deg, var(--admin-gold) 0%, var(--admin-gold-2) 100%) !important;
+  color: #0a0a0a !important;
+  border: 1px solid rgba(212, 175, 55, 0.6) !important;
+}
+
+.btn-reject,
+button.btn-reject {
+  background: rgba(239, 68, 68, 0.82) !important;
+  border: 1px solid var(--admin-danger) !important;
+  color: #fff !important;
+}
+
+.btn-view,
+.btn-warning,
+button.btn-view,
+button.btn-warning,
+.btn-activity {
+  background: rgba(212, 175, 55, 0.18) !important;
+  border: 1px solid rgba(212, 175, 55, 0.7) !important;
+  color: var(--admin-gold) !important;
+}
+
+button,
+.btn-refresh,
+.logout-btn {
+  border-radius: 30px !important;
+}
+
+button:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.admin-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+}
+
+.admin-table th {
+  background: rgba(212, 175, 55, 0.14) !important;
+  color: var(--admin-gold) !important;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.34) !important;
+}
+
+.admin-table td {
+  color: rgba(255, 255, 255, 0.9) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.status-pending {
+  background: #f59e0b !important;
+  color: #1a1a1a !important;
+}
+
+.status-approved {
+  background: #10b981 !important;
+  color: #fff !important;
+}
+
+.status-suspended,
+.status-rejected {
+  background: #ef4444 !important;
+  color: #fff !important;
+}
+
+.status-banned {
+  background: #1e293b !important;
+  color: #fff !important;
+}
+
+input,
+select,
+textarea,
+.filters input,
+.filters select,
+.message-input-area textarea,
+.ghost-notes-input {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #fff !important;
+  border: 1px solid rgba(212, 175, 55, 0.2) !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgba(255, 255, 255, 0.45) !important;
+}
+
+#userActivityModal {
+  backdrop-filter: blur(4px);
+}
+
+#userActivityModal > div {
+  background: var(--admin-glass-strong) !important;
+  border: 1px solid var(--admin-border) !important;
+  color: var(--admin-text) !important;
+}
+
+#userActivityModal h3,
+#userActivityModal h4,
+#userActivityModal h5 {
+  color: var(--admin-gold) !important;
+}
+
+#userActivityModal p,
+#userActivityModal li {
+  color: rgba(255, 255, 255, 0.88) !important;
+}
+
+#userActivityModal button {
+  background: rgba(212, 175, 55, 0.14) !important;
+  color: var(--admin-gold) !important;
+  border: 1px solid rgba(212, 175, 55, 0.5) !important;
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    background: transparent !important;
+  }
+
+  .floating-ghost,
+  .floating-ghost-admin {
+    font-size: 32px;
+  }
+}

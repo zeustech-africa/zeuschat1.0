@@ -1746,12 +1746,20 @@ def optimize_database():
 optimize_database()
 
 # Validate payment settings before exposing payment routes.
-validate_payment_config()
+payment_routes_enabled = True
+try:
+    validate_payment_config()
+except Exception as e:
+    payment_routes_enabled = False
+    print(f"⚠️ Payment routes disabled at startup: {e}")
 
 # Register additive blueprints (no existing route removal)
 app.register_blueprint(admin_bp)
-app.register_blueprint(payment_bp)
-print("✅ Admin and payment routes registered")
+if payment_routes_enabled:
+    app.register_blueprint(payment_bp)
+    print("✅ Admin and payment routes registered")
+else:
+    print("✅ Admin routes registered")
 
 # Helper functions
 def generate_zeus_pin():

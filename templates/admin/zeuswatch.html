@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZeusWatch - Admin Intelligence</title>
+    <link rel="stylesheet" href="/static/admin-premium.css">
+    <style>
+        :root {
+            --zw-bg: #0b0f14;
+            --zw-panel: rgba(17, 23, 31, 0.85);
+            --zw-border: rgba(212, 175, 55, 0.22);
+            --zw-text: #f6f7fb;
+            --zw-muted: rgba(246, 247, 251, 0.72);
+            --zw-gold: #d4af37;
+            --zw-critical: #ef4444;
+            --zw-warning: #f59e0b;
+            --zw-info: #10b981;
+        }
+
+        body {
+            margin: 0;
+            background: radial-gradient(circle at 10% -20%, rgba(212, 175, 55, 0.16), transparent 40%),
+                        radial-gradient(circle at 100% 0%, rgba(16, 185, 129, 0.1), transparent 30%),
+                        var(--zw-bg);
+            color: var(--zw-text);
+            font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        .container {
+            max-width: 1320px;
+            margin: 0 auto;
+            padding: 22px;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .title-wrap h1 {
+            margin: 0;
+            font-size: clamp(24px, 3vw, 34px);
+            letter-spacing: 0.5px;
+        }
+
+        .title-wrap p {
+            margin: 6px 0 0;
+            color: var(--zw-muted);
+            font-size: 14px;
+        }
+
+        .status-live {
+            border: 1px solid rgba(16, 185, 129, 0.55);
+            color: #34d399;
+            background: rgba(16, 185, 129, 0.12);
+            border-radius: 999px;
+            padding: 8px 14px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.4px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .metric-card {
+            background: var(--zw-panel);
+            border: 1px solid var(--zw-border);
+            border-radius: 14px;
+            padding: 14px;
+            transition: all 0.25s ease;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(212, 175, 55, 0.44);
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: var(--zw-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+            margin-bottom: 8px;
+        }
+
+        .metric-value {
+            font-size: 26px;
+            font-weight: 800;
+            color: var(--zw-text);
+            margin-bottom: 4px;
+        }
+
+        .metric-sub {
+            font-size: 12px;
+            color: var(--zw-muted);
+        }
+
+        .panel {
+            background: var(--zw-panel);
+            border: 1px solid var(--zw-border);
+            border-radius: 14px;
+            padding: 14px;
+            margin-bottom: 16px;
+        }
+
+        .panel h2 {
+            margin: 0 0 10px;
+            font-size: 18px;
+            color: var(--zw-gold);
+        }
+
+        .alert-group {
+            margin-bottom: 14px;
+        }
+
+        .alert-title {
+            font-size: 15px;
+            font-weight: 700;
+            margin: 0 0 8px;
+        }
+
+        .alert-critical {
+            border-left: 4px solid var(--zw-critical);
+            background: rgba(239, 68, 68, 0.11);
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .alert-warning {
+            border-left: 4px solid var(--zw-warning);
+            background: rgba(245, 158, 11, 0.11);
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .alert-info {
+            border-left: 4px solid var(--zw-info);
+            background: rgba(16, 185, 129, 0.12);
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .alert-item {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .alert-item:last-child {
+            border-bottom: none;
+        }
+
+        .alert-message {
+            margin: 0 0 8px;
+            font-size: 14px;
+        }
+
+        .action-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .action-btn {
+            background: linear-gradient(135deg, #d4af37 0%, #b8960c 100%);
+            color: #0a0a0a;
+            border: none;
+            padding: 7px 12px;
+            border-radius: 999px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .action-btn.secondary {
+            background: rgba(148, 163, 184, 0.2);
+            color: #e2e8f0;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+        }
+
+        .action-btn.danger {
+            background: rgba(239, 68, 68, 0.24);
+            color: #fecaca;
+            border: 1px solid rgba(239, 68, 68, 0.45);
+        }
+
+        .split-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .kpi-box {
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            border-radius: 12px;
+            padding: 12px;
+            background: rgba(13, 18, 24, 0.65);
+        }
+
+        .kpi-head {
+            font-size: 12px;
+            color: var(--zw-muted);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .kpi-line {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            font-size: 13px;
+            padding: 4px 0;
+        }
+
+        .predictive-card {
+            border: 1px solid rgba(212, 175, 55, 0.24);
+            border-radius: 12px;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: rgba(13, 18, 24, 0.68);
+        }
+
+        .refresh-btn {
+            position: fixed;
+            bottom: 18px;
+            right: 18px;
+            z-index: 100;
+            min-width: 130px;
+        }
+
+        .small {
+            font-size: 12px;
+            color: var(--zw-muted);
+        }
+
+        @media (max-width: 1080px) {
+            .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .split-grid { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 640px) {
+            .stats-grid { grid-template-columns: 1fr; }
+            .top-bar { align-items: flex-start; flex-direction: column; }
+            .refresh-btn { position: static; width: 100%; margin-top: 8px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="top-bar">
+            <div class="title-wrap">
+                <h1>🔴 ZEUSWATCH - Proactive Admin Intelligence</h1>
+                <p>Live oversight, predictive alerts, and one-click controls.</p>
+            </div>
+            <div class="status-live" id="liveStatus">LIVE</div>
+        </div>
+
+        <div class="stats-grid" id="systemHealth"></div>
+
+        <div class="panel">
+            <h2>🚨 Active Alerts</h2>
+            <div id="criticalAlerts" class="alert-group"></div>
+            <div id="warningAlerts" class="alert-group"></div>
+            <div id="infoAlerts" class="alert-group"></div>
+        </div>
+
+        <div class="panel">
+            <h2>💰 Payment Intelligence</h2>
+            <div class="split-grid" id="paymentStats"></div>
+        </div>
+
+        <div class="panel">
+            <h2>👻 Content Intelligence</h2>
+            <div id="contentQueue"></div>
+        </div>
+
+        <div class="panel">
+            <h2>🔮 Predictive Intelligence</h2>
+            <div id="predictiveAlerts"></div>
+        </div>
+
+        <div class="panel">
+            <h2>⚡ Emergency Overrides</h2>
+            <div class="action-row">
+                <button class="action-btn" onclick="overridePinExpiry()">Extend All Expired PINs (7 days)</button>
+                <button id="btnRegistrations" class="action-btn secondary" onclick="toggleRegistrations()">Pause New Registrations</button>
+                <button class="action-btn secondary" onclick="clearMessageQueue()">Clear Stuck Message Queue</button>
+                <button id="btnMaintenance" class="action-btn danger" onclick="toggleMaintenanceMode()">Enable Maintenance Mode</button>
+            </div>
+            <p class="small" id="overrideResult" style="margin-top:10px;"></p>
+        </div>
+
+        <button class="action-btn refresh-btn" onclick="manualRefresh()">🔄 Refresh Now</button>
+    </div>
+
+    <script>
+        let refreshInterval = null;
+        let adminCsrfToken = '';
+
+        async function ensureAdminCsrfToken(forceRefresh = false) {
+            if (adminCsrfToken && !forceRefresh) return adminCsrfToken;
+            const response = await fetch('/api/csrf-token', { method: 'GET', credentials: 'include' });
+            const data = await response.json();
+            adminCsrfToken = data.csrf_token || '';
+            return adminCsrfToken;
+        }
+
+        async function adminJsonFetch(url, options = {}) {
+            const requestOptions = {
+                credentials: 'include',
+                ...options,
+                headers: {
+                    ...(options.headers || {})
+                }
+            };
+
+            if ((requestOptions.method || 'GET').toUpperCase() !== 'GET') {
+                const token = await ensureAdminCsrfToken();
+                if (token) requestOptions.headers['X-CSRF-Token'] = token;
+            }
+
+            return fetch(url, requestOptions);
+        }
+
+        function formatNumber(value) {
+            const n = Number(value || 0);
+            return n.toLocaleString('en-ZA');
+        }
+
+        function formatMoney(value) {
+            const n = Number(value || 0);
+            return `R${n.toLocaleString('en-ZA', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+        }
+
+        function renderSystemHealth(system, alertsCount) {
+            const cards = [
+                {
+                    label: '🟢 System',
+                    value: system.status || 'Healthy',
+                    sub: `${system.uptime || 99.8}% uptime`
+                },
+                {
+                    label: '👥 Users',
+                    value: formatNumber(system.total_users),
+                    sub: `+${formatNumber(system.new_users_today || 0)} today`
+                },
+                {
+                    label: '💰 Revenue',
+                    value: formatMoney(system.revenue_today || 0),
+                    sub: `MRR ${formatMoney(system.monthly_recurring || 0)}`
+                },
+                {
+                    label: '⚠️ Alerts',
+                    value: formatNumber(alertsCount),
+                    sub: alertsCount > 0 ? 'Click and resolve' : 'No active alerts'
+                },
+            ];
+
+            document.getElementById('systemHealth').innerHTML = cards.map(card => `
+                <div class="metric-card">
+                    <div class="metric-label">${card.label}</div>
+                    <div class="metric-value">${card.value}</div>
+                    <div class="metric-sub">${card.sub}</div>
+                </div>
+            `).join('');
+        }
+
+        function alertActionButtons(alert) {
+            const actions = alert.actions || [];
+            if (!actions.length) return '';
+            return `<div class="action-row">${actions.map(action => `<button class="action-btn ${action.variant || ''}" onclick="triggerAction('${action.action}')">${action.label}</button>`).join('')}</div>`;
+        }
+
+        function renderAlertGroup(targetId, title, cssClass, alerts) {
+            const target = document.getElementById(targetId);
+            if (!alerts || !alerts.length) {
+                target.innerHTML = `<div class="${cssClass}"><p class="alert-title">${title}</p><p class="small">No items right now.</p></div>`;
+                return;
+            }
+
+            target.innerHTML = `
+                <div class="${cssClass}">
+                    <p class="alert-title">${title}</p>
+                    ${alerts.map(a => `
+                        <div class="alert-item">
+                            <p class="alert-message">${a.message}</p>
+                            ${alertActionButtons(a)}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function renderPaymentStats(payments) {
+            document.getElementById('paymentStats').innerHTML = `
+                <div class="kpi-box">
+                    <div class="kpi-head">Ghost Market Escrow</div>
+                    <div class="kpi-line"><span>Active Orders</span><strong>${formatNumber(payments.escrow_active_orders)}</strong></div>
+                    <div class="kpi-line"><span>Total Held</span><strong>${formatMoney(payments.escrow_total_held)}</strong></div>
+                    <div class="kpi-line"><span>Pending Delivery</span><strong>${formatNumber(payments.pending_delivery)}</strong></div>
+                    <div class="kpi-line"><span>Open Disputes</span><strong>${formatNumber(payments.open_disputes)}</strong></div>
+                </div>
+                <div class="kpi-box">
+                    <div class="kpi-head">Subscriptions</div>
+                    <div class="kpi-line"><span>Active Pro</span><strong>${formatNumber(payments.active_pro)}</strong></div>
+                    <div class="kpi-line"><span>Active Teams</span><strong>${formatNumber(payments.active_teams)}</strong></div>
+                    <div class="kpi-line"><span>Monthly Recurring</span><strong>${formatMoney(payments.monthly_recurring)}</strong></div>
+                    <div class="kpi-line"><span>Failed Renewals</span><strong>${formatNumber(payments.failed_renewals)}</strong></div>
+                </div>
+                <div class="kpi-box">
+                    <div class="kpi-head">One-off Payments</div>
+                    <div class="kpi-line"><span>PIN Extensions</span><strong>${formatNumber(payments.pin_extensions)}</strong></div>
+                    <div class="kpi-line"><span>Profile Pictures</span><strong>${formatNumber(payments.profile_picture_payments)}</strong></div>
+                    <div class="kpi-line"><span>Pending Approval</span><strong>${formatNumber(payments.pending_approval)}</strong></div>
+                    <div class="kpi-line"><span>Pending Amount</span><strong>${formatMoney(payments.pending_amount)}</strong></div>
+                </div>
+            `;
+        }
+
+        function renderContentQueue(content) {
+            document.getElementById('contentQueue').innerHTML = `
+                <div class="kpi-box" style="margin-bottom:10px;">
+                    <div class="kpi-head">AI-Flagged Content</div>
+                    <div class="kpi-line"><span>Flagged Posts</span><strong>${formatNumber(content.flagged_posts)}</strong></div>
+                    <div class="kpi-line"><span>User Reports (open)</span><strong>${formatNumber(content.open_reports)}</strong></div>
+                    <div class="action-row" style="margin-top:8px;">
+                        <button class="action-btn" onclick="triggerAction('review_reports')">Review Reports</button>
+                        <button class="action-btn secondary" onclick="triggerAction('review_pending_posts')">Review Pending Posts</button>
+                    </div>
+                </div>
+                <div class="kpi-box">
+                    <div class="kpi-head">Ghost Market Review Queue</div>
+                    <div class="kpi-line"><span>Pending Listings</span><strong>${formatNumber(content.pending_market_items)}</strong></div>
+                    <div class="kpi-line"><span>Pending > 48 hours</span><strong>${formatNumber(content.pending_market_over_48h)}</strong></div>
+                    <div class="action-row" style="margin-top:8px;">
+                        <button class="action-btn" onclick="triggerAction('review_market_queue')">Review Queue</button>
+                        <button class="action-btn secondary" onclick="triggerAction('view_ghost_market')">Open Ghost Market Tab</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderPredictiveAlerts(predictive) {
+            const rows = [
+                {
+                    icon: '⚠️',
+                    text: `Database usage ${predictive.db_size_mb}MB/${predictive.db_limit_mb}MB. Estimated ${predictive.days_to_limit} days to limit.`
+                },
+                {
+                    icon: '⚠️',
+                    text: `Server load ${predictive.server_load_pct}% with projected peak ${predictive.projected_load_7d}% in 7 days.`
+                },
+                {
+                    icon: '📈',
+                    text: `User growth ${predictive.user_growth_weekly_pct}% week-over-week.`
+                }
+            ];
+
+            document.getElementById('predictiveAlerts').innerHTML = rows.map(row => `
+                <div class="predictive-card">
+                    <p style="margin:0 0 8px;">${row.icon} ${row.text}</p>
+                    <div class="action-row">
+                        <button class="action-btn secondary" onclick="triggerAction('view_scaling_playbook')">Plan</button>
+                        <button class="action-btn secondary" onclick="triggerAction('ignore_predictive')">Ignore</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateStatusTime() {
+            document.getElementById('liveStatus').textContent = `LIVE ${new Date().toLocaleTimeString()}`;
+        }
+
+        async function loadZeusWatch() {
+            try {
+                const response = await fetch('/admin/api/zeuswatch', { credentials: 'include' });
+                if (!response.ok) throw new Error('Failed to load ZeusWatch');
+                const data = await response.json();
+
+                const totalAlerts = (data.alerts.critical || []).length + (data.alerts.warning || []).length + (data.alerts.info || []).length;
+                renderSystemHealth(data.system, totalAlerts);
+                renderAlertGroup('criticalAlerts', '🔴 CRITICAL - Needs Immediate Action', 'alert-critical', data.alerts.critical || []);
+                renderAlertGroup('warningAlerts', '🟡 WARNING - Action Recommended', 'alert-warning', data.alerts.warning || []);
+                renderAlertGroup('infoAlerts', '🟢 INFO - For Awareness', 'alert-info', data.alerts.info || []);
+                renderPaymentStats(data.payments || {});
+                renderContentQueue(data.content || {});
+                renderPredictiveAlerts(data.predictive || {});
+                _flagsCache = (data.system && data.system.flags) ? data.system.flags : {};
+                updateFlagButtons(_flagsCache);
+                updateStatusTime();
+            } catch (err) {
+                document.getElementById('criticalAlerts').innerHTML = '<div class="alert-critical"><p class="alert-title">🔴 CRITICAL</p><p class="alert-message">Unable to load ZeusWatch data.</p></div>';
+            }
+        }
+
+        async function triggerAction(action) {
+            const actionMap = {
+                review_reports: '/admin/dashboard#tab-ghostModeration',
+                review_pending_posts: '/admin/dashboard#tab-ghostModeration',
+                review_market_queue: '/admin/dashboard#tab-ghostMarket',
+                view_ghost_market: '/admin/dashboard#tab-ghostMarket',
+                view_scaling_playbook: '/admin/dashboard',
+                ignore_predictive: null,
+                test_payfast: '/admin/dashboard#tab-payments',
+                contact_support: '/admin/dashboard#tab-messages',
+                optimize_db: '/admin/dashboard',
+                request_upgrade: '/admin/dashboard',
+                archive_data: '/admin/dashboard',
+                review_kyc: '/admin/dashboard#tab-kyc',
+                assign_kyc: '/admin/dashboard#tab-kyc',
+                review_disputes: '/admin/dashboard#tab-ghostMarket',
+                retry_renewals: '/admin/dashboard#tab-subscriptions',
+                notify_expiring_subs: '/admin/dashboard#tab-subscriptions',
+                approve_pending_payments: '/admin/dashboard#tab-payments'
+            };
+
+            const destination = actionMap[action];
+            if (destination) {
+                window.location.href = destination;
+                return;
+            }
+
+            if (action === 'ignore_predictive') {
+                document.getElementById('overrideResult').textContent = 'Predictive alert ignored for this session.';
+            }
+        }
+
+        async function postOverride(url, confirmText, successFallback) {
+            if (!confirm(confirmText)) return;
+            const response = await adminJsonFetch(url, { method: 'POST' });
+            const data = await response.json().catch(() => ({}));
+            const message = data.message || successFallback;
+            document.getElementById('overrideResult').textContent = message;
+            await loadZeusWatch();
+        }
+
+        async function overridePinExpiry() {
+            await postOverride('/admin/api/override/extend-pins', 'Extend all expired PINs by 7 days?', 'PIN expiry override completed.');
+        }
+
+        function updateFlagButtons(flags) {
+            const regPaused = !!(flags.registrations_paused);
+            const maintOn = !!(flags.maintenance_mode);
+            const btnReg = document.getElementById('btnRegistrations');
+            const btnMaint = document.getElementById('btnMaintenance');
+            if (btnReg) {
+                btnReg.textContent = regPaused ? '🔴 Registrations PAUSED — Resume' : 'Pause New Registrations';
+                btnReg.className = regPaused ? 'action-btn danger' : 'action-btn secondary';
+            }
+            if (btnMaint) {
+                btnMaint.textContent = maintOn ? '🔴 Maintenance ON — Disable' : 'Enable Maintenance Mode';
+                btnMaint.className = maintOn ? 'action-btn secondary' : 'action-btn danger';
+            }
+        }
+
+        let _flagsCache = {};
+
+        async function toggleRegistrations() {
+            const paused = !!(_flagsCache.registrations_paused);
+            if (paused) {
+                await postOverride('/admin/api/override/resume-registrations', 'Resume new user registrations?', 'Registrations resumed.');
+            } else {
+                await postOverride('/admin/api/override/pause-registrations', 'Pause new user registrations?', 'Registrations paused.');
+            }
+        }
+
+        async function clearMessageQueue() {
+            await postOverride('/admin/api/override/clear-message-queue', 'Clear stuck message queue items?', 'Message queue cleanup completed.');
+        }
+
+        async function toggleMaintenanceMode() {
+            const on = !!(_flagsCache.maintenance_mode);
+            if (on) {
+                await postOverride('/admin/api/override/disable-maintenance-mode', 'Disable maintenance mode?', 'Maintenance mode disabled.');
+            } else {
+                await postOverride('/admin/api/override/maintenance-mode', 'Enable maintenance mode? Users will see a maintenance page.', 'Maintenance mode enabled.');
+            }
+        }
+
+        async function manualRefresh() {
+            await loadZeusWatch();
+        }
+
+        async function init() {
+            await ensureAdminCsrfToken();
+            await loadZeusWatch();
+            refreshInterval = setInterval(loadZeusWatch, 30000);
+        }
+
+        window.addEventListener('beforeunload', () => {
+            if (refreshInterval) clearInterval(refreshInterval);
+        });
+
+        init();
+    </script>
+</body>
+</html>

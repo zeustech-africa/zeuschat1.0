@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZeusChat Maintenance</title>
+    <style>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at top, #1a1a1a, #070707);
+            color: #f8fafc;
+            font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .card {
+            width: min(92vw, 560px);
+            background: rgba(17, 17, 17, 0.92);
+            border: 1px solid rgba(212, 175, 55, 0.35);
+            border-radius: 20px;
+            padding: 28px;
+            text-align: center;
+            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.4);
+        }
+        .icon {
+            font-size: 44px;
+            margin-bottom: 8px;
+        }
+        h1 {
+            margin: 0 0 10px;
+            color: #d4af37;
+            font-size: 28px;
+        }
+        p {
+            margin: 0;
+            line-height: 1.6;
+            color: rgba(248, 250, 252, 0.82);
+        }
+        .status {
+            margin-top: 16px;
+            font-size: 12px;
+            color: rgba(248, 250, 252, 0.58);
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="icon">🛠️</div>
+        <h1>{% if feature_name %}{{ feature_name }} Unavailable{% else %}Maintenance Mode{% endif %}</h1>
+        <p>{% if feature_name %}{{ feature_name }} is temporarily disabled by the platform admin.
+           Please check back shortly.{% else %}ZeusChat is temporarily unavailable while the platform is being upgraded.
+           Please check back shortly.{% endif %}</p>
+        <div class="status">HTTP 503 - Service Unavailable</div>
+    </div>
+</body>
+</html>

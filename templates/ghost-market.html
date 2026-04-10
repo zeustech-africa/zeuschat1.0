@@ -203,6 +203,22 @@
             cursor: pointer;
             min-height: 44px;
         }
+        .upgrade-card {
+            border: 1px solid rgba(212, 175, 55, 0.35);
+            border-radius: 18px;
+            padding: 18px;
+            background: rgba(17, 17, 17, 0.45);
+        }
+        .btn-gold {
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%);
+            color: #0a0a0a;
+            border: none;
+            border-radius: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            min-height: 44px;
+        }
         .loading {
             text-align: center;
             padding: 40px;
@@ -406,10 +422,12 @@
 
             if (tier === 'free') {
                 sellerSection.innerHTML =
-                    '<h3>💎 Upgrade to Sell</h3>' +
+                    '<div class="upgrade-card">' +
+                    '<h3>👑 Become a Seller</h3>' +
                     '<p>Only Pro and Teams subscribers can sell on Ghost Market.</p>' +
-                    '<button class="sell-btn" onclick="window.location.href=\'/subscription\'">Upgrade to Pro →</button>' +
-                    '<p class="note">Free users can browse and buy, but selling requires subscription.</p>';
+                    '<button class="btn-gold" onclick="window.location.href=\'/subscription\'">Upgrade to Pro → R89/month</button>' +
+                    '<p class="note">Free users can browse and buy anonymously.</p>' +
+                    '</div>';
                 return;
             }
 

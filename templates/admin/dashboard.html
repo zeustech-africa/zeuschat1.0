@@ -685,6 +685,7 @@
             <div class="nav-item" data-tab="kyc">🪪 KYC Review <span class="nav-badge" id="kycPendingBadge" style="display:none">0</span></div>
             <div class="nav-item" data-tab="payments">💰 Payments <span class="nav-badge" id="pendingPaymentsBadge" style="display:none">0</span></div>
             <div class="nav-item" data-tab="messages">💬 Messages <span class="nav-badge" id="unreadMessagesBadge" style="display:none">0</span></div>
+            <div class="nav-item" data-tab="zeuswatch" onclick="window.location.href='/admin/zeuswatch'">🛡️ ZeusWatch <span class="nav-badge" id="alertBadge" style="display:none">!</span></div>
             <div class="nav-item" data-tab="subscriptions">📅 Subscriptions</div>
             <div class="nav-item" data-tab="ghostMarket">🏪 Ghost Market <span class="nav-badge" id="ghostMarketBadge" style="display:none">0</span></div>
             <div class="nav-item" data-tab="ghostModeration">👻 Ghost Moderation <span class="nav-badge" id="ghostPendingBadge" style="display:none">0</span></div>
@@ -928,6 +929,23 @@
                         unreadBadge.style.display = 'inline-block';
                     } else unreadBadge.style.display = 'none';
 
+                    try {
+                        const zeusResponse = await fetch('/admin/api/zeuswatch');
+                        const zeusData = await zeusResponse.json();
+                        const criticalCount = (zeusData.alerts?.critical || []).length;
+                        const warningCount = (zeusData.alerts?.warning || []).length;
+                        const alertBadge = document.getElementById('alertBadge');
+                        if (alertBadge && criticalCount + warningCount > 0) {
+                            alertBadge.textContent = criticalCount > 0 ? '!' : String(warningCount);
+                            alertBadge.style.display = 'inline-block';
+                        } else if (alertBadge) {
+                            alertBadge.style.display = 'none';
+                        }
+                    } catch (zeusErr) {
+                        const alertBadge = document.getElementById('alertBadge');
+                        if (alertBadge) alertBadge.style.display = 'none';
+                    }
+
                     const activityHtml = data.recent_activities.map(a => `
                         <div style="padding: 12px; border-bottom: 1px solid #e2e8f0;">
                             <strong>${a.action}</strong> - ${new Date(a.timestamp).toLocaleString()}
@@ -951,12 +969,13 @@
                 if (data.success) {
                     const usersHtml = `
                         <table class="admin-table">
-                            <thead><tr><th>Zeus-PIN</th><th>Name</th><th>Email</th><th>Status</th><th>Registered</th><th>Actions</th></tr></thead>
+                            <thead><tr><th>Zeus-PIN</th><th>Name</th><th>Email</th><th>Subscription</th><th>Status</th><th>Registered</th><th>Actions</th></tr></thead>
                             <tbody>${data.users.map(user => `
                                 <tr>
                                     <td>${user.zeus_pin}</td>
                                     <td>${escapeHtml(user.full_name)}</td>
                                     <td>${user.email}</td>
+                                    <td>${user.subscription_tier === 'pro' ? '<span class="status-badge" style="background:rgba(212,175,55,0.18);color:#D4AF37;border:1px solid rgba(212,175,55,0.45);">👑 Pro</span>' : user.subscription_tier === 'teams' ? '<span class="status-badge" style="background:rgba(212,175,55,0.25);color:#D4AF37;border:1px solid rgba(212,175,55,0.6);">👑 Teams</span>' : '<span class="status-badge" style="background:rgba(148,163,184,0.12);color:#94a3b8;border:1px solid rgba(148,163,184,0.35);">Free</span>'}</td>
                                     <td><span class="status-badge status-${user.approval_status}">${user.approval_status}</span></td>
                                     <td>${new Date(user.registered_at).toLocaleDateString()}</td>
                                     <td>

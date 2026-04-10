@@ -294,6 +294,11 @@ function bindModalActions() {
             return;
         }
 
+        const paidAllowed = await checkPaidPostAccess(isPaid);
+        if (!paidAllowed) {
+            return;
+        }
+
         const formData = new FormData();
         formData.append('title', title);
         formData.append('content', content);
@@ -327,6 +332,25 @@ function bindModalActions() {
             document.getElementById('previewGroup').classList.toggle('hidden', !isPaid);
         });
     });
+}
+
+async function checkPaidPostAccess(isPaidSelected) {
+    if (!isPaidSelected) {
+        return true;
+    }
+
+    try {
+        const response = await apiFetch('/api/user/subscription', { method: 'GET' });
+        const data = await response.json();
+        if (data.tier === 'free') {
+            alert('Only Pro and Teams subscribers can create paid posts.\n\nUpgrade to monetize your content.');
+            return false;
+        }
+        return true;
+    } catch (e) {
+        alert('Unable to verify subscription tier. Please try again.');
+        return false;
+    }
 }
 
 function bindInfiniteScroll() {

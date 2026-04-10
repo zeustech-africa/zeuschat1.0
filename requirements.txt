@@ -11,3 +11,4 @@ pywebpush==1.14.1
 Pillow>=10.4.0
 SpeechRecognition==3.10.0
 requests==2.31.0
+pytest==8.3.3

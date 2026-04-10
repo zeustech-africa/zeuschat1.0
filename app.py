@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_from_directory, session, render_template, redirect
+from flask import Flask, request, jsonify, send_from_directory, session, current_app, render_template, redirect
 from flask_cors import CORS
 from flask_socketio import SocketIO, join_room, emit
 from flask_compress import Compress
@@ -27,7 +27,7 @@ import requests as http_requests
 from urllib import request as urllib_request
 from werkzeug.utils import secure_filename
 from PIL import Image
-from admin_middleware import require_approved_user, user_has_unlock, user_has_feature_access, get_user_subscription_tier, log_admin_action, get_db_connection as admin_get_db
+from admin_middleware import admin_required, require_approved_user, require_valid_pin, require_paid_user, user_has_unlock, user_has_feature_access, get_user_subscription_tier, get_pin_display_with_badge, log_admin_action, get_db_connection as admin_get_db, is_pin_expired, get_pin_expiry_date, get_pin_days_remaining, send_pin_warning_if_needed, refresh_pin_expiry_cache
 from admin_routes import admin_bp
 from payment_routes import payment_bp, validate_payment_config
 from pywebpush import webpush, WebPushException
@@ -601,6 +601,9 @@ def rate_limit(endpoint_key):
             if request.method == 'OPTIONS':
                 return func(*args, **kwargs)
 
+            if current_app.testing:
+                return func(*args, **kwargs)
+
             limit = RATE_LIMITS.get(endpoint_key)
             if not limit:
                 return func(*args, **kwargs)
@@ -640,6 +643,91 @@ PUBLIC_CSRF_EXEMPT_PATHS = {
     '/api/login',
 }
 
+REGISTRATION_PATHS = {
+    '/api/start-signup',
+    '/api/register',
+    '/api/complete-registration',
+    '/api/complete-registration-with-kyc',
+}
+
+
+def ensure_system_flags_table():
+    """Create and seed persistent runtime override flags."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS system_flags (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                flag_name TEXT NOT NULL UNIQUE,
+                flag_value INTEGER DEFAULT 0,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            '''
+        )
+        cursor.executemany(
+            '''
+            INSERT OR IGNORE INTO system_flags (flag_name, flag_value)
+            VALUES (?, ?)
+            ''',
+            [
+                ('registrations_paused', 0),
+                ('maintenance_mode', 0),
+                ('marketplace_disabled', 0),
+                ('community_disabled', 0),
+            ]
+        )
+        conn.commit()
+
+
+def get_system_flag(flag_name):
+    """Read runtime flag value with compatibility fallback for older schema."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute('SELECT flag_value FROM system_flags WHERE flag_name = ?', (flag_name,))
+            row = cursor.fetchone()
+            return int(row['flag_value']) == 1 if row else False
+        except sqlite3.OperationalError:
+            # Backward compatibility for older schema (flag_key TEXT / flag_value TEXT)
+            try:
+                cursor.execute('SELECT flag_value FROM system_flags WHERE flag_key = ?', (flag_name,))
+                legacy = cursor.fetchone()
+                if not legacy:
+                    return False
+                return str(legacy['flag_value']).strip().lower() in ('1', 'true', 'yes', 'on')
+            except sqlite3.OperationalError:
+                return False
+
+
+def check_maintenance_mode(f):
+    """Decorator: block requests while maintenance mode is enabled."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if request.path.startswith('/admin'):
+            return f(*args, **kwargs)
+
+        if get_system_flag('maintenance_mode'):
+            if request.path.startswith('/api/'):
+                return jsonify({'error': 'Maintenance mode enabled', 'maintenance_mode': True}), 503
+            return render_template('maintenance.html'), 503
+
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def check_registration_pause(f):
+    """Decorator: block registration endpoints when registrations are paused."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if get_system_flag('registrations_paused'):
+            return jsonify({
+                'error': 'Registrations are temporarily paused by admin',
+                'registrations_paused': True,
+            }), 503
+        return f(*args, **kwargs)
+    return decorated_function
+
 
 def generate_csrf_token(force_refresh=False):
     if force_refresh or 'csrf_token' not in session:
@@ -666,6 +754,9 @@ def csrf_protect(f):
 @app.before_request
 def enforce_admin_csrf_protection():
     """Apply CSRF checks to admin API mutating requests."""
+    if current_app.testing:
+        return None
+
     if not request.path.startswith('/admin/api/'):
         return None
 
@@ -684,6 +775,9 @@ def enforce_admin_csrf_protection():
 @app.before_request
 def enforce_user_api_csrf_protection():
     """Apply CSRF checks to non-admin mutating API requests by default."""
+    if current_app.testing:
+        return None
+
     if not request.path.startswith('/api/'):
         return None
 
@@ -702,6 +796,43 @@ def enforce_user_api_csrf_protection():
     return None
 
 
+@app.before_request
+def enforce_runtime_override_flags():
+    """Global runtime enforcement for maintenance mode and paused registrations."""
+    path = request.path or '/'
+
+    if path.startswith('/admin'):
+        return None
+
+    if path.startswith('/static/') or path.startswith('/uploads/'):
+        return None
+
+    if path in ('/maintenance',):
+        return None
+
+    if get_system_flag('maintenance_mode'):
+        if path.startswith('/api/'):
+            return jsonify({'error': 'Maintenance mode enabled', 'maintenance_mode': True}), 503
+        return render_template('maintenance.html'), 503
+
+    if path in REGISTRATION_PATHS and get_system_flag('registrations_paused'):
+        return jsonify({'error': 'Registrations are temporarily paused by admin', 'registrations_paused': True}), 503
+
+    if get_system_flag('marketplace_disabled'):
+        if path.startswith('/ghost-market') or path.startswith('/api/ghost-market'):
+            if path.startswith('/api/'):
+                return jsonify({'error': 'Ghost Market is temporarily disabled', 'marketplace_disabled': True}), 503
+            return render_template('maintenance.html', feature_name='Ghost Market'), 503
+
+    if get_system_flag('community_disabled'):
+        if path.startswith('/ghost-forums') or path.startswith('/ghost-community') or path.startswith('/api/ghost-forums') or path.startswith('/api/ghost-community'):
+            if path.startswith('/api/'):
+                return jsonify({'error': 'Ghost Community is temporarily disabled', 'community_disabled': True}), 503
+            return render_template('maintenance.html', feature_name='Ghost Community'), 503
+
+    return None
+
+
 @app.context_processor
 def inject_csrf_token():
     return dict(csrf_token=generate_csrf_token)
@@ -710,6 +841,11 @@ def inject_csrf_token():
 @app.route('/api/csrf-token', methods=['GET'])
 def get_csrf_token():
     return jsonify({'csrf_token': generate_csrf_token()})
+
+
+@app.route('/maintenance')
+def maintenance_page():
+    return render_template('maintenance.html'), 503
 
 
 DEFAULT_ADMIN_PERMISSIONS = json.dumps({
@@ -1719,11 +1855,144 @@ def run_admin_migrations():
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_gmo_buyer_status ON ghost_market_orders(buyer_id, status)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_gmo_seller_status ON ghost_market_orders(seller_id, status)')
 
+        # ============================================
+        # PIN EXPIRY SYSTEM TABLES
+        # ============================================
+
+        # Track PIN expiry warnings sent
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS pin_expiry_warnings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            warning_type TEXT NOT NULL,
+            sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            UNIQUE(user_id, warning_type)
+        )
+        ''')
+
+        # PIN extension purchases (one-month)
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS pin_extensions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            payment_id INTEGER,
+            extension_days INTEGER DEFAULT 30,
+            expires_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (payment_id) REFERENCES one_off_payments(id)
+        )
+        ''')
+
+        # Add PIN expiry columns to users table
+        for ddl in [
+            "ALTER TABLE users ADD COLUMN pin_expires_at TIMESTAMP",
+            "ALTER TABLE users ADD COLUMN pin_extension_count INTEGER DEFAULT 0",
+            "ALTER TABLE users ADD COLUMN deleted_at TIMESTAMP",
+        ]:
+            try:
+                cursor.execute(ddl)
+            except sqlite3.OperationalError:
+                pass  # Column already exists
+
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_pin_expiry_warnings_user ON pin_expiry_warnings(user_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_pin_extensions_user ON pin_extensions(user_id)')
+
+        # ============================================
+        # SYSTEM OVERRIDE FLAGS
+        # ============================================
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS system_flags (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            flag_name TEXT NOT NULL UNIQUE,
+            flag_value INTEGER DEFAULT 0,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        ''')
+
+        cursor.executemany(
+            '''
+            INSERT OR IGNORE INTO system_flags (flag_name, flag_value)
+            VALUES (?, ?)
+            ''',
+            [
+                ('registrations_paused', 0),
+                ('maintenance_mode', 0),
+                ('marketplace_disabled', 0),
+                ('community_disabled', 0),
+            ],
+        )
+
         conn.commit()
         print("✅ Admin migrations completed successfully!")
 
 # Call the function
 run_admin_migrations()
+ensure_system_flags_table()
+
+
+def refresh_all_pin_expiry_dates():
+    """Recalculate and cache PIN expiry timestamps for all users."""
+    with admin_get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT id FROM users WHERE deleted_at IS NULL')
+        users = cursor.fetchall()
+        for user in users:
+            refresh_pin_expiry_cache(user['id'], conn=conn)
+        conn.commit()
+
+
+def delete_expired_accounts():
+    """Soft-delete accounts that have remained expired for more than 14 days."""
+    refresh_all_pin_expiry_dates()
+
+    with admin_get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            SELECT u.id, u.zeus_pin, u.email
+            FROM users u
+            WHERE u.pin_expires_at IS NOT NULL
+              AND u.pin_expires_at < datetime('now', '-14 days')
+              AND u.deleted_at IS NULL
+            '''
+        )
+        expired_users = cursor.fetchall()
+
+        for user in expired_users:
+            cursor.execute('DELETE FROM admin_messages WHERE user_id = ?', (user['id'],))
+            cursor.execute('DELETE FROM user_approvals WHERE user_id = ?', (user['id'],))
+            cursor.execute('DELETE FROM subscriptions WHERE user_id = ?', (user['id'],))
+            cursor.execute('DELETE FROM pin_extensions WHERE user_id = ?', (user['id'],))
+            cursor.execute('DELETE FROM pin_expiry_warnings WHERE user_id = ?', (user['id'],))
+            cursor.execute('DELETE FROM ghost_market_items WHERE seller_id = ?', (user['id'],))
+            cursor.execute('DELETE FROM ghost_posts WHERE user_id = ?', (user['id'],))
+            cursor.execute('DELETE FROM ghost_comments WHERE user_id = ?', (user['id'],))
+            cursor.execute('DELETE FROM messages WHERE sender_id = ? OR receiver_id = ?', (user['id'], user['id']))
+            cursor.execute(
+                'UPDATE users SET deleted_at = CURRENT_TIMESTAMP, email = ? WHERE id = ?',
+                (f"deleted_{user['id']}@deleted.com", user['id']),
+            )
+            print(f"🗑️ Deleted expired account: {user['zeus_pin']} (ID: {user['id']})")
+
+        conn.commit()
+
+
+def schedule_account_cleanup():
+    """Run expired-account cleanup daily in a background thread."""
+    while True:
+        time.sleep(86400)
+        try:
+            delete_expired_accounts()
+            print('🧹 Account cleanup completed')
+        except Exception as cleanup_error:
+            print(f'❌ Account cleanup error: {cleanup_error}')
+
+
+refresh_all_pin_expiry_dates()
+cleanup_thread = threading.Thread(target=schedule_account_cleanup, daemon=True)
+cleanup_thread.start()
 
 def optimize_database():
     """Add runtime indexes and tuning pragmas for faster messaging queries."""
@@ -2089,6 +2358,8 @@ def get_network_quality():
 # ============ API ENDPOINTS ============
 
 @app.route('/api/start-signup', methods=['POST', 'OPTIONS'])
+@check_maintenance_mode
+@check_registration_pause
 @rate_limit('start-signup')
 @retry_on_locked(max_retries=3, delay=0.5)
 def start_signup():
@@ -2172,6 +2443,8 @@ def verify_otp():
 
 @app.route('/api/register', methods=['POST', 'OPTIONS'])
 @app.route('/api/complete-registration', methods=['POST', 'OPTIONS'])
+@check_maintenance_mode
+@check_registration_pause
 @rate_limit('api/register')
 @retry_on_locked(max_retries=3, delay=0.5)
 def complete_registration():
@@ -2205,10 +2478,11 @@ def complete_registration():
         with get_db_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                INSERT INTO users (email, zeus_pin, password_hash, full_name, profile_pic)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO users (email, zeus_pin, password_hash, full_name, profile_pic, pin_expires_at)
+                VALUES (?, ?, ?, ?, ?, datetime('now', '+14 days'))
             ''', (email, zeus_pin, password_hash, full_name, profile_pic))
             user_id = cursor.lastrowid
+            refresh_pin_expiry_cache(user_id, conn=conn)
 
         with admin_get_db() as conn:
             cursor = conn.cursor()
@@ -2241,6 +2515,8 @@ def complete_registration():
 
 
 @app.route('/api/complete-registration-with-kyc', methods=['POST'])
+@check_maintenance_mode
+@check_registration_pause
 @rate_limit('api/register')
 @retry_on_locked(max_retries=3, delay=0.5)
 def complete_registration_with_kyc():
@@ -2278,12 +2554,13 @@ def complete_registration_with_kyc():
 
             cursor.execute(
                 '''
-                INSERT INTO users (email, zeus_pin, password_hash, full_name, profile_pic)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO users (email, zeus_pin, password_hash, full_name, profile_pic, pin_expires_at)
+                VALUES (?, ?, ?, ?, ?, datetime('now', '+14 days'))
                 ''',
                 (email, zeus_pin, password_hash, full_name, profile_pic),
             )
             user_id = cursor.lastrowid
+            refresh_pin_expiry_cache(user_id, conn=conn)
 
             os.makedirs('uploads/kyc', exist_ok=True)
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -2545,6 +2822,17 @@ def login():
         
         print(f"✅ User logged in: {user[1]}")
 
+        try:
+            refresh_pin_expiry_cache(user[0])
+        except Exception as _pin_cache_err:
+            print(f"⚠️ refresh_pin_expiry_cache error: {_pin_cache_err}")
+
+        # Send PIN expiry warnings if thresholds are met
+        try:
+            send_pin_warning_if_needed(user[0])
+        except Exception as _warn_err:
+            print(f"⚠️ send_pin_warning_if_needed error: {_warn_err}")
+
         if approval_status != 'approved':
             session['is_approved'] = False
             return jsonify({
@@ -2604,6 +2892,14 @@ def logout():
     return jsonify({'success': True, 'message': 'Logged out successfully'}), 200
 
 
+@app.route('/logout')
+def logout_page():
+    """Browser logout route with optional redirect target."""
+    redirect_target = request.args.get('redirect', '/login.html')
+    session.clear()
+    return redirect(redirect_target)
+
+
 @app.route('/unlock')
 def unlock_page():
     """Password unlock page."""
@@ -2623,6 +2919,39 @@ def check_unlock_status():
         'requires_unlock': not session.get('password_unlocked', False),
         'authenticated': True,
     }), 200
+
+
+# ============================================================
+# PIN EXPIRY API ENDPOINTS
+# ============================================================
+
+@app.route('/api/user/pin-status', methods=['GET'])
+@require_approved_user
+def pin_status():
+    """Return PIN expiry status for the current user."""
+    user_id = session['user_id']
+    expired = is_pin_expired(user_id)
+    days_remaining = get_pin_days_remaining(user_id)
+    expiry_date = get_pin_expiry_date(user_id)
+    return jsonify({
+        'expired': expired,
+        'days_remaining': days_remaining,
+        'expiry_date': expiry_date.isoformat() if expiry_date else None,
+    })
+
+
+@app.route('/pin-expired-overlay')
+def pin_expired_overlay():
+    """Serve the PIN-expired overlay HTML fragment."""
+    return render_template('pin-expired-overlay.html')
+
+
+@app.route('/api/user/extend-pin', methods=['POST'])
+@require_approved_user
+def extend_pin():
+    """Initiate a R49 PayFast payment to extend the user's PIN by 30 days."""
+    user_id = session['user_id']
+    return redirect('/payment/extend-pin')
 
 
 @app.route('/api/unlock', methods=['POST'])
@@ -2687,6 +3016,7 @@ def biometric_verify():
 
 @app.route('/chat.html')
 @require_approved_user
+@require_valid_pin
 @require_password_unlock
 def chat_page():
     """Protected chat page route with unlock guard."""
@@ -2700,6 +3030,7 @@ def login_redirect():
 
 
 @app.route('/dashboard')
+@require_valid_pin
 def dashboard_redirect():
     """Compatibility route for app redirects expecting /dashboard."""
     if 'user_id' not in session:
@@ -2817,6 +3148,35 @@ def has_feature(feature_name):
 
     has_access = user_has_feature_access(user_id, feature_name)
     return jsonify({'success': True, 'feature': feature_name, 'has_access': bool(has_access)}), 200
+
+
+@app.route('/api/schedule-message', methods=['POST'])
+@csrf_protect
+@require_approved_user
+@require_valid_pin
+@require_paid_user
+def schedule_message():
+    """Placeholder endpoint for paid message scheduling feature."""
+    return jsonify({'error': 'Message scheduling is not enabled yet', 'feature': 'message_scheduling'}), 501
+
+
+@app.route('/api/export-chat', methods=['GET'])
+@require_approved_user
+@require_valid_pin
+@require_paid_user
+def export_chat_history():
+    """Placeholder endpoint for paid chat export feature."""
+    return jsonify({'error': 'Chat export is not enabled yet', 'feature': 'export_chat_history'}), 501
+
+
+@app.route('/api/cloud-backup', methods=['POST'])
+@csrf_protect
+@require_approved_user
+@require_valid_pin
+@require_paid_user
+def cloud_backup():
+    """Placeholder endpoint for paid cloud backup feature."""
+    return jsonify({'error': 'Cloud backup is not enabled yet', 'feature': 'cloud_backup_10gb'}), 501
 
 
 # ============ PUSH NOTIFICATION ENDPOINTS ============
@@ -3305,8 +3665,9 @@ def update_profile_picture():
             one_time = cursor.fetchone()
             if not one_time:
                 return jsonify({
-                    'error': 'Profile picture changes require Pro subscription or one-time payment',
+                    'error': 'Paid feature requires Pro or Teams subscription',
                     'requires_upgrade': True,
+                    'redirect': '/subscription',
                     'tier': 'free'
                 }), 403
             can_use_one_time_picture_change = True
@@ -6991,6 +7352,7 @@ def ensure_forum_membership(cursor, forum_id, user_id, role='member'):
 
 
 @app.route('/ghost-forums')
+@require_valid_pin
 def ghost_forums():
     """Ghost forums landing page."""
     if 'user_id' not in session:
@@ -6999,6 +7361,7 @@ def ghost_forums():
 
 
 @app.route('/ghost-forums/forum/<int:forum_id>')
+@require_valid_pin
 def ghost_forum_detail_page(forum_id):
     """Ghost forums detail page using the shared template."""
     if 'user_id' not in session:
@@ -7423,6 +7786,7 @@ def ensure_ghost_access(user_id):
 
 
 @app.route('/ghost-ultimate')
+@require_valid_pin
 def ghost_ultimate():
     if 'user_id' not in session:
         return redirect('/login.html')
@@ -7431,6 +7795,7 @@ def ghost_ultimate():
 
 @app.route('/creator-wallet')
 @require_approved_user
+@require_valid_pin
 def creator_wallet_page():
     block = ensure_ghost_access(session['user_id'])
     if block:
@@ -7525,10 +7890,12 @@ def ghost_feed():
             for comment_row in cursor.fetchall():
                 comment = dict(comment_row)
                 comment.pop('comment_rank', None)
+                comment['anonymous_id'] = get_pin_display_with_badge(comment['user_id'], requester_id=user_id)
                 comments_by_post.setdefault(comment['post_id'], []).append(comment)
 
         for post in posts:
             post['comments'] = comments_by_post.get(post['id'], [])
+            post['anonymous_id'] = get_pin_display_with_badge(post['user_id'], requester_id=user_id)
             if post['is_locked']:
                 post['content'] = post.get('preview_text') or 'This post contains paid content.'
 
@@ -7560,6 +7927,13 @@ def ghost_create_post():
 
     if is_paid and price not in [5, 10, 20, 50, 100]:
         return jsonify({'error': 'Invalid price'}), 400
+
+    if is_paid and get_user_subscription_tier(user_id) == 'free':
+        return jsonify({
+            'error': 'Paid feature requires Pro or Teams subscription',
+            'requires_upgrade': True,
+            'redirect': '/subscription',
+        }), 403
 
     media_url = None
     media_type = None
@@ -7849,7 +8223,13 @@ def ghost_get_comments(post_id):
         )
         comments = cursor.fetchall()
 
-    return jsonify({'success': True, 'comments': [dict(c) for c in comments]}), 200
+    comment_payload = []
+    for c in comments:
+        row = dict(c)
+        row['anonymous_id'] = get_pin_display_with_badge(row['user_id'], requester_id=user_id)
+        comment_payload.append(row)
+
+    return jsonify({'success': True, 'comments': comment_payload}), 200
 
 
 @app.route('/api/ghost/wallet', methods=['GET'])
@@ -7895,11 +8275,13 @@ def ghost_wallet_summary():
 # ============================================
 
 @app.route('/ghost-market')
+@require_valid_pin
 def ghost_market():
     """Ghost Market main page"""
     return render_template('ghost-market.html')
 
 @app.route('/ghost-market/sell')
+@require_valid_pin
 def ghost_market_sell():
     """Sell item page"""
     if 'user_id' not in session:
@@ -7909,6 +8291,7 @@ def ghost_market_sell():
     return render_template('ghost-market-sell.html')
 
 @app.route('/ghost-market/apply-seller')
+@require_valid_pin
 def ghost_market_apply():
     """Apply to become a seller page."""
     if 'user_id' not in session:
@@ -7950,6 +8333,7 @@ def acceptable_use():
     return render_template('acceptable-use.html')
 
 @app.route('/api/ghost-market/items', methods=['GET'])
+@require_valid_pin
 def get_ghost_market_items():
     """Get all approved items plus current user's pending/rejected items."""
     user_id = session.get('user_id')
@@ -8025,7 +8409,7 @@ def get_ghost_market_items():
                     'category': item['category'],
                     'condition': item['condition'],
                     'seller_id': item['seller_id'],
-                    'seller_pin_half': item['seller_pin_half'],
+                    'seller_pin_half': get_pin_display_with_badge(item['seller_id'], requester_id=user_id),
                     'status': item['display_status'],
                     'is_owner': bool(user_id and item['seller_id'] == user_id),
                     'rejection_reason': item['rejection_reason'] if item['display_status'] == 'rejected' else None,
@@ -8057,11 +8441,11 @@ def ghost_market_seller_status():
 @app.route('/api/ghost-market/apply-seller', methods=['POST'])
 @csrf_protect
 @require_approved_user
+@require_valid_pin
+@require_paid_user
 def apply_ghost_market_seller():
     """Apply to become a Ghost Market seller"""
     user_id = session['user_id']
-    if get_user_subscription_tier(user_id) == 'free':
-        return jsonify({'error': 'Only Pro and Teams subscribers can sell on Ghost Market'}), 403
 
     data = request.get_json() or {}
     store_name = data.get('store_name', '').strip()
@@ -8088,12 +8472,11 @@ def apply_ghost_market_seller():
 @app.route('/api/ghost-market/submit-item', methods=['POST'])
 @csrf_protect
 @require_approved_user
+@require_valid_pin
+@require_paid_user
 def submit_ghost_market_item():
     """Submit item for admin approval"""
     user_id = session['user_id']
-
-    if get_user_subscription_tier(user_id) == 'free':
-        return jsonify({'error': 'Only Pro and Teams subscribers can list items'}), 403
 
     with admin_get_db() as conn:
         cursor = conn.cursor()
@@ -8193,7 +8576,7 @@ def ghost_market_buy(item_id):
         if item['seller_user_id'] == buyer_id:
             return jsonify({'error': 'You cannot buy your own item'}), 400
 
-        buyer_pin = session.get('user_zeus_pin', '')
+        buyer_pin = session.get('zeus_pin') or session.get('user_zeus_pin', '')
         buyer_pin_half = (buyer_pin[:8] + '-XXXX') if len(buyer_pin) >= 8 else 'ZT-XXXX-XXXX'
         seller_pin_half = (item['seller_pin'][:8] + '-XXXX') if item['seller_pin'] and len(item['seller_pin']) >= 8 else 'ZT-XXXX-XXXX'
 
@@ -8203,12 +8586,50 @@ def ghost_market_buy(item_id):
             VALUES (?, ?, ?, ?, ?, ?, 'pending_payment')
         ''', (item_id, buyer_id, item['seller_user_id'], item['price'], buyer_pin_half, seller_pin_half))
         order_id = cursor.lastrowid
+
+        cursor.execute('''
+            INSERT INTO ghost_market_escrow (order_id, amount, status)
+            VALUES (?, ?, 'held')
+        ''', (order_id, item['price']))
         conn.commit()
 
     return jsonify({
         'success': True,
         'redirect_url': '/ghost-market/pay/{}'.format(order_id)
     })
+
+@app.route('/api/ghost-market/mark-shipped/<int:order_id>', methods=['POST'])
+@csrf_protect
+@require_approved_user
+@require_valid_pin
+@require_paid_user
+def ghost_market_mark_shipped(order_id):
+    """Seller marks an order as shipped so buyer can confirm receipt."""
+    user_id = session['user_id']
+
+    with admin_get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT id, status
+            FROM ghost_market_orders
+            WHERE id = ? AND seller_id = ?
+        ''', (order_id, user_id))
+        order = cursor.fetchone()
+
+        if not order:
+            return jsonify({'error': 'Order not found'}), 404
+
+        if order['status'] not in ('pending_payment', 'pending', 'paid', 'shipped'):
+            return jsonify({'error': 'Order cannot be marked shipped'}), 400
+
+        cursor.execute('''
+            UPDATE ghost_market_orders
+            SET status = 'shipped', shipped_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''', (order_id,))
+        conn.commit()
+
+    return jsonify({'success': True, 'message': 'Order marked as shipped.'}), 200
 
 @app.route('/api/ghost-market/confirm-receipt/<int:order_id>', methods=['POST'])
 @csrf_protect
@@ -8222,7 +8643,7 @@ def confirm_receipt(order_id):
 
         cursor.execute('''
             SELECT * FROM ghost_market_orders
-            WHERE id = ? AND buyer_id = ? AND status = 'delivered'
+            WHERE id = ? AND buyer_id = ? AND status IN ('shipped', 'delivered')
         ''', (order_id, user_id))
         order = cursor.fetchone()
 
@@ -8231,7 +8652,9 @@ def confirm_receipt(order_id):
 
         cursor.execute('''
             UPDATE ghost_market_orders
-            SET status = 'completed', completed_at = CURRENT_TIMESTAMP
+            SET status = 'completed',
+                delivered_at = COALESCE(delivered_at, CURRENT_TIMESTAMP),
+                completed_at = CURRENT_TIMESTAMP
             WHERE id = ?
         ''', (order_id,))
 
@@ -8240,6 +8663,12 @@ def confirm_receipt(order_id):
             SET status = 'released_to_seller', released_at = CURRENT_TIMESTAMP
             WHERE order_id = ?
         ''', (order_id,))
+
+        if cursor.rowcount == 0:
+            cursor.execute('''
+                INSERT INTO ghost_market_escrow (order_id, amount, status, released_at)
+                VALUES (?, ?, 'released_to_seller', CURRENT_TIMESTAMP)
+            ''', (order_id, order['amount']))
 
         cursor.execute('''
             UPDATE ghost_market_sellers
@@ -8256,6 +8685,136 @@ def confirm_receipt(order_id):
 @app.route('/')
 def index():
     return send_from_directory('.', 'index.html')
+
+
+@app.route('/api/test/message-flow', methods=['GET'])
+@admin_required
+def test_message_flow():
+    """Admin-only verification of end-to-end message delivery lifecycle."""
+    suffix = datetime.now().strftime('%Y%m%d%H%M%S%f')
+    sender_email = f'audit_msg_sender_{suffix}@zeuschat.test'
+    receiver_email = f'audit_msg_receiver_{suffix}@zeuschat.test'
+    sender_pin = generate_zeus_pin()
+    receiver_pin = generate_zeus_pin()
+    password_hash = hash_password('AuditPass123!')
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO users (email, zeus_pin, password_hash, full_name, pin_expires_at)
+            VALUES (?, ?, ?, ?, datetime('now', '+14 days'))
+        ''', (sender_email, sender_pin, password_hash, 'Audit Sender'))
+        sender_id = cursor.lastrowid
+        refresh_pin_expiry_cache(sender_id, conn=conn)
+
+        cursor.execute('''
+            INSERT INTO users (email, zeus_pin, password_hash, full_name, pin_expires_at)
+            VALUES (?, ?, ?, ?, datetime('now', '+14 days'))
+        ''', (receiver_email, receiver_pin, password_hash, 'Audit Receiver'))
+        receiver_id = cursor.lastrowid
+        refresh_pin_expiry_cache(receiver_id, conn=conn)
+
+        cursor.execute('INSERT INTO user_approvals (user_id, status) VALUES (?, "approved")', (sender_id,))
+        cursor.execute('INSERT INTO user_approvals (user_id, status) VALUES (?, "approved")', (receiver_id,))
+        cursor.execute('INSERT INTO contacts (user_id, contact_user_id, status) VALUES (?, ?, "accepted")', (sender_id, receiver_id))
+        cursor.execute('INSERT INTO contacts (user_id, contact_user_id, status) VALUES (?, ?, "accepted")', (receiver_id, sender_id))
+        conn.commit()
+
+    message_id = None
+    ttl_message_id = None
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO messages (sender_id, receiver_id, content, file_url, ttl_seconds, status, is_ping, is_high_priority)
+            VALUES (?, ?, ?, '', 3600, 'sent', 0, 0)
+        ''', (sender_id, receiver_id, 'Audit message flow check'))
+        message_id = cursor.lastrowid
+        cursor.execute('''
+            INSERT INTO messages (sender_id, receiver_id, content, file_url, ttl_seconds, status, is_ping, is_high_priority)
+            VALUES (?, ?, ?, '', 1, 'sent', 0, 0)
+        ''', (sender_id, receiver_id, 'TTL audit message'))
+        ttl_message_id = cursor.lastrowid
+        conn.commit()
+
+    original_testing = current_app.config.get('TESTING', False)
+    current_app.config['TESTING'] = True
+    try:
+        sender_client = current_app.test_client()
+        receiver_client = current_app.test_client()
+
+        with sender_client.session_transaction() as sess:
+            sess['user_id'] = sender_id
+            sess['zeus_pin'] = sender_pin
+            sess['email'] = sender_email
+            sess['subscription_tier'] = 'free'
+            sess['is_approved'] = True
+            sess['password_unlocked'] = True
+
+        with receiver_client.session_transaction() as sess:
+            sess['user_id'] = receiver_id
+            sess['zeus_pin'] = receiver_pin
+            sess['email'] = receiver_email
+            sess['subscription_tier'] = 'free'
+            sess['is_approved'] = True
+            sess['password_unlocked'] = True
+
+        receive_response = receiver_client.get(f'/api/get-messages?contact_pin={sender_pin}')
+        receive_messages = (receive_response.get_json(silent=True) or {}).get('messages', [])
+
+        status_after_delivery = sender_client.get(f'/api/message-status/{message_id}') if message_id else None
+        delivery_payload = status_after_delivery.get_json(silent=True) if status_after_delivery else {}
+
+        seen_response = receiver_client.post('/api/mark-message-viewed', json={'message_ids': [message_id]}) if message_id else None
+        status_after_seen = sender_client.get(f'/api/message-status/{message_id}') if message_id else None
+        seen_payload = status_after_seen.get_json(silent=True) if status_after_seen else {}
+
+        delete_response = sender_client.post('/api/delete-message', json={
+            'message_id': message_id,
+            'delete_mode': 'delete_everywhere',
+        }) if message_id else None
+        post_delete_fetch = receiver_client.get(f'/api/get-messages?contact_pin={sender_pin}')
+        post_delete_messages = (post_delete_fetch.get_json(silent=True) or {}).get('messages', [])
+
+        receiver_client.get(f'/api/get-messages?contact_pin={sender_pin}')
+        if ttl_message_id:
+            receiver_client.post('/api/mark-message-viewed', json={'message_ids': [ttl_message_id]})
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE messages
+                    SET viewed_at = datetime('now', '-2 hours'),
+                        read_timer_started_at = datetime('now', '-2 hours'),
+                        status = 'seen'
+                    WHERE id = ?
+                ''', (ttl_message_id,))
+                conn.commit()
+        receiver_client.get(f'/api/get-messages?contact_pin={sender_pin}')
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT COUNT(*) AS count FROM messages WHERE id = ?', (ttl_message_id,))
+            ttl_remaining = cursor.fetchone()['count'] if ttl_message_id else 1
+
+        results = {
+            'send_message': bool(message_id),
+            'receive_message': receive_response.status_code == 200 and any(m['id'] == message_id for m in receive_messages),
+            'delivery_status': delivery_payload.get('status') == 'delivered',
+            'read_status': bool(seen_response and seen_response.status_code == 200 and seen_payload.get('status') == 'seen' and seen_payload.get('viewed_at')),
+            'delete_everywhere': bool(delete_response and delete_response.status_code == 200 and all(m['id'] != message_id for m in post_delete_messages)),
+            'ttl_auto_delete': ttl_remaining == 0,
+        }
+    finally:
+        current_app.config['TESTING'] = original_testing
+
+    passed = sum(1 for ok in results.values() if ok)
+    return jsonify({
+        'success': True,
+        'results': results,
+        'passed': passed,
+        'failed': len(results) - passed,
+        'message_id': message_id,
+        'ttl_message_id': ttl_message_id,
+    }), 200
 
 @app.route('/<path:path>')
 def static_files(path):

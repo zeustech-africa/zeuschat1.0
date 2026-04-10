@@ -797,6 +797,31 @@
       font-size: 11px;
     }
 
+    .user-pin-display {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(10px);
+      padding: 8px 14px;
+      border-radius: 40px;
+      border: 1px solid rgba(212, 175, 55, 0.35);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .gold-badge {
+      display: inline-block;
+      color: #D4AF37;
+      font-size: 14px;
+      line-height: 1;
+    }
+
 /* Mobile Responsive Styles */
 @media (max-width: 768px) {
     body {
@@ -926,6 +951,11 @@
       <span class="plan-icon">🟢</span>
       <span class="plan-name" id="planName">Loading...</span>
     </div>
+  </div>
+
+  <div class="user-pin-display">
+    <span id="userPin">Loading PIN...</span>
+    <span id="userBadge" class="gold-badge" style="display:none;">👑</span>
   </div>
 
   <div class="app">
@@ -2197,6 +2227,23 @@
         }
       } catch (error) {
         console.error('Failed to load plan:', error);
+      }
+    }
+
+    async function loadUserBadge() {
+      const pinNode = document.getElementById('userPin');
+      const badgeNode = document.getElementById('userBadge');
+      if (!pinNode || !badgeNode) return;
+
+      const localPin = sessionStorage.getItem('user_zeus_pin');
+      pinNode.textContent = localPin ? `PIN: ${localPin}` : 'PIN: Unknown';
+
+      try {
+        const response = await apiFetch('/api/user/subscription', { credentials: 'include' });
+        const data = await response.json();
+        badgeNode.style.display = data.tier && data.tier !== 'free' ? 'inline-block' : 'none';
+      } catch (error) {
+        badgeNode.style.display = 'none';
       }
     }
 
@@ -5121,6 +5168,7 @@
 
       setupProFeatureGuards();
       loadUserPlan();
+      loadUserBadge();
       setupInstallPrompt();
       
       // Load contacts FIRST and WAIT for completion
@@ -6438,5 +6486,40 @@
     <a href="/ghost-market-policy" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">Ghost Market Policy</a> |
     <a href="/refund-policy" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">Refunds</a>
   </div>
+
+  <!-- PIN Expiry Overlay -->
+  <div id="pinExpiryOverlay"></div>
+
+  <!-- PIN Expiry Warning Banner (injected by checkPinExpiry) -->
+  <div id="pinWarningBanner" style="display:none;position:fixed;bottom:0;left:0;width:100%;background:rgba(17,17,17,0.96);border-top:1px solid #f59e0b;color:#f59e0b;text-align:center;padding:10px 16px;font-size:13px;z-index:9000;box-sizing:border-box;"></div>
+
+  <script>
+    async function checkPinExpiry() {
+      try {
+        const response = await fetch('/api/user/pin-status');
+        if (!response.ok) return;
+        const data = await response.json();
+
+        if (data.expired) {
+          const overlayDiv = document.getElementById('pinExpiryOverlay');
+          const overlayResponse = await fetch('/pin-expired-overlay');
+          const overlayHtml = await overlayResponse.text();
+          overlayDiv.innerHTML = overlayHtml;
+        } else if (data.days_remaining <= 3 && data.days_remaining > 0) {
+          const banner = document.getElementById('pinWarningBanner');
+          banner.innerHTML =
+            '\u26a0\ufe0f Your Zeus-PIN expires in <strong>' + data.days_remaining + ' day' +
+            (data.days_remaining !== 1 ? 's' : '') + '</strong>. ' +
+            '<a href="/subscription" style="color:#D4AF37;font-weight:bold;">Upgrade to keep it forever</a> or ' +
+            '<a href="/payment/extend-pin" style="color:#D4AF37;font-weight:bold;">pay R49 to extend 30 days</a>.';
+          banner.style.display = 'block';
+        }
+      } catch (e) {
+        // Non-fatal: don't block the chat UI
+      }
+    }
+
+    checkPinExpiry();
+  </script>
 </body>
 </html>

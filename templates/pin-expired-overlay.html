@@ -1,0 +1,120 @@
+<style>
+        .pin-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .pin-overlay-card {
+            background: rgba(17, 17, 17, 0.98);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 32px;
+            padding: 40px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            animation: fadeInUp 0.3s ease;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .pin-icon { font-size: 64px; margin-bottom: 20px; }
+        h2 { color: #D4AF37; margin-bottom: 12px; }
+        .message { color: rgba(255,255,255,0.8); margin-bottom: 24px; line-height: 1.6; }
+        .warning { color: #f59e0b; font-size: 14px; margin-bottom: 24px; }
+        .btn-gold {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%);
+            color: #0a0a0a;
+            border: none;
+            border-radius: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 12px;
+            transition: all 0.3s;
+            font-size: 15px;
+        }
+        .btn-gold:hover { transform: translateY(-2px); }
+        .btn-outline {
+            width: 100%;
+            padding: 14px;
+            background: transparent;
+            border: 1px solid #D4AF37;
+            color: #D4AF37;
+            border-radius: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 12px;
+            font-size: 15px;
+            transition: all 0.3s;
+        }
+        .btn-outline:hover { background: rgba(212, 175, 55, 0.1); }
+        .note {
+            font-size: 11px;
+            color: rgba(255,255,255,0.3);
+            margin-top: 20px;
+            line-height: 1.5;
+        }
+    </style>
+
+<div class="pin-overlay" id="pinOverlay">
+    <div class="pin-overlay-card">
+        <div class="pin-icon">⏰</div>
+        <h2>ZEUS-PIN EXPIRED</h2>
+        <div class="message">
+            Your Zeus-PIN has expired. You cannot send or receive messages until you renew your PIN.
+        </div>
+        <div class="warning">
+            ⚠️ Free PINs expire after 14 days ⚠️
+        </div>
+        <button class="btn-gold" id="extendOneMonthBtn">
+            💰 Pay R49 – Extend 30 Days
+        </button>
+        <button class="btn-gold" id="subscribePermanentBtn">
+            👑 Subscribe to Pro – Keep PIN Forever
+        </button>
+        <button class="btn-outline" id="registerNewBtn">
+            🆕 Register New Account (New PIN)
+        </button>
+        <div class="note">
+            Your messages and contacts will be saved if you extend or subscribe.<br>
+            Registering a new account will start fresh.
+        </div>
+    </div>
+</div>
+
+<script>
+    (function attachPinOverlayHandlers() {
+        var extendBtn = document.getElementById('extendOneMonthBtn');
+        var subscribeBtn = document.getElementById('subscribePermanentBtn');
+        var registerBtn = document.getElementById('registerNewBtn');
+
+        if (extendBtn) {
+            extendBtn.addEventListener('click', function () {
+                window.location.href = '/payment/extend-pin';
+            });
+        }
+
+        if (subscribeBtn) {
+            subscribeBtn.addEventListener('click', function () {
+                window.location.href = '/subscription';
+            });
+        }
+
+        if (registerBtn) {
+            registerBtn.addEventListener('click', function () {
+                window.location.href = '/logout?redirect=/registration.html';
+            });
+        }
+    })();
+</script>

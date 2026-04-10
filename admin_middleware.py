@@ -3,7 +3,7 @@ import json
 import os
 from functools import wraps
 from flask import session, jsonify, request, redirect
-from datetime import datetime
+from datetime import datetime, timedelta
 
 DATABASE_PATH = os.environ.get('DATABASE_PATH', 'zeuschat.db')
 
@@ -30,6 +30,102 @@ def admin_required(f):
         
         return f(*args, **kwargs)
     return decorated_function
+
+
+def _is_pin_route_allowed(path):
+    """Return True for routes that remain available after PIN expiry."""
+    allowed_exact = {
+        '/api/user/pin-status',
+        '/api/user/extend-pin',
+        '/payment/extend-pin',
+        '/subscription',
+        '/subscription/success',
+        '/subscription/cancel',
+        '/pin-expired-overlay',
+        '/logout',
+        '/api/logout',
+        '/api/user/subscription',
+        '/registration.html',
+        '/mobile/register',
+        '/login',
+        '/login.html',
+        '/api/login',
+        '/api/check-unlock',
+        '/api/unlock',
+    }
+    allowed_prefixes = (
+        '/static/',
+        '/uploads/',
+        '/api/user/subscribe/',
+        '/payment/success',
+        '/payment/cancel',
+        '/api/payfast-',
+    )
+    return path in allowed_exact or any(path.startswith(prefix) for prefix in allowed_prefixes)
+
+
+def require_valid_pin(f):
+    """Block access when a logged-in user's Zeus-PIN has expired."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user_id = session.get('user_id')
+        if not user_id:
+            return f(*args, **kwargs)
+
+        if _is_pin_route_allowed(request.path):
+            return f(*args, **kwargs)
+
+        if is_pin_expired(user_id):
+            payload = {
+                'error': 'ZEUS-PIN EXPIRED',
+                'redirect': '/pin-expired-overlay',
+                'message': 'Your Zeus-PIN has expired. Please extend or subscribe.',
+            }
+            if request.path.startswith('/api/'):
+                return jsonify(payload), 403
+            return redirect('/pin-expired-overlay')
+
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def require_paid_user(f):
+    """Block free users from accessing paid-only features."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'Not authenticated'}), 401
+
+        tier = get_user_subscription_tier(user_id)
+        if tier == 'free':
+            return jsonify({
+                'error': 'Paid feature requires Pro or Teams subscription',
+                'requires_upgrade': True,
+                'redirect': '/subscription',
+            }), 403
+
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def get_pin_display_with_badge(user_id, requester_id=None):
+    """Return PIN string with paid-tier crown marker for display."""
+    tier = get_user_subscription_tier(user_id)
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT zeus_pin FROM users WHERE id = ?', (user_id,))
+        result = cursor.fetchone()
+        if not result:
+            return 'Unknown'
+
+    pin = result['zeus_pin']
+    if requester_id == user_id or session.get('admin_id'):
+        return f'{pin} 👑' if tier != 'free' else pin
+
+    half_pin = pin[:8] + '-XXXX'
+    return f'{half_pin} 👑' if tier != 'free' else half_pin
 
 def require_approved_user(f):
     """Decorator: Block access if user account not admin-approved"""
@@ -58,6 +154,16 @@ def require_approved_user(f):
                     'message': 'Please message admin for assistance',
                     'redirect': '/pending-approval'
                 }), 403
+
+        if not _is_pin_route_allowed(request.path) and is_pin_expired(user_id):
+            payload = {
+                'error': 'ZEUS-PIN EXPIRED',
+                'redirect': '/pin-expired-overlay',
+                'message': 'Your Zeus-PIN has expired. Please extend or subscribe.',
+            }
+            if is_html_page or not request.path.startswith('/api/'):
+                return redirect('/pin-expired-overlay')
+            return jsonify(payload), 403
 
         return f(*args, **kwargs)
     return decorated_function
@@ -204,6 +310,151 @@ def log_admin_action(admin_id, action, target_user_id=None, target_payment_id=No
         cursor.execute('''
             INSERT INTO admin_audit_log (admin_id, action, target_user_id, target_payment_id, details, ip_address)
             VALUES (?, ?, ?, ?, ?, ?)
-        ''', (admin_id, action, target_user_id, target_payment_id, 
+        ''', (admin_id, action, target_user_id, target_payment_id,
               json.dumps(details) if details else None, ip_address))
+        conn.commit()
+
+
+# ============================================================
+# PIN EXPIRY HELPERS
+# ============================================================
+
+def get_pin_expiry_date(user_id):
+    """Calculate when user's PIN expires."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+
+        # Subscribers (pro/teams) never expire
+        cursor.execute(
+            'SELECT tier FROM subscriptions WHERE user_id = ? AND status = "active"',
+            (user_id,)
+        )
+        sub = cursor.fetchone()
+        if sub and sub['tier'] in ('pro', 'teams'):
+            return None
+
+        # Paid extension still in effect?
+        cursor.execute(
+            'SELECT expires_at FROM pin_extensions WHERE user_id = ? AND expires_at > datetime("now") ORDER BY expires_at DESC LIMIT 1',
+            (user_id,)
+        )
+        extension = cursor.fetchone()
+        if extension:
+            raw = extension['expires_at'].replace(' ', 'T')
+            return datetime.fromisoformat(raw)
+
+        # Free user: expires 14 days after registration
+        cursor.execute('SELECT created_at FROM users WHERE id = ?', (user_id,))
+        user = cursor.fetchone()
+        if user and user['created_at']:
+            raw = str(user['created_at']).replace(' ', 'T')
+            created_at = datetime.fromisoformat(raw)
+            return created_at + timedelta(days=14)
+
+    return datetime.now() + timedelta(days=14)
+
+
+def refresh_pin_expiry_cache(user_id, conn=None):
+    """Persist the calculated PIN expiry date on the user row for audit/cleanup jobs."""
+    expiry = get_pin_expiry_date(user_id)
+
+    if conn is not None:
+        cursor = conn.cursor()
+        cursor.execute(
+            'UPDATE users SET pin_expires_at = ? WHERE id = ?',
+            (expiry.isoformat(sep=' ') if expiry else None, user_id),
+        )
+        return expiry
+
+    with get_db_connection() as local_conn:
+        cursor = local_conn.cursor()
+        cursor.execute(
+            'UPDATE users SET pin_expires_at = ? WHERE id = ?',
+            (expiry.isoformat(sep=' ') if expiry else None, user_id),
+        )
+        local_conn.commit()
+    return expiry
+
+
+def is_pin_expired(user_id):
+    """Return True if the user's PIN has expired."""
+    expiry = get_pin_expiry_date(user_id)
+    if expiry is None:
+        return False
+    return datetime.now() > expiry
+
+
+def get_pin_days_remaining(user_id):
+    """Return number of whole days until PIN expiry (999 for subscribers)."""
+    expiry = get_pin_expiry_date(user_id)
+    if expiry is None:
+        return 999
+    remaining = (expiry - datetime.now()).days
+    return max(0, remaining)
+
+
+def send_pin_warning_if_needed(user_id):
+    """Insert warning messages into user's admin inbox at 3-day and 1-day thresholds."""
+    days_remaining = get_pin_days_remaining(user_id)
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+
+        cursor.execute(
+            'SELECT id FROM admin_users WHERE role = "super_admin" LIMIT 1'
+        )
+        admin_row = cursor.fetchone()
+        admin_id = admin_row['id'] if admin_row else None
+
+        if days_remaining == 3:
+            cursor.execute(
+                'SELECT id FROM pin_expiry_warnings WHERE user_id = ? AND warning_type = "3day"',
+                (user_id,)
+            )
+            if not cursor.fetchone():
+                cursor.execute(
+                    '''
+                    INSERT INTO admin_messages (user_id, message, is_from_admin, admin_id)
+                    VALUES (?, ?, 1, ?)
+                    ''',
+                    (
+                        user_id,
+                        '\u26a0\ufe0f PIN EXPIRY WARNING: Your Zeus-PIN will expire in 3 days.\n\n'
+                        '\u2022 Pay R49 to extend for 30 days\n'
+                        '\u2022 Subscribe to Pro to keep it forever\n'
+                        '\u2022 Or your account will be locked',
+                        admin_id,
+                    )
+                )
+                cursor.execute(
+                    'INSERT OR IGNORE INTO pin_expiry_warnings (user_id, warning_type) VALUES (?, "3day")',
+                    (user_id,)
+                )
+
+        elif days_remaining == 1:
+            cursor.execute(
+                'SELECT id FROM pin_expiry_warnings WHERE user_id = ? AND warning_type = "1day"',
+                (user_id,)
+            )
+            if not cursor.fetchone():
+                cursor.execute(
+                    '''
+                    INSERT INTO admin_messages (user_id, message, is_from_admin, admin_id)
+                    VALUES (?, ?, 1, ?)
+                    ''',
+                    (
+                        user_id,
+                        '\u26a0\ufe0f\u26a0\ufe0f URGENT: Your Zeus-PIN expires TOMORROW!\n\n'
+                        'Take action now:\n'
+                        '\u2022 Pay R49 to extend for 30 days\n'
+                        '\u2022 Subscribe to Pro to keep it forever\n'
+                        '\u2022 Or you will lose access to your account',
+                        admin_id,
+                    )
+                )
+                cursor.execute(
+                    'INSERT OR IGNORE INTO pin_expiry_warnings (user_id, warning_type) VALUES (?, "1day")',
+                    (user_id,)
+                )
+
         conn.commit()

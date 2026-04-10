@@ -4,7 +4,7 @@ import urllib.parse
 import os
 import json
 from datetime import datetime
-from admin_middleware import get_db_connection, require_approved_user, user_has_unlock
+from admin_middleware import get_db_connection, require_approved_user, user_has_unlock, refresh_pin_expiry_cache
 
 payment_bp = Blueprint('payment', __name__)
 
@@ -129,6 +129,20 @@ def _create_payment_and_redirect(user_id, payment_type, amount, item_name, item_
     ])
 
     return render_template_string(''.join(form_html))
+
+
+@payment_bp.route('/payment/extend-pin', methods=['GET'])
+@require_approved_user
+def extend_pin_payment():
+    """Start a R49 PayFast payment to extend the user's Zeus-PIN by 30 days."""
+    user_id = session['user_id']
+    return _create_payment_and_redirect(
+        user_id,
+        'pin_extension',
+        49.00,
+        'Zeus-PIN Extension (30 days)',
+        'One-off payment to extend Zeus-PIN by 30 days',
+    )
 
 
 @payment_bp.route('/api/user/request-profile-picture', methods=['POST'])
@@ -521,6 +535,8 @@ def payfast_subscription_itn():
                 (user_id, sub_id, amount, pf_data.get('pf_payment_id')),
             )
 
+            refresh_pin_expiry_cache(user_id, conn=conn)
+
             cursor.execute(
                 '''
                 INSERT INTO profile_picture_locks (user_id, is_locked, subscription_tier)
@@ -543,6 +559,7 @@ def payfast_subscription_itn():
                 ''',
                 (sub_id,),
             )
+            refresh_pin_expiry_cache(user_id, conn=conn)
             print(f'❌ Subscription cancelled: User {user_id}')
 
         conn.commit()

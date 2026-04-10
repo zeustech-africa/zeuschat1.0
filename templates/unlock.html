@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Unlock ZeusChat</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -94,9 +95,9 @@
             <img src="/zeuschat-icon.png" alt="ZeusChat">
         </div>
         <h2>Unlock ZeusChat</h2>
-        <p class="subtitle">Enter your password to continue</p>
+        <p class="subtitle">Enter your Zeus-PIN to continue</p>
 
-        <input type="password" id="password" placeholder="Password" autofocus>
+        <input type="text" id="zeusPin" placeholder="Zeus-PIN (e.g., ZT-XXXX-XXXX)" autofocus>
         <button id="unlockBtn">Unlock →</button>
 
         <div id="errorMsg" class="error"></div>
@@ -109,32 +110,39 @@
     </div>
 
     <script>
+        function getCsrfToken() {
+            return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        }
+
         document.getElementById('unlockBtn').addEventListener('click', async function () {
-            const password = document.getElementById('password').value;
-            if (!password) {
-                showError('Please enter your password');
+            const zeusPin = document.getElementById('zeusPin').value.trim().toUpperCase();
+            if (!zeusPin) {
+                showError('Please enter your Zeus-PIN');
                 return;
             }
 
             try {
                 const response = await fetch('/api/unlock', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: password })
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': getCsrfToken()
+                    },
+                    body: JSON.stringify({ zeus_pin: zeusPin })
                 });
 
                 const data = await response.json();
                 if (data.success) {
                     window.location.href = data.redirect || '/chat.html';
                 } else {
-                    showError(data.error || 'Incorrect password');
+                    showError(data.error || 'Incorrect Zeus-PIN');
                 }
             } catch (err) {
                 showError('Unlock failed. Please try again.');
             }
         });
 
-        document.getElementById('password').addEventListener('keypress', function (e) {
+        document.getElementById('zeusPin').addEventListener('keypress', function (e) {
             if (e.key === 'Enter') {
                 document.getElementById('unlockBtn').click();
             }
@@ -171,7 +179,10 @@
 
                     const authResponse = await fetch('/api/biometric/verify', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': getCsrfToken()
+                        },
                         body: JSON.stringify({
                             id: credential.id,
                             response: {

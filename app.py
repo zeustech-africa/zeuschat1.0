@@ -2902,7 +2902,7 @@ def logout_page():
 
 @app.route('/unlock')
 def unlock_page():
-    """Password unlock page."""
+    """Zeus-PIN unlock page."""
     if 'user_id' not in session:
         return redirect('/login')
     if session.get('password_unlocked'):
@@ -2956,45 +2956,26 @@ def extend_pin():
 
 @app.route('/api/unlock', methods=['POST'])
 def unlock():
-    """Verify password and unlock current session."""
+    """Verify Zeus-PIN and unlock current session."""
     user_id = session.get('user_id')
     if not user_id:
         return jsonify({'error': 'Not authenticated'}), 401
 
     data = request.get_json() or {}
-    password = (data.get('password') or '').strip()
-    if not password:
-        return jsonify({'error': 'Password required'}), 400
+    zeus_pin = (data.get('zeus_pin') or '').strip().upper()
+    if not zeus_pin:
+        return jsonify({'error': 'Zeus-PIN required'}), 400
 
     with admin_get_db() as conn:
         cursor = conn.cursor()
-        cursor.execute('SELECT password_hash FROM users WHERE id = ?', (user_id,))
+        cursor.execute('SELECT zeus_pin FROM users WHERE id = ?', (user_id,))
         user = cursor.fetchone()
 
         if not user:
             return jsonify({'error': 'User not found'}), 404
 
-        stored_hash = user['password_hash'] or ''
-        legacy_hash = is_legacy_sha256_hash(stored_hash)
-
-        print(f"🔐 Unlock attempt for user {user_id}")
-        print(f"🔐 Hash type: {'legacy SHA-256' if legacy_hash else 'bcrypt'}")
-
-        if legacy_hash:
-            if hashlib.sha256(password.encode()).hexdigest() != stored_hash:
-                return jsonify({'error': 'Incorrect password'}), 401
-
-            # Migrate legacy SHA-256 hash to bcrypt after successful unlock.
-            new_hash = hash_password(password)
-            cursor.execute('UPDATE users SET password_hash = ? WHERE id = ?', (new_hash, user_id))
-            cursor.execute('DELETE FROM password_migration_queue WHERE user_id = ?', (user_id,))
-            conn.commit()
-        else:
-            try:
-                if not bcrypt.checkpw(password.encode(), stored_hash.encode()):
-                    return jsonify({'error': 'Incorrect password'}), 401
-            except Exception:
-                return jsonify({'error': 'Incorrect password'}), 401
+        if zeus_pin != (user['zeus_pin'] or '').strip().upper():
+            return jsonify({'error': 'Incorrect Zeus-PIN'}), 401
 
     session['password_unlocked'] = True
     session.permanent = True

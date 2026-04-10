@@ -597,7 +597,7 @@ def test_registration_flow():
             cursor.execute('SELECT COUNT(*) AS count FROM admin_messages WHERE user_id = ?', (user_id,))
             notification_count = cursor.fetchone()['count']
 
-        unlock_response = user_client.post('/api/unlock', json={'password': password})
+        unlock_response = user_client.post('/api/unlock', json={'zeus_pin': user['zeus_pin']})
         with user_client.session_transaction() as sess:
             unlocked = bool(sess.get('password_unlocked'))
 

@@ -1,4 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <title>Welcome — ZeusChat</title>
+  <style>
+    .top-nav {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #222;
+    }
+    .logo {
+      height: 32px;
+    }
+    .nav-links {
+      display: flex;
+      gap: 20px;
+    }
+    .nav-links a {
+      color: #aaa;
+      text-decoration: none;
+      font-size: 14px;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover {
+      color: #d4af37;
+    }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    body {
+      background: #000;
+      overflow-x: hidden;
+      overflow-y: auto;
+      min-height: 100vh;
+      height: auto;
+      color: #fff;
+    }
+    .video-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: -1;
+      filter: brightness(1.2); /* Brighten 4K video */
+    }
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      z-index: 0;
+    }
+    .header {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .logo {
+      height: 32px;
+      margin-bottom: 4px;
+    }
+    .byline {
+      font-size: 12px;
+      color: #FFD700;
+      font-weight: 500;
+    }
+    .top-menu {
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      z-index: 2;
+      display: flex;
+      gap: 24px;
+      font-size: 14px;
+      color: #FFD700;
+    }
+    .menu-item {
+      cursor: pointer;
+      transition: color 0.15s;
+      color: #FFD700;
+    }
+    .menu-item:hover {
+      color: #FFFF00;
+    }
+    .iphone-mockup {
+      position: absolute;
+      top: 50%;
+      right: 24px;
+      transform: translateY(-50%);
+      width: 280px;
+      height: 780px;
+      background: transparent;
+      border-radius: 40px;
+      border: 1px solid rgba(255,215,0,0.2);
+      overflow: hidden;
+      z-index: 2;
+    }
+    .iphone-screen {
+      height: 100%;
+      background: transparent;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+    }
+    .chat-preview {
+      max-width: 100%;
+      margin: 0 auto;
+      background: rgba(0,0,0,0.34);
+      border-radius: 20px;
+      padding: 14px;
+      border: 1px solid rgba(212,175,55,0.22);
+      backdrop-filter: blur(2px);
+      overflow-y: auto;
+    }
+    .message-row {
+      display: flex;
+      margin-bottom: 14px;
+    }
+    .message-row.left {
+      justify-content: flex-start;
+    }
+    .message-row.right {
+      justify-content: flex-end;
+    }
+    .message-wrap {
+      max-width: 80%;
+    }
+    .sender-name {
+      font-size: 11px;
+      margin-bottom: 5px;
+      opacity: 0.78;
+      letter-spacing: 0.2px;
+    }
+    .message-row.right .sender-name {
+      text-align: right;
+      color: #fef3c7;
+    }
+    .message-row.left .sender-name {
+      text-align: left;
+      color: #d1d5db;
+    }
+    .message-bubble {
+      padding: 10px 14px;
+      border-radius: 18px;
+      position: relative;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.22);
+    }
+    .message-bubble.grey {
+      background: #2a2a2a;
+      color: white;
+      border-bottom-left-radius: 4px;
+    }
+    .message-bubble.gold {
+      background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%);
+      color: #0a0a0a;
+      border-bottom-right-radius: 4px;
+    }
+    .message-text {
+      font-size: 13px;
+      line-height: 1.42;
+    }
+    .message-time {
+      font-size: 10px;
+      opacity: 0.68;
+      margin-top: 5px;
+      text-align: right;
+    }
+    .main-content {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 0 24px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    .spin-icon {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -180%) rotateY(0deg) rotateX(20deg) scale(1.8);
+      width: 180px;
+      height: 180px;
+      background: url('zeuschaticon-transparent-3d-spin.png') center/contain no-repeat;
+      opacity: 0.9;
+      animation: spin3d 12s linear infinite;
+      z-index: 3;
+    }
+    @keyframes spin3d {
+      0% { transform: translate(-50%, -180%) rotateY(0deg) rotateX(20deg) scale(1.8); }
+      100% { transform: translate(-50%, -180%) rotateY(360deg) rotateX(20deg) scale(1.8); }
+    }
+    .ghost-mode {
+      font-size: 28px;
+      font-weight: 500;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+    .subtext {
+      font-size: 16px;
+      color: #aaa;
+      margin-bottom: 32px;
+    }
+    .tagline {
+      font-size: 18px;
+      color: #FFD700;
+      margin-bottom: 32px;
+      max-width: 700px;
+      line-height: 1.4;
+    }
+    .btn {
+      background: #FFD700;
+      color: #000;
+      border: none;
+      padding: 14px 48px;
+      font-size: 18px;
+      font-weight: 600;
+      border-radius: 28px;
+      cursor: pointer;
+      margin: 6px;
+      text-decoration: none;
+      transition: transform 0.15s, background 0.15s;
+    }
+    .btn:hover {
+      transform: scale(1.03);
+      background: #FFCC00;
+    }
+    .install-qr-panel {
+      margin-top: 28px;
+      padding: 18px;
+      background: rgba(0, 0, 0, 0.34);
+      border: 1px solid rgba(212, 175, 55, 0.22);
+      border-radius: 24px;
+      backdrop-filter: blur(6px);
+    }
+    .install-qr-title {
+      color: #D4AF37;
+      font-size: 14px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .install-qr-hint {
+      color: rgba(255, 255, 255, 0.6);
+      margin-top: 12px;
+      font-size: 13px;
+    }
 
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+    body {
+        padding: 16px;
+    }
+
+    .container, .card, .main-content {
+        padding: 20px 16px;
+        margin: 0;
+        width: 100%;
+        border-radius: 24px;
+    }
+
+    h1 {
+        font-size: 28px;
+    }
+
+    h2 {
+        font-size: 22px;
+    }
+
+    button, .btn-primary, .btn-secondary {
+        padding: 14px 20px;
+        font-size: 16px;
+    }
+
+    input, textarea, select {
+        padding: 14px;
+        font-size: 16px;
+    }
+
+    .sidebar {
+        position: fixed;
+        left: -280px;
+        transition: left 0.3s;
+        z-index: 1000;
+    }
+
+    .sidebar.open {
+        left: 0;
+    }
+
+    .menu-toggle {
+        display: block;
+        position: fixed;
+        top: 16px;
+        left: 16px;
+        z-index: 1001;
+        background: #D4AF37;
+        border: none;
+        border-radius: 8px;
+        padding: 10px;
+        cursor: pointer;
+    }
+
+    .main-content {
+        margin-left: 0;
+        padding: 60px 16px 20px;
+      min-height: 100vh;
+    }
+
+    .admin-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .feature-grid, .pricing-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .chat-container {
+        flex-direction: column;
+    }
+
+    .message {
+        max-width: 85%;
+    }
+
+    body {
+        font-size: 14px;
+    }
+
+    button, a, .clickable {
+        min-height: 44px;
+    }
+
+    .iphone-mockup {
+      width: 92vw;
+      max-width: 360px;
+      right: 12px;
+      height: 72vh;
+      top: auto;
+      bottom: 16px;
+      transform: none;
+    }
+
+    .iphone-screen {
+      padding: 12px;
+    }
+
+    .chat-preview {
+      padding: 12px;
+    }
+
+    .message-wrap {
+      max-width: 88%;
+    }
+
+    .top-menu {
+      top: 18px;
+      right: 16px;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      max-width: 60vw;
+      font-size: 12px;
+    }
+}
+  </style>
+  <link rel="stylesheet" href="/static/mobile.css">
+  <link rel="stylesheet" href="/static/welcome-sections.css">
+</head>
+<body>
+
+  <video class="video-bg" autoplay muted loop>
+    <source src="zeustech-background.mp4" type="video/mp4">
+  </video>
+  <div class="overlay"></div>
+
+  <!-- Top-left: Logo + Byline -->
+  <div class="header">
+    <img src="zeustech-logo-zeushchat.png" class="logo" alt="ZeusTech">
+    <div class="byline">ZeusChat by ZeusTech</div>
+  </div>
+
+  <!-- Top-right: Menu (now clickable) -->
+  <div class="top-menu">
+    <a href="#features" class="menu-item">Features</a>
+    <a href="/privacy" class="menu-item">Privacy</a>
+    <a href="/help" class="menu-item">Help Center</a>
+    <a href="/blog" class="menu-item">Blog</a>
+    <a href="business.html" class="menu-item">For Business</a>
+    <a href="apps.html" class="menu-item">Apps</a>
+  </div>
+
+  <!-- Middle-right: iPhone Mockup -->
+  <div class="iphone-mockup">
+    <div class="iphone-screen">
+      <div class="chat-preview">
+        <div class="message-row left">
+          <div class="message-wrap">
+            <div class="sender-name">Amina</div>
+            <div class="message-bubble grey">
+              <div class="message-text">Hey! Have you tried ZeusChat yet?</div>
+              <div class="message-time">11:54 AM</div>
+            </div>
+          </div>
+        </div>
+        <div class="message-row right">
+          <div class="message-wrap">
+            <div class="sender-name">Friend</div>
+            <div class="message-bubble gold">
+              <div class="message-text">Not yet! What's so special about it?</div>
+              <div class="message-time">11:56 AM</div>
+            </div>
+          </div>
+        </div>
+        <div class="message-row left">
+          <div class="message-wrap">
+            <div class="sender-name">Amina</div>
+            <div class="message-bubble grey">
+              <div class="message-text">It's completely private. No phone number needed - just a Zeus-PIN.</div>
+              <div class="message-time">11:58 AM</div>
+            </div>
+          </div>
+        </div>
+        <div class="message-row right">
+          <div class="message-wrap">
+            <div class="sender-name">Friend</div>
+            <div class="message-bubble gold">
+              <div class="message-text">Wait, no phone number? How do people find you?</div>
+              <div class="message-time">12:00 PM</div>
+            </div>
+          </div>
+        </div>
+        <div class="message-row left">
+          <div class="message-wrap">
+            <div class="sender-name">Amina</div>
+            <div class="message-bubble grey">
+              <div class="message-text">You share your Zeus-PIN instead. It's like a username but more secure.</div>
+              <div class="message-time">12:02 PM</div>
+            </div>
+          </div>
+        </div>
+        <div class="message-row right">
+          <div class="message-wrap">
+            <div class="sender-name">Friend</div>
+            <div class="message-bubble gold">
+              <div class="message-text">And the messages are encrypted?</div>
+              <div class="message-time">12:03 PM</div>
+            </div>
+          </div>
+        </div>
+        <div class="message-row left">
+          <div class="message-wrap">
+            <div class="sender-name">Amina</div>
+            <div class="message-bubble grey">
+              <div class="message-text">End-to-end encrypted. Plus they self-destruct after 5-30 seconds.</div>
+              <div class="message-time">12:05 PM</div>
+            </div>
+          </div>
+        </div>
+        <div class="message-row right">
+          <div class="message-wrap">
+            <div class="sender-name">Friend</div>
+            <div class="message-bubble gold">
+              <div class="message-text">No saving? No screenshots?</div>
+              <div class="message-time">12:06 PM</div>
+            </div>
+          </div>
+        </div>
+        <div class="message-row left">
+          <div class="message-wrap">
+            <div class="sender-name">Amina</div>
+            <div class="message-bubble grey">
+              <div class="message-text">Exactly. And if someone enters the wrong PIN, the message deletes instantly.</div>
+              <div class="message-time">12:08 PM</div>
+            </div>
+          </div>
+        </div>
+        <div class="message-row right">
+          <div class="message-wrap">
+            <div class="sender-name">Friend</div>
+            <div class="message-bubble gold">
+              <div class="message-text">That's incredible! I'm switching today.</div>
+              <div class="message-time">12:10 PM</div>
+            </div>
+          </div>
+        </div>
+        <div class="message-row left">
+          <div class="message-wrap">
+            <div class="sender-name">Amina</div>
+            <div class="message-bubble grey">
+              <div class="message-text">Welcome to Ghost Mode Messaging 😎</div>
+              <div class="message-time">12:11 PM</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <div class="hero-content">
+      <div class="logo-container">
+        <div class="spin-icon"></div>
+      </div>
+
+      <h1>ZEUSCHAT</h1>
+      <div class="ghost-mode">GHOST MODE MESSAGING</div>
+      <div class="tagline">Simple. Secure. Reliable.</div>
+      <div class="hero-description">No phone number required. Built for privacy-first messaging, trusted commerce, and creator earnings inside Ghost Town.</div>
+
+      <div class="hero-buttons">
+        <a href="registration.html" class="btn-get-started">Get Started</a>
+        <a href="login.html" class="btn-login">Log in</a>
+      </div>
+    </div>
+
+    <div class="install-qr-panel qr-section" id="installQrPanel">
+      <div class="install-qr-title">Install On Phone</div>
+      <div id="qr-section"></div>
+      <div id="installQrCode" style="display:flex;justify-content:center;"></div>
+      <div class="install-qr-hint">Scan to open the mobile install page</div>
+    </div>
+  </div>
+  <div class="marketing-sections">
+    <div class="section-container">
+      <div class="section-grid">
+        <div class="section-image">
+          <img src="/static/images/revolution.jpg" alt="ZeusChat Revolution">
+        </div>
+        <div class="section-text">
+          <h2>"The way Africa communicates will never be the same."</h2>
+          <p>No phone number required. No tracking. No data mining. No AI reading your messages.</p>
+          <p>Your <span class="highlight">Zeus-PIN</span> is your identity. Forever. Anonymous. Untraceable.</p>
+          <p><span class="highlight">10,000+ Ghosts</span> already inside the Ghost Town.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-container">
+      <div class="section-grid reverse">
+        <div class="section-image">
+          <img src="/static/images/ghost-market-showcase.jpg" alt="Ghost Market showcase">
+        </div>
+        <div class="section-text">
+          <h2>Ghost Market</h2>
+          <p><span class="highlight">World's first anonymous marketplace</span> in a messaging app.</p>
+          <p>Sell used items without anyone knowing who you are. Buy with confidence.</p>
+          <p><span class="highlight">Escrow protection</span> on every transaction. Money held until you receive item.</p>
           <p><span class="highlight">Zero commission</span> for Pro users.</p>
         </div>
       </div>

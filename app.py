@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_from_directory, session, current_app, render_template, redirect
+from flask import Flask, request, jsonify, send_from_directory, session, current_app, render_template, render_template_string, redirect
 from flask_cors import CORS
 from flask_socketio import SocketIO, join_room, emit
 from flask_compress import Compress
@@ -3004,6 +3004,16 @@ def chat_page():
     return send_from_directory('.', 'chat.html')
 
 
+@app.route('/add-contact.html')
+@require_approved_user
+@require_valid_pin
+@require_password_unlock
+def add_contact_page():
+    """Render add-contact page with Jinja context so CSRF token is available."""
+    with open('add-contact.html', 'r', encoding='utf-8') as page_file:
+        return render_template_string(page_file.read())
+
+
 @app.route('/login')
 def login_redirect():
     """Compatibility route for app redirects expecting /login."""
@@ -4555,7 +4565,7 @@ def add_contact():
             return jsonify({'error': 'No data provided'}), 400
         
         sender_id = session['user_id']
-        target_zeus_pin = data.get('zeus_pin', '').strip().upper()
+        target_zeus_pin = (data.get('contact_pin') or data.get('zeus_pin') or '').strip().upper()
         
         if not target_zeus_pin:
             return jsonify({'error': 'Zeus PIN required'}), 400

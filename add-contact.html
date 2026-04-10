@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>Add Contact — ZeusChat</title>
   <style>
     * {
@@ -239,6 +240,10 @@
   <script>
     console.log('=== ADD CONTACT PAGE LOAD ===');
 
+    function getCsrfToken() {
+      return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    }
+
     // Authentication guard using sessionStorage
     window.addEventListener('DOMContentLoaded', () => {
       const isLoggedIn = sessionStorage.getItem('user_logged_in') === 'true';
@@ -303,9 +308,10 @@
           method: 'POST',
           credentials: 'include',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': getCsrfToken()
           },
-          body: JSON.stringify({ zeus_pin: zeusPin })
+          body: JSON.stringify({ contact_pin: zeusPin })
         });
 
         const result = await response.json();

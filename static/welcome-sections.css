@@ -14,6 +14,18 @@
   z-index: 10;
 }
 
+.hero-content h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 56px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #D4AF37 0%, #F3E5AB 50%, #D4AF37 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  letter-spacing: 4px;
+  margin-bottom: 16px;
+}
+
 .logo-container {
   margin-bottom: 30px;
   min-height: 180px;
@@ -40,12 +52,60 @@
 }
 
 .hero-buttons {
-  margin-top: 30px;
-  margin-bottom: 30px;
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  margin: 30px 0;
 }
 
 .qr-section {
   margin-top: 40px;
+}
+
+.ghost-mode {
+  font-size: 14px;
+  letter-spacing: 6px;
+  color: #D4AF37;
+  margin-bottom: 12px;
+}
+
+.tagline {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 30px;
+}
+
+.hero-description {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.5);
+  max-width: 500px;
+  margin: 20px auto;
+  line-height: 1.6;
+}
+
+.btn-get-started {
+  background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%);
+  color: #0a0a0a;
+  padding: 14px 32px;
+  border-radius: 40px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 0.3s;
+}
+
+.btn-login {
+  background: transparent;
+  border: 1px solid #D4AF37;
+  color: #D4AF37;
+  padding: 14px 32px;
+  border-radius: 40px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.btn-get-started:hover,
+.btn-login:hover {
+  transform: translateY(-2px);
 }
 
 .section-container {
@@ -256,7 +316,7 @@
 
 .footer-col a {
   display: block;
-  color: rgba(255, 255, 255, 0.66);
+  color: rgba(255, 255, 255, 0.6);
   text-decoration: none;
   margin-bottom: 12px;
   font-size: 13px;
@@ -269,12 +329,20 @@
 }
 
 .footer-bottom {
-  text-align: center;
-  padding-top: 28px;
-  margin-top: 34px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.45);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  padding-top: 40px;
+  margin-top: 40px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.4);
   font-size: 12px;
+}
+
+.footer-bottom-left img {
+  height: 30px;
+  opacity: 0.7;
 }
 
 .footer-legal {
@@ -302,6 +370,15 @@
 }
 
 @media (max-width: 768px) {
+  .hero-content h1 {
+    font-size: 42px;
+  }
+
+  .hero-buttons {
+    flex-direction: column;
+    align-items: center;
+  }
+
   .section-grid {
     grid-template-columns: 1fr;
     gap: 30px;
@@ -324,5 +401,11 @@
   .footer-grid {
     grid-template-columns: 1fr;
     gap: 24px;
+  }
+
+  .footer-bottom {
+    gap: 14px;
+    justify-content: center;
+    text-align: center;
   }
 }

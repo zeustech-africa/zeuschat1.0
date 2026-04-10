@@ -40,8 +40,10 @@
     }
     body {
       background: #000;
-      overflow: hidden;
-      height: 100vh;
+      overflow-x: hidden;
+      overflow-y: auto;
+      min-height: 100vh;
+      height: auto;
       color: #fff;
     }
     .video-bg {
@@ -244,6 +246,233 @@
       transform: scale(1.03);
       background: #FFCC00;
     }
+    .install-qr-panel {
+      margin-top: 28px;
+      padding: 18px;
+      background: rgba(0, 0, 0, 0.34);
+      border: 1px solid rgba(212, 175, 55, 0.22);
+      border-radius: 24px;
+      backdrop-filter: blur(6px);
+    }
+    .install-qr-title {
+      color: #D4AF37;
+      font-size: 14px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .install-qr-hint {
+      color: rgba(255, 255, 255, 0.6);
+      margin-top: 12px;
+      font-size: 13px;
+    }
+    .marketing-sections {
+      position: relative;
+      z-index: 2;
+      background: linear-gradient(180deg, rgba(10,10,10,0.95) 0%, #0a0a0a 100%);
+      padding-top: 60px;
+    }
+    .section-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 80px 24px;
+    }
+    .section-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+    }
+    .section-grid.reverse {
+      direction: rtl;
+    }
+    .section-grid.reverse .section-text {
+      direction: ltr;
+    }
+    .section-text h2,
+    .cta-section h2 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 38px;
+      font-weight: 600;
+      background: linear-gradient(135deg, #D4AF37 0%, #F3E5AB 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      margin-bottom: 20px;
+    }
+    .section-text p {
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 16px;
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+    .section-text .highlight {
+      color: #D4AF37;
+      font-weight: 600;
+    }
+    .section-image img {
+      width: 100%;
+      border-radius: 24px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(212, 175, 55, 0.2);
+      transition: transform 0.3s;
+      background: rgba(255,255,255,0.02);
+    }
+    .section-image img:hover {
+      transform: scale(1.02);
+    }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 30px;
+      margin-top: 40px;
+    }
+    .feature-card {
+      background: rgba(10, 10, 10, 0.6);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(212, 175, 55, 0.2);
+      border-radius: 24px;
+      padding: 30px;
+      text-align: center;
+      transition: all 0.3s;
+    }
+    .feature-card:hover {
+      transform: translateY(-5px);
+      border-color: rgba(212, 175, 55, 0.5);
+      box-shadow: 0 10px 30px rgba(212, 175, 55, 0.1);
+    }
+    .feature-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    .feature-card h3 {
+      color: #D4AF37;
+      font-size: 20px;
+      margin-bottom: 12px;
+    }
+    .feature-card p {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .testimonials-section {
+      background: url('/static/images/testimonial-bg.svg') center/cover no-repeat;
+      position: relative;
+      padding: 80px 24px;
+    }
+    .testimonials-section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.72);
+    }
+    .testimonials-container {
+      position: relative;
+      z-index: 1;
+      max-width: 800px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .testimonial-card {
+      background: rgba(10, 10, 10, 0.8);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(212, 175, 55, 0.3);
+      border-radius: 24px;
+      padding: 40px;
+      margin-bottom: 20px;
+    }
+    .testimonial-text {
+      font-size: 18px;
+      line-height: 1.6;
+      color: white;
+      margin-bottom: 20px;
+      font-style: italic;
+    }
+    .testimonial-author {
+      color: #D4AF37;
+      font-weight: 600;
+    }
+    .cta-section {
+      text-align: center;
+      padding: 80px 24px;
+      background: linear-gradient(135deg, rgba(212,175,55,0.05), rgba(0,0,0,0.3));
+    }
+    .cta-buttons {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      margin-top: 30px;
+      flex-wrap: wrap;
+    }
+    .cta-btn-primary {
+      background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%);
+      color: #0a0a0a;
+      padding: 14px 32px;
+      border-radius: 40px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: transform 0.3s;
+    }
+    .cta-btn-secondary {
+      background: transparent;
+      border: 1px solid #D4AF37;
+      color: #D4AF37;
+      padding: 14px 32px;
+      border-radius: 40px;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .cta-btn-primary:hover,
+    .cta-btn-secondary:hover {
+      transform: translateY(-2px);
+    }
+    .website-footer {
+      background: #050505;
+      padding: 60px 24px 30px;
+      border-top: 1px solid rgba(212, 175, 55, 0.1);
+    }
+    .footer-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 40px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .footer-col h4 {
+      color: #D4AF37;
+      margin-bottom: 20px;
+      font-size: 16px;
+    }
+    .footer-col a {
+      display: block;
+      color: rgba(255, 255, 255, 0.6);
+      text-decoration: none;
+      margin-bottom: 12px;
+      font-size: 13px;
+      transition: color 0.3s;
+    }
+    .footer-col a:hover {
+      color: #D4AF37;
+    }
+    .social-links {
+      display: flex;
+      gap: 20px;
+      margin-top: 20px;
+    }
+    .social-links a {
+      font-size: 20px;
+    }
+    .footer-bottom {
+      text-align: center;
+      padding-top: 40px;
+      margin-top: 40px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 12px;
+    }
 
 /* Mobile Responsive Styles */
 @media (max-width: 768px) {
@@ -303,6 +532,7 @@
     .main-content {
         margin-left: 0;
         padding: 60px 16px 20px;
+      min-height: 100vh;
     }
 
     .admin-table {
@@ -352,6 +582,39 @@
     .message-wrap {
       max-width: 88%;
     }
+
+    .section-grid {
+      grid-template-columns: 1fr;
+      gap: 30px;
+      text-align: center;
+    }
+
+    .section-grid.reverse {
+      direction: ltr;
+    }
+
+    .section-text h2,
+    .cta-section h2 {
+      font-size: 28px;
+    }
+
+    .features-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .footer-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .top-menu {
+      top: 18px;
+      right: 16px;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      max-width: 60vw;
+      font-size: 12px;
+    }
 }
   </style>
   <link rel="stylesheet" href="/static/mobile.css">
@@ -371,10 +634,10 @@
 
   <!-- Top-right: Menu (now clickable) -->
   <div class="top-menu">
-    <a href="features.html" class="menu-item">Features</a>
-    <a href="privacy.html" class="menu-item">Privacy</a>
-    <a href="help.html" class="menu-item">Help Center</a>
-    <a href="blog.html" class="menu-item">Blog</a>
+    <a href="#features" class="menu-item">Features</a>
+    <a href="/privacy" class="menu-item">Privacy</a>
+    <a href="/help" class="menu-item">Help Center</a>
+    <a href="/blog" class="menu-item">Blog</a>
     <a href="business.html" class="menu-item">For Business</a>
     <a href="apps.html" class="menu-item">Apps</a>
   </div>
@@ -503,6 +766,7 @@
     
     <div class="install-qr-panel" id="installQrPanel">
       <div class="install-qr-title">Install On Phone</div>
+      <div id="qr-section"></div>
       <div id="installQrCode" style="display:flex;justify-content:center;"></div>
       <div class="install-qr-hint">Scan to open the mobile install page</div>
     </div>
@@ -514,6 +778,168 @@
     <a href="/ghost-market-policy" style="color:#D4AF37;text-decoration:none;margin:0 8px;opacity:0.7;">Ghost Market Policy</a> |
     <a href="/refund-policy" style="color:#D4AF37;text-decoration:none;margin:0 8px;opacity:0.7;">Refunds</a>
   </div>
+
+  <div class="marketing-sections">
+    <div class="section-container">
+      <div class="section-grid">
+        <div class="section-image">
+          <img src="/static/images/revolution.svg" alt="ZeusChat Revolution">
+        </div>
+        <div class="section-text">
+          <h2>"The way Africa communicates will never be the same."</h2>
+          <p>No phone number required. No tracking. No data mining. No AI reading your messages.</p>
+          <p>Your <span class="highlight">Zeus-PIN</span> is your identity. Forever. Anonymous. Untraceable.</p>
+          <p><span class="highlight">10,000+ Ghosts</span> already inside the Ghost Town.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-container">
+      <div class="section-grid reverse">
+        <div class="section-image">
+          <img src="/static/images/ghost-market-showcase.svg" alt="Ghost Market showcase">
+        </div>
+        <div class="section-text">
+          <h2>Ghost Market</h2>
+          <p><span class="highlight">World's first anonymous marketplace</span> in a messaging app.</p>
+          <p>Sell used items without anyone knowing who you are. Buy with confidence.</p>
+          <p><span class="highlight">Escrow protection</span> on every transaction. Money held until you receive item.</p>
+          <p><span class="highlight">Zero commission</span> for Pro users.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-container">
+      <div class="section-grid">
+        <div class="section-image">
+          <img src="/static/images/ghost-community-showcase.svg" alt="Ghost Community showcase">
+        </div>
+        <div class="section-text">
+          <h2>Ghost Community</h2>
+          <p>A <span class="highlight">TikTok-style feed</span> where creators earn <span class="highlight">80%</span> of every paid post.</p>
+          <p>Set your price: R5 • R10 • R20 • R50 • R100.</p>
+          <p>Posts expire in <span class="highlight">24 hours</span>. What happens in Ghost Town stays in Ghost Town.</p>
+          <p><strong>Monetize your voice. No face required.</strong></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-container" id="features">
+      <h2 style="text-align: center; margin-bottom: 20px; font-family: Georgia, 'Times New Roman', serif; background: linear-gradient(135deg, #D4AF37 0%, #F3E5AB 100%); -webkit-background-clip: text; background-clip: text; color: transparent;">Every Ghost needs their power.</h2>
+      <p style="text-align: center; color: rgba(255,255,255,0.6); margin-bottom: 50px;">Privacy-first features designed for the modern world.</p>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">🔑</div>
+          <h3>Zeus-PIN Identity</h3>
+          <p>No phone number required. Your PIN is your identity. No spam. No tracking.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💀</div>
+          <h3>Self-Destruct Messages</h3>
+          <p>Messages disappear after 5-30 seconds. Delete everywhere keeps conversations under your control.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🏪</div>
+          <h3>Ghost Market</h3>
+          <p>Anonymous buying and selling with escrow protection on every transaction.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💰</div>
+          <h3>Get Paid</h3>
+          <p>Earn 80% of every paid post. Your content, your value, your audience.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🌍</div>
+          <h3>African Languages</h3>
+          <p>Native-first communication for Swahili, Yoruba, Zulu, Hausa, Igbo, and Amharic speakers.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🛡️</div>
+          <h3>Admin Verified</h3>
+          <p>Every Ghost is reviewed to keep the network human, trusted, and bot-resistant.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="testimonials-section">
+      <div class="testimonials-container">
+        <div class="testimonial-card">
+          <div class="testimonial-text">"Finally, a platform that respects my privacy. No phone number, no tracking, and the whole experience still feels premium."</div>
+          <div class="testimonial-author">— Anonymous Ghost, ZT-XXXX-1234</div>
+        </div>
+        <div class="testimonial-card">
+          <div class="testimonial-text">"I made R1,500 in my first week on Ghost Community. My content, my earnings, my anonymity."</div>
+          <div class="testimonial-author">— Creator Ghost, ZT-XXXX-5678</div>
+        </div>
+        <div class="testimonial-card">
+          <div class="testimonial-text">"Ghost Market changed how I sell. No fees, no names, just escrow-backed transactions."</div>
+          <div class="testimonial-author">— Seller Ghost, ZT-XXXX-9012</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cta-section" id="download">
+      <h2>The Ghost Town is growing.</h2>
+      <p style="color: rgba(255,255,255,0.7);">10,000+ Ghosts already inside. Not everyone belongs. Only the worthy enter.</p>
+      <div class="cta-buttons">
+        <a href="/registration.html" class="cta-btn-primary">BECOME A GHOST →</a>
+        <a href="#features" class="cta-btn-secondary">LEARN MORE</a>
+      </div>
+      <p style="margin-top: 30px; font-size: 12px; color: rgba(255,255,255,0.4);">Join the most exclusive messaging experience on Earth. Limited spots. Admin approval required.</p>
+    </div>
+  </div>
+
+  <footer class="website-footer">
+    <div class="footer-grid">
+      <div class="footer-col">
+        <h4>What We Do</h4>
+        <a href="#features">Features</a>
+        <a href="/blog">Blog</a>
+        <a href="/security">Security</a>
+        <a href="/apps.html">Download</a>
+      </div>
+      <div class="footer-col">
+        <h4>Who We Are</h4>
+        <a href="/about">About Us</a>
+        <a href="/careers">Careers</a>
+        <a href="/brand">Brand Center</a>
+        <a href="/privacy">Privacy</a>
+      </div>
+      <div class="footer-col">
+        <h4>Use ZeusChat</h4>
+        <a href="/apps.html">Android App</a>
+        <a href="/apps.html">iPhone App</a>
+        <a href="/registration.html">Web App</a>
+        <a href="#qr-section">QR Code</a>
+      </div>
+      <div class="footer-col">
+        <h4>Need Help?</h4>
+        <a href="/contact">Contact Us</a>
+        <a href="/help">Help Center</a>
+        <a href="/faq">FAQs</a>
+        <a href="/security">Security Advisories</a>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <a href="/terms">Terms of Service</a>
+        <a href="/privacy">Privacy Policy</a>
+        <a href="/kyc-policy">KYC Policy</a>
+        <a href="/ghost-market-policy">Ghost Market Policy</a>
+        <a href="/refund-policy">Refund Policy</a>
+      </div>
+      <div class="footer-col">
+        <h4>Connect</h4>
+        <div class="social-links">
+          <a href="mailto:info@zeustechafrica.com" aria-label="Email ZeusTech">✉️</a>
+          <a href="https://zeustechafrica.com" target="_blank" rel="noopener noreferrer" aria-label="ZeusTech website">🌐</a>
+          <a href="https://github.com/zeustech-africa/zeuschat1.0" target="_blank" rel="noopener noreferrer" aria-label="ZeusChat GitHub repository">🔗</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 ZeusChat. Built in Africa. All rights reserved.</p>
+    </div>
+  </footer>
   
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script>

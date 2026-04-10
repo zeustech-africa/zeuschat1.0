@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
+  <title id="title">Ghost Community Showcase</title>
+  <desc id="desc">Paid creator feed with anonymous creator cards and community metrics.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#08080c"/>
+      <stop offset="100%" stop-color="#1d1422"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="800" fill="url(#bg)"/>
+  <circle cx="960" cy="130" r="120" fill="#d4af37" opacity="0.12"/>
+  <rect x="112" y="102" width="976" height="598" rx="36" fill="#101015" stroke="#d4af37" stroke-opacity="0.25"/>
+  <rect x="160" y="150" width="312" height="500" rx="26" fill="#19191f"/>
+  <rect x="510" y="150" width="208" height="500" rx="26" fill="#15151b"/>
+  <rect x="756" y="150" width="284" height="500" rx="26" fill="#17171f"/>
+  <rect x="184" y="182" width="264" height="180" rx="20" fill="#3c2d12"/>
+  <rect x="184" y="392" width="180" height="14" rx="7" fill="#fff" opacity="0.84"/>
+  <rect x="184" y="424" width="238" height="10" rx="5" fill="#fff" opacity="0.3"/>
+  <rect x="184" y="450" width="220" height="10" rx="5" fill="#fff" opacity="0.18"/>
+  <circle cx="614" cy="228" r="42" fill="#d4af37"/>
+  <rect x="560" y="308" width="108" height="12" rx="6" fill="#fff" opacity="0.78"/>
+  <rect x="544" y="346" width="140" height="10" rx="5" fill="#fff" opacity="0.22"/>
+  <rect x="544" y="476" width="140" height="10" rx="5" fill="#fff" opacity="0.22"/>
+  <rect x="790" y="196" width="214" height="110" rx="18" fill="#111" stroke="#d4af37" stroke-width="4"/>
+  <text x="818" y="258" font-family="Georgia, serif" font-size="42" fill="#f3e5ab">R 1,500</text>
+  <text x="818" y="286" font-family="Segoe UI, sans-serif" font-size="16" fill="#ccc">creator earnings this week</text>
+  <rect x="790" y="352" width="214" height="18" rx="9" fill="#fff" opacity="0.82"/>
+  <rect x="790" y="388" width="184" height="12" rx="6" fill="#fff" opacity="0.24"/>
+  <rect x="790" y="420" width="192" height="12" rx="6" fill="#fff" opacity="0.16"/>
+  <text x="136" y="88" font-family="Georgia, serif" font-size="52" fill="#fff">A creator economy without identity exposure.</text>
+</svg>

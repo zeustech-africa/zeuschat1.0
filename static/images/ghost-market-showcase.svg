@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
+  <title id="title">Ghost Market Showcase</title>
+  <desc id="desc">Anonymous marketplace scene with escrow and seller cards.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b0b10"/>
+      <stop offset="100%" stop-color="#161616"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#d4af37"/>
+      <stop offset="100%" stop-color="#b8960c"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="800" fill="url(#bg)"/>
+  <rect x="86" y="104" width="1028" height="592" rx="40" fill="#101014" stroke="#d4af37" stroke-opacity="0.25"/>
+  <rect x="132" y="160" width="240" height="472" rx="24" fill="#17171d" stroke="#d4af37" stroke-opacity="0.15"/>
+  <rect x="408" y="160" width="320" height="472" rx="24" fill="#141418" stroke="#d4af37" stroke-opacity="0.15"/>
+  <rect x="764" y="160" width="304" height="472" rx="24" fill="#17171d" stroke="#d4af37" stroke-opacity="0.15"/>
+  <circle cx="252" cy="250" r="42" fill="#d4af37" opacity="0.8"/>
+  <rect x="188" y="336" width="128" height="14" rx="7" fill="#fff" opacity="0.86"/>
+  <rect x="170" y="374" width="164" height="10" rx="5" fill="#fff" opacity="0.34"/>
+  <rect x="170" y="400" width="164" height="10" rx="5" fill="#fff" opacity="0.18"/>
+  <rect x="464" y="226" width="208" height="148" rx="20" fill="#f0d682" opacity="0.92"/>
+  <path d="M495 298H640" stroke="#0f0f0f" stroke-width="10" stroke-linecap="round"/>
+  <rect x="454" y="414" width="228" height="18" rx="9" fill="#ffffff" opacity="0.82"/>
+  <rect x="454" y="450" width="190" height="12" rx="6" fill="#ffffff" opacity="0.28"/>
+  <rect x="454" y="478" width="220" height="12" rx="6" fill="#ffffff" opacity="0.18"/>
+  <rect x="810" y="242" width="212" height="112" rx="20" fill="#111" stroke="url(#gold)" stroke-width="4"/>
+  <text x="845" y="308" font-family="Segoe UI, sans-serif" font-size="36" fill="#d4af37">ESCROW</text>
+  <path d="M808 412H1022" stroke="#fff" stroke-opacity="0.78" stroke-width="16" stroke-linecap="round"/>
+  <path d="M808 452H972" stroke="#fff" stroke-opacity="0.26" stroke-width="10" stroke-linecap="round"/>
+  <path d="M808 482H1000" stroke="#fff" stroke-opacity="0.16" stroke-width="10" stroke-linecap="round"/>
+  <text x="130" y="94" font-family="Georgia, serif" font-size="52" fill="#fff">Protected anonymous commerce.</text>
+</svg>

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
+  <title id="title">ZeusChat Blog</title>
+  <desc id="desc">Editorial illustration representing insights, privacy articles and product notes.</desc>
+  <rect width="1200" height="800" fill="#0b0b10"/>
+  <rect x="130" y="110" width="940" height="580" rx="38" fill="#16161e" stroke="#d4af37" stroke-opacity="0.22"/>
+  <rect x="184" y="174" width="390" height="452" rx="26" fill="#101015" stroke="#d4af37" stroke-opacity="0.18"/>
+  <rect x="626" y="174" width="390" height="146" rx="24" fill="#1b1b24"/>
+  <rect x="626" y="352" width="390" height="126" rx="24" fill="#111117"/>
+  <rect x="626" y="510" width="390" height="116" rx="24" fill="#1b1b24"/>
+  <path d="M238 252H520" stroke="#fff" stroke-opacity="0.84" stroke-width="18" stroke-linecap="round"/>
+  <path d="M238 304H484" stroke="#fff" stroke-opacity="0.22" stroke-width="12" stroke-linecap="round"/>
+  <path d="M238 356H520" stroke="#fff" stroke-opacity="0.18" stroke-width="12" stroke-linecap="round"/>
+  <text x="676" y="264" font-family="Georgia, serif" font-size="40" fill="#d4af37">Inside the Ghost Town</text>
+  <text x="676" y="430" font-family="Georgia, serif" font-size="34" fill="#f3e5ab">Escrow, creator payouts, and trust</text>
+  <text x="676" y="584" font-family="Georgia, serif" font-size="34" fill="#d4af37">Why Zeus-PIN identity matters</text>
+</svg>

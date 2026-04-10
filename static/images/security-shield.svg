@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
+  <title id="title">Security Shield</title>
+  <desc id="desc">Security illustration with a shield and encrypted data lines.</desc>
+  <rect width="1200" height="800" fill="#09090d"/>
+  <path d="M600 124L840 220V394C840 518 748 624 600 690C452 624 360 518 360 394V220L600 124Z" fill="#111218" stroke="#d4af37" stroke-width="8"/>
+  <path d="M600 214L742 270V382C742 470 680 542 600 582C520 542 458 470 458 382V270L600 214Z" fill="#d4af37" opacity="0.18" stroke="#f3e5ab" stroke-width="4"/>
+  <path d="M528 392L582 446L684 326" fill="none" stroke="#f3e5ab" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+  <g stroke="#d4af37" stroke-opacity="0.22">
+    <path d="M110 178H300" stroke-width="6" stroke-linecap="round"/>
+    <path d="M110 270H260" stroke-width="6" stroke-linecap="round"/>
+    <path d="M900 218H1090" stroke-width="6" stroke-linecap="round"/>
+    <path d="M940 310H1090" stroke-width="6" stroke-linecap="round"/>
+    <path d="M118 610H310" stroke-width="6" stroke-linecap="round"/>
+    <path d="M912 590H1082" stroke-width="6" stroke-linecap="round"/>
+  </g>
+</svg>

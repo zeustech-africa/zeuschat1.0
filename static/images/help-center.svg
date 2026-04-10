@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
+  <title id="title">Help Center</title>
+  <desc id="desc">Knowledge base illustration with cards and question markers.</desc>
+  <rect width="1200" height="800" fill="#0b0c10"/>
+  <circle cx="980" cy="168" r="132" fill="#d4af37" opacity="0.12"/>
+  <rect x="108" y="118" width="984" height="564" rx="36" fill="#15161d" stroke="#d4af37" stroke-opacity="0.24"/>
+  <text x="172" y="274" font-family="Georgia, serif" font-size="196" fill="#d4af37">?</text>
+  <rect x="328" y="188" width="236" height="164" rx="26" fill="#1b1b23"/>
+  <rect x="588" y="188" width="236" height="164" rx="26" fill="#111117" stroke="#d4af37" stroke-opacity="0.18"/>
+  <rect x="848" y="188" width="156" height="164" rx="26" fill="#1b1b23"/>
+  <rect x="170" y="404" width="834" height="48" rx="18" fill="#fff" opacity="0.78"/>
+  <rect x="170" y="486" width="774" height="26" rx="13" fill="#fff" opacity="0.22"/>
+  <rect x="170" y="536" width="690" height="26" rx="13" fill="#fff" opacity="0.14"/>
+</svg>

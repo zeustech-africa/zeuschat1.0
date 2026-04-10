@@ -8323,6 +8323,51 @@ def cookie_policy():
 def acceptable_use():
     return render_template('acceptable-use.html')
 
+
+@app.route('/about')
+def about_page():
+    return render_template('about.html')
+
+
+@app.route('/security')
+def security_page():
+    return render_template('security.html')
+
+
+@app.route('/contact')
+def contact_page():
+    return render_template('contact.html')
+
+
+@app.route('/help')
+def help_center_page():
+    return render_template('help.html')
+
+
+@app.route('/faq')
+def faq_page():
+    return render_template('faq.html')
+
+
+@app.route('/careers')
+def careers_page():
+    return render_template('careers.html')
+
+
+@app.route('/brand')
+def brand_page():
+    return render_template('brand.html')
+
+
+@app.route('/blog')
+def blog_page():
+    return render_template('blog.html')
+
+
+@app.route('/sitemap.xml')
+def sitemap():
+    return current_app.response_class(render_template('sitemap.xml'), mimetype='application/xml')
+
 @app.route('/api/ghost-market/items', methods=['GET'])
 @require_valid_pin
 def get_ghost_market_items():

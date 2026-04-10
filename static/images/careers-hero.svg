@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
+  <title id="title">Careers at ZeusChat</title>
+  <desc id="desc">Careers illustration with team silhouettes and hiring cards.</desc>
+  <rect width="1200" height="800" fill="#0b0b0f"/>
+  <path d="M0 620C170 540 330 520 452 548C574 576 694 668 1200 564V800H0Z" fill="#15151d"/>
+  <circle cx="350" cy="310" r="90" fill="#d4af37" opacity="0.75"/>
+  <circle cx="530" cy="350" r="76" fill="#f3e5ab" opacity="0.24" stroke="#d4af37" stroke-width="4"/>
+  <circle cx="700" cy="320" r="86" fill="#d4af37" opacity="0.62"/>
+  <rect x="788" y="188" width="248" height="150" rx="24" fill="#111116" stroke="#d4af37" stroke-opacity="0.28"/>
+  <rect x="788" y="382" width="248" height="150" rx="24" fill="#1a1a22"/>
+  <text x="120" y="128" font-family="Georgia, serif" font-size="58" fill="#fff">Build the next privacy platform from Africa.</text>
+</svg>

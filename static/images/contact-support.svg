@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
+  <title id="title">Contact Support</title>
+  <desc id="desc">Support contact illustration with headset and response cards.</desc>
+  <rect width="1200" height="800" fill="#0c0c12"/>
+  <rect x="120" y="110" width="960" height="580" rx="38" fill="#15151d" stroke="#d4af37" stroke-opacity="0.24"/>
+  <circle cx="385" cy="326" r="110" fill="#d4af37" opacity="0.78"/>
+  <path d="M290 378C318 444 352 468 384 468C416 468 452 444 478 378" fill="none" stroke="#111" stroke-width="18" stroke-linecap="round"/>
+  <path d="M304 276C304 226 340 188 384 188C428 188 466 226 466 276" fill="none" stroke="#111" stroke-width="18" stroke-linecap="round"/>
+  <rect x="600" y="212" width="360" height="118" rx="24" fill="#111116" stroke="#d4af37" stroke-opacity="0.3"/>
+  <rect x="600" y="366" width="300" height="82" rx="18" fill="#1b1b24"/>
+  <rect x="600" y="476" width="334" height="120" rx="24" fill="#111116" stroke="#d4af37" stroke-opacity="0.18"/>
+  <path d="M646 256H912" stroke="#fff" stroke-opacity="0.8" stroke-width="16" stroke-linecap="round"/>
+  <path d="M646 292H864" stroke="#fff" stroke-opacity="0.24" stroke-width="10" stroke-linecap="round"/>
+  <path d="M642 406H842" stroke="#fff" stroke-opacity="0.78" stroke-width="14" stroke-linecap="round"/>
+  <path d="M642 522H888" stroke="#fff" stroke-opacity="0.78" stroke-width="16" stroke-linecap="round"/>
+  <path d="M642 560H840" stroke="#fff" stroke-opacity="0.22" stroke-width="10" stroke-linecap="round"/>
+</svg>

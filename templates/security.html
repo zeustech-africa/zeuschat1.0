@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security - ZeusChat</title>
+    <meta name="description" content="Security practices, encryption model, and trust systems behind ZeusChat.">
+    <link rel="stylesheet" href="/static/mobile.css">
+    <link rel="stylesheet" href="/static/marketing-pages.css">
+</head>
+<body class="marketing-page">
+    <div class="marketing-shell">
+        <div class="marketing-topbar">
+            <a class="marketing-brand" href="/">
+                <img src="/zeustech-logo-zeushchat.png" alt="ZeusChat logo">
+                <span><span class="eyebrow">Security</span><span class="title">ZeusChat Trust Center</span></span>
+            </a>
+            <div class="marketing-links">
+                <a href="/privacy">Privacy</a>
+                <a href="/faq">FAQ</a>
+                <a href="/contact">Contact</a>
+            </div>
+        </div>
+
+        <div class="marketing-card">
+            <div class="page-hero">
+                <div>
+                    <span class="page-eyebrow">Security Practices</span>
+                    <h1>Security designed for <span class="gold-text">high-trust messaging</span>.</h1>
+                    <p class="page-lead">ZeusChat combines verified identity, session controls, disappearing content, CSRF protections, and escrow-backed commerce to reduce abuse without sacrificing anonymity.</p>
+                    <div class="page-actions">
+                        <a class="btn-gold" href="mailto:security@zeustechafrica.com">Report a security issue</a>
+                        <a class="btn-dark" href="/acceptable-use">Read safety policy</a>
+                    </div>
+                </div>
+                <div class="page-media">
+                    <img src="/static/images/security-shield.svg" alt="Security shield illustration">
+                </div>
+            </div>
+            <div class="page-sections">
+                <section class="page-section three-column">
+                    <div class="panel">
+                        <h3>Identity controls</h3>
+                        <p>Zeus-PIN identity decouples messaging from phone numbers while admin approval and KYC checks reduce bots, impersonation, and mass-abuse accounts.</p>
+                    </div>
+                    <div class="panel">
+                        <h3>Message controls</h3>
+                        <p>Delivery state, seen state, delete-everywhere flows, and TTL expiration keep message lifecycle behavior explicit and testable.</p>
+                    </div>
+                    <div class="panel">
+                        <h3>Session protections</h3>
+                        <p>CSRF validation, protected mutating endpoints, unlock gating, and secure session cookies help defend the browser surface.</p>
+                    </div>
+                </section>
+                <section class="page-section two-column">
+                    <div class="panel">
+                        <h2>Encryption and privacy posture</h2>
+                        <ul class="bullet-list">
+                            <li>Private account identity based on Zeus-PIN instead of public phone numbers.</li>
+                            <li>Message lifecycles designed around limited retention and user control.</li>
+                            <li>Admin moderation paths to remove abuse and handle disputes.</li>
+                            <li>Low-bandwidth optimizations so privacy features still work under constrained networks.</li>
+                        </ul>
+                    </div>
+                    <div class="panel">
+                        <h2>Operational practices</h2>
+                        <ul class="bullet-list">
+                            <li>Regression tests cover auth, admin, Ghost Market, Ghost Community, PIN expiry, and circuit breakers.</li>
+                            <li>Feature verification endpoints exist for system smoke validation before releases.</li>
+                            <li>Escrow and creator-payment logic use tracked state transitions rather than hidden side effects.</li>
+                            <li>Security reports can be sent to <a class="inline-link" href="mailto:security@zeustechafrica.com">security@zeustechafrica.com</a>.</li>
+                        </ul>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

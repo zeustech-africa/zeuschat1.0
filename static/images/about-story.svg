@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
+  <title id="title">About ZeusChat</title>
+  <desc id="desc">Story illustration showing African innovation, privacy and messaging.</desc>
+  <rect width="1200" height="800" fill="#0b0b0d"/>
+  <rect x="110" y="110" width="980" height="580" rx="34" fill="#16161f" stroke="#d4af37" stroke-opacity="0.22"/>
+  <path d="M170 544C314 392 444 316 590 316C736 316 858 422 1012 544" fill="none" stroke="#d4af37" stroke-width="18" stroke-linecap="round" opacity="0.82"/>
+  <circle cx="330" cy="296" r="62" fill="#d4af37" opacity="0.88"/>
+  <circle cx="600" cy="248" r="82" fill="#f3e5ab" opacity="0.22" stroke="#d4af37" stroke-width="4"/>
+  <circle cx="880" cy="296" r="62" fill="#d4af37" opacity="0.68"/>
+  <text x="156" y="666" font-family="Georgia, serif" font-size="58" fill="#fff">Built in Africa. Engineered for trust.</text>
+</svg>

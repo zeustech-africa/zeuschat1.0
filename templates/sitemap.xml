@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>{{ request.url_root.rstrip('/') }}/</loc></url>
+  <url><loc>{{ request.url_root.rstrip('/') }}/about</loc></url>
+  <url><loc>{{ request.url_root.rstrip('/') }}/security</loc></url>
+  <url><loc>{{ request.url_root.rstrip('/') }}/contact</loc></url>
+  <url><loc>{{ request.url_root.rstrip('/') }}/help</loc></url>
+  <url><loc>{{ request.url_root.rstrip('/') }}/faq</loc></url>
+  <url><loc>{{ request.url_root.rstrip('/') }}/careers</loc></url>
+  <url><loc>{{ request.url_root.rstrip('/') }}/brand</loc></url>
+  <url><loc>{{ request.url_root.rstrip('/') }}/blog</loc></url>
+  <url><loc>{{ request.url_root.rstrip('/') }}/privacy</loc></url>
+  <url><loc>{{ request.url_root.rstrip('/') }}/terms</loc></url>
+  <url><loc>{{ request.url_root.rstrip('/') }}/ghost-market-policy</loc></url>
+  <url><loc>{{ request.url_root.rstrip('/') }}/kyc-policy</loc></url>
+  <url><loc>{{ request.url_root.rstrip('/') }}/refund-policy</loc></url>
+  <url><loc>{{ request.url_root.rstrip('/') }}/cookie-policy</loc></url>
+</urlset>

@@ -8,6 +8,46 @@
   padding-top: 40px;
 }
 
+.hero-content {
+  padding-top: 100px;
+  position: relative;
+  z-index: 10;
+}
+
+.logo-container {
+  margin-bottom: 30px;
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-container .spin-icon {
+  position: relative;
+  top: auto;
+  left: auto;
+  transform: rotateY(0deg) rotateX(20deg) scale(1.2);
+  animation: spin3dHero 12s linear infinite;
+}
+
+@keyframes spin3dHero {
+  0% {
+    transform: rotateY(0deg) rotateX(20deg) scale(1.2);
+  }
+  100% {
+    transform: rotateY(360deg) rotateX(20deg) scale(1.2);
+  }
+}
+
+.hero-buttons {
+  margin-top: 30px;
+  margin-bottom: 30px;
+}
+
+.qr-section {
+  margin-top: 40px;
+}
+
 .section-container {
   max-width: 1200px;
   margin: 0 auto;
@@ -225,6 +265,7 @@
 
 .footer-col a:hover {
   color: #D4AF37;
+  text-decoration: underline;
 }
 
 .footer-bottom {
@@ -237,16 +278,17 @@
 }
 
 .footer-legal {
-  margin-bottom: 12px;
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 12px;
+  text-align: center;
+  padding: 20px 0;
+  margin-top: 20px;
+  border-top: 1px solid rgba(212, 175, 55, 0.1);
 }
 
 .footer-legal a {
-  color: rgba(255, 255, 255, 0.62);
+  color: rgba(255, 255, 255, 0.4);
   text-decoration: none;
+  font-size: 11px;
+  margin: 0 8px;
 }
 
 .footer-legal a:hover {

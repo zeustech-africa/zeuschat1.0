@@ -266,213 +266,6 @@
       margin-top: 12px;
       font-size: 13px;
     }
-    .marketing-sections {
-      position: relative;
-      z-index: 2;
-      background: linear-gradient(180deg, rgba(10,10,10,0.95) 0%, #0a0a0a 100%);
-      padding-top: 60px;
-    }
-    .section-container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 80px 24px;
-    }
-    .section-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 60px;
-      align-items: center;
-    }
-    .section-grid.reverse {
-      direction: rtl;
-    }
-    .section-grid.reverse .section-text {
-      direction: ltr;
-    }
-    .section-text h2,
-    .cta-section h2 {
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: 38px;
-      font-weight: 600;
-      background: linear-gradient(135deg, #D4AF37 0%, #F3E5AB 100%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      margin-bottom: 20px;
-    }
-    .section-text p {
-      color: rgba(255, 255, 255, 0.8);
-      font-size: 16px;
-      line-height: 1.6;
-      margin-bottom: 16px;
-    }
-    .section-text .highlight {
-      color: #D4AF37;
-      font-weight: 600;
-    }
-    .section-image img {
-      width: 100%;
-      border-radius: 24px;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-      border: 1px solid rgba(212, 175, 55, 0.2);
-      transition: transform 0.3s;
-      background: rgba(255,255,255,0.02);
-    }
-    .section-image img:hover {
-      transform: scale(1.02);
-    }
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 30px;
-      margin-top: 40px;
-    }
-    .feature-card {
-      background: rgba(10, 10, 10, 0.6);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(212, 175, 55, 0.2);
-      border-radius: 24px;
-      padding: 30px;
-      text-align: center;
-      transition: all 0.3s;
-    }
-    .feature-card:hover {
-      transform: translateY(-5px);
-      border-color: rgba(212, 175, 55, 0.5);
-      box-shadow: 0 10px 30px rgba(212, 175, 55, 0.1);
-    }
-    .feature-icon {
-      font-size: 48px;
-      margin-bottom: 16px;
-    }
-    .feature-card h3 {
-      color: #D4AF37;
-      font-size: 20px;
-      margin-bottom: 12px;
-    }
-    .feature-card p {
-      color: rgba(255, 255, 255, 0.7);
-      font-size: 14px;
-      line-height: 1.5;
-    }
-    .testimonials-section {
-      background: url('/static/images/testimonial-bg.svg') center/cover no-repeat;
-      position: relative;
-      padding: 80px 24px;
-    }
-    .testimonials-section::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.72);
-    }
-    .testimonials-container {
-      position: relative;
-      z-index: 1;
-      max-width: 800px;
-      margin: 0 auto;
-      text-align: center;
-    }
-    .testimonial-card {
-      background: rgba(10, 10, 10, 0.8);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(212, 175, 55, 0.3);
-      border-radius: 24px;
-      padding: 40px;
-      margin-bottom: 20px;
-    }
-    .testimonial-text {
-      font-size: 18px;
-      line-height: 1.6;
-      color: white;
-      margin-bottom: 20px;
-      font-style: italic;
-    }
-    .testimonial-author {
-      color: #D4AF37;
-      font-weight: 600;
-    }
-    .cta-section {
-      text-align: center;
-      padding: 80px 24px;
-      background: linear-gradient(135deg, rgba(212,175,55,0.05), rgba(0,0,0,0.3));
-    }
-    .cta-buttons {
-      display: flex;
-      gap: 20px;
-      justify-content: center;
-      margin-top: 30px;
-      flex-wrap: wrap;
-    }
-    .cta-btn-primary {
-      background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%);
-      color: #0a0a0a;
-      padding: 14px 32px;
-      border-radius: 40px;
-      font-weight: 600;
-      text-decoration: none;
-      transition: transform 0.3s;
-    }
-    .cta-btn-secondary {
-      background: transparent;
-      border: 1px solid #D4AF37;
-      color: #D4AF37;
-      padding: 14px 32px;
-      border-radius: 40px;
-      font-weight: 600;
-      text-decoration: none;
-    }
-    .cta-btn-primary:hover,
-    .cta-btn-secondary:hover {
-      transform: translateY(-2px);
-    }
-    .website-footer {
-      background: #050505;
-      padding: 60px 24px 30px;
-      border-top: 1px solid rgba(212, 175, 55, 0.1);
-    }
-    .footer-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 40px;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    .footer-col h4 {
-      color: #D4AF37;
-      margin-bottom: 20px;
-      font-size: 16px;
-    }
-    .footer-col a {
-      display: block;
-      color: rgba(255, 255, 255, 0.6);
-      text-decoration: none;
-      margin-bottom: 12px;
-      font-size: 13px;
-      transition: color 0.3s;
-    }
-    .footer-col a:hover {
-      color: #D4AF37;
-    }
-    .social-links {
-      display: flex;
-      gap: 20px;
-      margin-top: 20px;
-    }
-    .social-links a {
-      font-size: 20px;
-    }
-    .footer-bottom {
-      text-align: center;
-      padding-top: 40px;
-      margin-top: 40px;
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
-      color: rgba(255, 255, 255, 0.4);
-      font-size: 12px;
-    }
 
 /* Mobile Responsive Styles */
 @media (max-width: 768px) {
@@ -583,29 +376,6 @@
       max-width: 88%;
     }
 
-    .section-grid {
-      grid-template-columns: 1fr;
-      gap: 30px;
-      text-align: center;
-    }
-
-    .section-grid.reverse {
-      direction: ltr;
-    }
-
-    .section-text h2,
-    .cta-section h2 {
-      font-size: 28px;
-    }
-
-    .features-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .footer-grid {
-      grid-template-columns: 1fr 1fr;
-    }
-
     .top-menu {
       top: 18px;
       right: 16px;
@@ -618,6 +388,7 @@
 }
   </style>
   <link rel="stylesheet" href="/static/mobile.css">
+  <link rel="stylesheet" href="/static/welcome-sections.css">
 </head>
 <body>
 
@@ -771,19 +542,11 @@
       <div class="install-qr-hint">Scan to open the mobile install page</div>
     </div>
   </div>
-  <div class="footer-links" style="text-align:center;padding:16px 0 20px;font-size:13px;">
-    <a href="/terms" style="color:#D4AF37;text-decoration:none;margin:0 8px;opacity:0.7;">Terms</a> |
-    <a href="/privacy" style="color:#D4AF37;text-decoration:none;margin:0 8px;opacity:0.7;">Privacy</a> |
-    <a href="/kyc-policy" style="color:#D4AF37;text-decoration:none;margin:0 8px;opacity:0.7;">KYC Policy</a> |
-    <a href="/ghost-market-policy" style="color:#D4AF37;text-decoration:none;margin:0 8px;opacity:0.7;">Ghost Market Policy</a> |
-    <a href="/refund-policy" style="color:#D4AF37;text-decoration:none;margin:0 8px;opacity:0.7;">Refunds</a>
-  </div>
-
   <div class="marketing-sections">
     <div class="section-container">
       <div class="section-grid">
         <div class="section-image">
-          <img src="/static/images/revolution.svg" alt="ZeusChat Revolution">
+          <img src="/static/images/revolution.jpg" alt="ZeusChat Revolution">
         </div>
         <div class="section-text">
           <h2>"The way Africa communicates will never be the same."</h2>
@@ -797,7 +560,7 @@
     <div class="section-container">
       <div class="section-grid reverse">
         <div class="section-image">
-          <img src="/static/images/ghost-market-showcase.svg" alt="Ghost Market showcase">
+          <img src="/static/images/ghost-market-showcase.jpg" alt="Ghost Market showcase">
         </div>
         <div class="section-text">
           <h2>Ghost Market</h2>
@@ -812,7 +575,7 @@
     <div class="section-container">
       <div class="section-grid">
         <div class="section-image">
-          <img src="/static/images/ghost-community-showcase.svg" alt="Ghost Community showcase">
+          <img src="/static/images/ghost-community-showcase.jpg" alt="Ghost Community showcase">
         </div>
         <div class="section-text">
           <h2>Ghost Community</h2>
@@ -829,32 +592,32 @@
       <p style="text-align: center; color: rgba(255,255,255,0.6); margin-bottom: 50px;">Privacy-first features designed for the modern world.</p>
       <div class="features-grid">
         <div class="feature-card">
-          <div class="feature-icon">🔑</div>
+          <img class="feature-icon" src="/static/images/zeus-pin-icon.jpg" alt="Zeus-PIN identity">
           <h3>Zeus-PIN Identity</h3>
           <p>No phone number required. Your PIN is your identity. No spam. No tracking.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">💀</div>
+          <img class="feature-icon" src="/static/images/self-destruct-icon.jpg" alt="Self-destruct messages">
           <h3>Self-Destruct Messages</h3>
           <p>Messages disappear after 5-30 seconds. Delete everywhere keeps conversations under your control.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">🏪</div>
+          <img class="feature-icon" src="/static/images/encryption-icon.jpg" alt="Encrypted marketplace privacy">
           <h3>Ghost Market</h3>
           <p>Anonymous buying and selling with escrow protection on every transaction.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">💰</div>
+          <img class="feature-icon" src="/static/images/data-saver-icon.jpg" alt="Efficient payments and data-saving features">
           <h3>Get Paid</h3>
           <p>Earn 80% of every paid post. Your content, your value, your audience.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">🌍</div>
+          <img class="feature-icon" src="/static/images/african-languages-icon.jpg" alt="African languages support">
           <h3>African Languages</h3>
           <p>Native-first communication for Swahili, Yoruba, Zulu, Hausa, Igbo, and Amharic speakers.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">🛡️</div>
+          <img class="feature-icon" src="/static/images/admin-verified-icon.jpg" alt="Admin verified identities">
           <h3>Admin Verified</h3>
           <p>Every Ghost is reviewed to keep the network human, trusted, and bot-resistant.</p>
         </div>
@@ -919,24 +682,19 @@
         <a href="/faq">FAQs</a>
         <a href="/security">Security Advisories</a>
       </div>
-      <div class="footer-col">
-        <h4>Legal</h4>
-        <a href="/terms">Terms of Service</a>
-        <a href="/privacy">Privacy Policy</a>
-        <a href="/kyc-policy">KYC Policy</a>
-        <a href="/ghost-market-policy">Ghost Market Policy</a>
-        <a href="/refund-policy">Refund Policy</a>
-      </div>
-      <div class="footer-col">
-        <h4>Connect</h4>
-        <div class="social-links">
-          <a href="mailto:info@zeustechafrica.com" aria-label="Email ZeusTech">✉️</a>
-          <a href="https://zeustechafrica.com" target="_blank" rel="noopener noreferrer" aria-label="ZeusTech website">🌐</a>
-          <a href="https://github.com/zeustech-africa/zeuschat1.0" target="_blank" rel="noopener noreferrer" aria-label="ZeusChat GitHub repository">🔗</a>
-        </div>
-      </div>
     </div>
     <div class="footer-bottom">
+      <div class="footer-legal">
+        <a href="/terms">Terms</a>
+        <span>|</span>
+        <a href="/privacy">Privacy</a>
+        <span>|</span>
+        <a href="/kyc-policy">KYC Policy</a>
+        <span>|</span>
+        <a href="/ghost-market-policy">Ghost Market Policy</a>
+        <span>|</span>
+        <a href="/refund-policy">Refund Policy</a>
+      </div>
       <p>© 2026 ZeusChat. Built in Africa. All rights reserved.</p>
     </div>
   </footer>

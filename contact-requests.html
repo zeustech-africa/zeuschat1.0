@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="csrf-token" content="">
   <title>Contact Requests — ZeusChat</title>
   <style>
     * {
@@ -328,6 +329,32 @@
 
   <script>
     console.log('=== CONTACT REQUESTS PAGE LOAD ===');
+    let csrfToken = null;
+
+    function getCsrfToken() {
+      const metaToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+      return csrfToken || metaToken;
+    }
+
+    async function ensureCsrfToken(forceRefresh = false) {
+      if (csrfToken && !forceRefresh) {
+        return csrfToken;
+      }
+
+      const API_BASE = window.location.origin;
+      const response = await fetch(`${API_BASE}/api/csrf-token`, {
+        method: 'GET',
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+      csrfToken = data.csrf_token || '';
+      const meta = document.querySelector('meta[name="csrf-token"]');
+      if (meta && csrfToken) {
+        meta.setAttribute('content', csrfToken);
+      }
+      return csrfToken;
+    }
     
     // Check authentication
     window.addEventListener('DOMContentLoaded', () => {
@@ -342,6 +369,10 @@
         window.location.href = 'login.html';
         return;
       }
+
+      ensureCsrfToken().catch((error) => {
+        console.warn('Failed to initialize CSRF token:', error);
+      });
       
       // Load pending requests
       loadPendingRequests();
@@ -437,10 +468,14 @@
       
       try {
         const API_BASE = window.location.origin;
+        const token = await ensureCsrfToken();
         const response = await fetch(`${API_BASE}/api/accept-contact`, {
           method: 'POST',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': token || getCsrfToken()
+          },
           body: JSON.stringify({ contact_id: contactId })
         });
         
@@ -488,11 +523,15 @@
       
       try {
         const API_BASE = window.location.origin;
+        const token = await ensureCsrfToken();
         
         const response = await fetch(`${API_BASE}/api/decline-contact`, {
           method: 'POST',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': token || getCsrfToken()
+          },
           body: JSON.stringify({ contact_id: contactId })
         });
         

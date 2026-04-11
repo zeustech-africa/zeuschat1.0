@@ -610,6 +610,36 @@
       background: #d4af37;
       color: #000;
     }
+    .requests-badge {
+      position: fixed;
+      top: 62px;
+      right: 12px;
+      background: rgba(212, 175, 55, 0.2);
+      border: 1px solid #d4af37;
+      color: #fff;
+      border-radius: 14px;
+      padding: 8px 10px;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      z-index: 1010;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .requests-badge .badge-count {
+      min-width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #dc3545;
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+    }
     /* Emoji Picker */
     .emoji-picker {
       position: fixed;
@@ -932,6 +962,10 @@
     .feature-hidden {
       display: none !important;
     }
+
+    .requests-badge {
+      display: flex;
+    }
 }
   </style>
   <link rel="stylesheet" href="/static/mobile.css">
@@ -942,6 +976,12 @@
     <source src="zeuschat-chatpage.mp4" type="video/mp4">
   </video>
   <div class="overlay"></div>
+
+  <!-- Contact Requests Indicator (mobile-friendly) -->
+  <div id="contactRequestsBadge" class="requests-badge" style="display: none;" onclick="window.location.href='contact-requests.html'">
+    <span class="badge-count">0</span>
+    <span>Pending Requests</span>
+  </div>
 
   <audio id="notification-audio" src="/static/notification.wav?v=2.0" preload="auto"></audio>
   <div id="audio-unlock-banner">Click anywhere to enable sound notifications</div>
@@ -3263,7 +3303,7 @@
     }
 
     // Check for pending contact requests
-    async function checkPendingRequests() {
+    async function loadPendingRequests() {
       console.log('Checking for pending contact requests...');
       
       try {
@@ -3295,17 +3335,33 @@
             badgeNewChat.style.display = 'flex';
             badgeNewChat.textContent = count;
           }
+
+          // Show mobile floating badge
+          const mobileBadge = document.getElementById('contactRequestsBadge');
+          if (mobileBadge) {
+            mobileBadge.style.display = 'flex';
+            const badgeCount = mobileBadge.querySelector('.badge-count');
+            if (badgeCount) {
+              badgeCount.textContent = count;
+            }
+          }
         } else {
           // Hide notification elements
           const requestsBtn = document.getElementById('requests-btn');
           const badgeNewChat = document.getElementById('badge-new-chat');
+          const mobileBadge = document.getElementById('contactRequestsBadge');
           
           if (requestsBtn) requestsBtn.style.display = 'none';
           if (badgeNewChat) badgeNewChat.style.display = 'none';
+          if (mobileBadge) mobileBadge.style.display = 'none';
         }
       } catch (error) {
         console.error('Error checking pending requests:', error);
       }
+    }
+
+    async function checkPendingRequests() {
+      return loadPendingRequests();
     }
 
     function handleFileUpload(event) {
@@ -5362,8 +5418,8 @@
       initStatusSocket();
 
       // Check for pending contact requests
-      checkPendingRequests();
-      setInterval(checkPendingRequests, 30000);
+      loadPendingRequests();
+      setInterval(loadPendingRequests, 30000);
       
       // Update contact statuses every minute
       setInterval(loadAllContactStatuses, 60000);
@@ -5429,7 +5485,7 @@
           console.log('✅ [FALLBACK] loadChats() completed');
           showEmptyState();
           startPolling();
-          checkPendingRequests();
+          loadPendingRequests();
         }).catch(err => {
           console.error('❌ [FALLBACK] Error in initialization:', err);
         });

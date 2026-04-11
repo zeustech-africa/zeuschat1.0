@@ -4645,6 +4645,7 @@ def get_contact_requests():
             for row in cursor.fetchall():
                 requests.append({
                     'contact_id': row[0],
+                    'request_id': row[0],
                     'user_id': row[1],
                     'full_name': row[2],
                     'zeus_pin': row[3],
@@ -4679,10 +4680,10 @@ def accept_contact():
             return jsonify({'error': 'No data provided'}), 400
         
         user_id = session['user_id']
-        contact_id = data.get('contact_id')
+        contact_id = data.get('contact_id') or data.get('request_id')
         
         if not contact_id:
-            return jsonify({'error': 'Contact ID required'}), 400
+            return jsonify({'error': 'Contact ID or request ID required'}), 400
         
         with get_db_connection() as conn:
             cursor = conn.cursor()
@@ -4757,11 +4758,11 @@ def decline_contact():
             return jsonify({'error': 'No data provided'}), 400
         
         user_id = session['user_id']
-        contact_id = data.get('contact_id')
+        contact_id = data.get('contact_id') or data.get('request_id')
         action = data.get('action', 'decline')  # 'decline' or 'ignore' (BBM Feature)
         
         if not contact_id:
-            return jsonify({'error': 'Contact ID required'}), 400
+            return jsonify({'error': 'Contact ID or request ID required'}), 400
         
         if action not in ['decline', 'ignore']:
             return jsonify({'error': 'Invalid action (decline or ignore)'}), 400

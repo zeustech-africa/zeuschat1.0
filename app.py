@@ -31,6 +31,10 @@ from admin_middleware import admin_required, require_approved_user, require_vali
 from admin_routes import admin_bp
 from payment_routes import payment_bp, validate_payment_config
 from pywebpush import webpush, WebPushException
+try:
+    from user_agents import parse as parse_user_agent
+except ImportError:
+    parse_user_agent = None
 
 # Startup logging for deployment verification
 print("="*60)
@@ -829,6 +833,61 @@ def enforce_runtime_override_flags():
             if path.startswith('/api/'):
                 return jsonify({'error': 'Ghost Community is temporarily disabled', 'community_disabled': True}), 503
             return render_template('maintenance.html', feature_name='Ghost Community'), 503
+
+    return None
+
+
+@app.before_request
+def redirect_mobile_to_mobile_routes():
+    """Keep mobile clients inside mobile routes to prevent web layout bleed."""
+    path = request.path or '/'
+
+    # Never redirect API/static/admin/mobile-auth paths.
+    if (
+        path.startswith('/api/')
+        or path.startswith('/admin')
+        or path.startswith('/static/')
+        or path.startswith('/uploads/')
+        or path.startswith('/mobile')
+        or path.startswith('/socket.io')
+        or path == '/health'
+        or path == '/offline.html'
+    ):
+        return None
+
+    user_agent_raw = request.headers.get('User-Agent', '')
+    if parse_user_agent is not None:
+        try:
+            user_agent = parse_user_agent(user_agent_raw)
+            is_mobile_client = user_agent.is_mobile or user_agent.is_tablet
+        except Exception:
+            is_mobile_client = False
+    else:
+        # Regex fallback keeps routing behavior until dependency is installed.
+        is_mobile_client = bool(re.search(r'Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini', user_agent_raw, re.IGNORECASE))
+
+    if not is_mobile_client:
+        return None
+
+    mobile_redirects = {
+        '/': '/mobile',
+        '/index.html': '/mobile',
+        '/login': '/mobile/login',
+        '/login.html': '/mobile/login',
+        '/registration.html': '/mobile/email',
+        '/chat': '/mobile/chat',
+        '/chat.html': '/mobile/chat',
+        '/profile': '/mobile/profile',
+        '/profile.html': '/mobile/profile',
+        '/settings': '/mobile/settings',
+        '/settings.html': '/mobile/settings',
+        '/ghost-market': '/mobile/market',
+        '/ghost-ultimate': '/mobile/community',
+    }
+
+    target = mobile_redirects.get(path)
+    if target:
+        return redirect(target)
 
     return None
 
@@ -5215,10 +5274,79 @@ def mobile_login():
     return render_template('mobile-login.html')
 
 
+def get_session_interface_language():
+    """Return the authenticated user's saved interface language."""
+    valid_languages = {'en', 'sw', 'yo', 'zu', 'ha', 'ig', 'am', 'xh', 'af', 'st', 'tn', 'nso'}
+    user_id = session.get('user_id')
+    if not user_id:
+        return 'en'
+
+    try:
+        with admin_get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT language FROM users WHERE id = ?', (user_id,))
+            row = cursor.fetchone()
+            language = row['language'] if row and row['language'] else 'en'
+    except Exception:
+        language = 'en'
+
+    return language if language in valid_languages else 'en'
+
+
 @app.route('/mobile/chat')
 def mobile_chat():
-    """Mobile chat entry point — redirects to the main dashboard."""
-    return redirect('/dashboard')
+    """Mobile chat home with contact list and optional conversation panel."""
+    if 'user_id' not in session:
+        return redirect('/login')
+    return render_template('mobile-chat.html', initial_chat_pin=None, initial_language=get_session_interface_language())
+
+
+@app.route('/mobile/chat/<zeus_pin>')
+def mobile_chat_conversation(zeus_pin):
+    """Mobile chat view focused on a selected contact."""
+    if 'user_id' not in session:
+        return redirect('/login')
+    return render_template('mobile-chat.html', initial_chat_pin=(zeus_pin or '').strip().upper(), initial_language=get_session_interface_language())
+
+
+@app.route('/mobile/profile')
+def mobile_profile():
+    """Mobile profile page."""
+    if 'user_id' not in session:
+        return redirect('/login')
+    return render_template('mobile-profile.html', initial_language=get_session_interface_language())
+
+
+@app.route('/mobile/add-contact')
+def mobile_add_contact():
+    """Mobile add-contact page."""
+    if 'user_id' not in session:
+        return redirect('/login')
+    return render_template('mobile-add-contact.html', initial_language=get_session_interface_language())
+
+
+@app.route('/mobile/market')
+def mobile_market():
+    """Mobile-only Ghost Market landing page."""
+    if 'user_id' not in session:
+        return redirect('/login')
+    return render_template('mobile-market.html', initial_language=get_session_interface_language())
+
+
+@app.route('/mobile/community')
+def mobile_community():
+    """Mobile-only Ghost Community landing page."""
+    if 'user_id' not in session:
+        return redirect('/login')
+    return render_template('mobile-community.html', initial_language=get_session_interface_language())
+
+
+@app.route('/mobile/settings')
+def mobile_settings():
+    """Mobile-only settings page."""
+    if 'user_id' not in session:
+        return redirect('/login')
+    return render_template('mobile-settings.html', initial_language=get_session_interface_language())
 
 
 def keep_alive():
@@ -6638,9 +6766,7 @@ def data_saver_settings():
 def user_language():
     """Get and update the user's preferred interface language."""
     user_id = session['user_id']
-    valid_languages = {'en', 'sw', 'yo', 'zu', 'ha', 'ig', 'am'}
-
-    if request.method == 'GET':
+    valid_languages = {'en', 'sw', 'yo', 'zu', 'ha', 'ig', 'am', 'xh', 'af', 'st', 'tn', 'nso'}
         with admin_get_db() as conn:
             cursor = conn.cursor()
             cursor.execute('SELECT language FROM users WHERE id = ?', (user_id,))
@@ -6747,8 +6873,7 @@ def translate_message():
     if not text:
         return jsonify({'error': 'Text is required'}), 400
 
-    valid_languages = {'sw', 'yo', 'zu', 'ha', 'ig', 'am', 'en'}
-    target_lang = (data.get('target_lang') or '').strip().lower()
+    valid_languages = {'sw', 'yo', 'zu', 'ha', 'ig', 'am', 'en', 'xh', 'af', 'st', 'tn', 'nso'}
 
     if not target_lang:
         with admin_get_db() as conn:

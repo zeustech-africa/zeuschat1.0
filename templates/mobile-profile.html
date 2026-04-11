@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="{{ initial_language or 'en' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>ZeusChat - Profile</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #0a0a0a;
+            --panel: #141414;
+            --border: rgba(212, 175, 55, 0.18);
+            --gold: #d4af37;
+            --gold-dark: #b8960c;
+            --text: #fff;
+            --muted: rgba(255,255,255,0.58);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            background: radial-gradient(circle at top, rgba(212, 175, 55, 0.08), transparent 35%), var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            padding: calc(env(safe-area-inset-top, 0px) + 20px) 16px calc(env(safe-area-inset-bottom, 0px) + 24px);
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+
+        .topbar-left,
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .topbar button,
+        .language-modal-content button {
+            border: none;
+            background: none;
+            cursor: pointer;
+        }
+
+        .topbar button {
+            color: var(--gold);
+            font-size: 18px;
+        }
+
+        .page-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--gold);
+        }
+
+        .card {
+            background: rgba(20, 20, 20, 0.92);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 22px 18px;
+        }
+
+        .profile-head {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+
+        .avatar {
+            width: 68px;
+            height: 68px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+            color: #111;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .name {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .pin {
+            margin-top: 4px;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .field {
+            padding: 14px 0;
+            border-top: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .field-label {
+            color: var(--muted);
+            font-size: 12px;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .field-value {
+            font-size: 15px;
+            line-height: 1.45;
+        }
+
+        .actions {
+            display: grid;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .action-btn {
+            border: none;
+            border-radius: 14px;
+            padding: 14px 16px;
+            font: inherit;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .action-btn.primary {
+            background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+            color: #111;
+        }
+
+        .action-btn.secondary {
+            background: #1d1d1d;
+            color: var(--text);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .language-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .language-modal.open {
+            display: flex;
+        }
+
+        .language-modal-content {
+            background: #1a1a1a;
+            border: 1px solid var(--gold);
+            border-radius: 20px;
+            padding: 24px;
+            width: min(300px, 100%);
+            text-align: center;
+        }
+
+        .language-modal-content h3 {
+            color: var(--gold);
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+
+        .language-modal-content button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 40px;
+            color: white;
+            font: inherit;
+        }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <div class="topbar-left">
+            <button type="button" onclick="window.location.href='/mobile/chat'">&#8592;</button>
+            <div class="page-title" data-i18n="profile">Profile</div>
+        </div>
+        <div class="topbar-right">
+            <button id="languageBtn" type="button" aria-label="Language">&#127760;</button>
+            <button type="button" onclick="window.location.href='/logout?redirect=/mobile/login'" data-i18n="logout">Logout</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="profile-head">
+            <div id="avatar" class="avatar">Z</div>
+            <div>
+                <div id="fullName" class="name" data-fallback-text="loading">Loading...</div>
+                <div id="zeusPin" class="pin"></div>
+            </div>
+        </div>
+
+        <div class="field">
+            <div class="field-label" data-i18n="email">Email</div>
+            <div id="email" class="field-value" data-fallback-text="loading">Loading...</div>
+        </div>
+        <div class="field">
+            <div class="field-label" data-i18n="about">About</div>
+            <div id="about" class="field-value" data-fallback-text="loading">Loading...</div>
+        </div>
+        <div class="field">
+            <div class="field-label" data-i18n="member_since">Member Since</div>
+            <div id="createdAt" class="field-value" data-fallback-text="loading">Loading...</div>
+        </div>
+
+        <div class="actions">
+            <button class="action-btn primary" type="button" onclick="window.location.href='/mobile/add-contact'" data-i18n="add_contact">Add Contact</button>
+            <button class="action-btn secondary" type="button" onclick="window.location.href='/mobile/chat'" data-i18n="back_to_messages">Back to Messages</button>
+        </div>
+    </div>
+
+    <div id="languageModal" class="language-modal" aria-hidden="true">
+        <div class="language-modal-content">
+            <h3 data-i18n="select_language">Select Language</h3>
+            <button type="button" onclick="setLanguage('en')">English</button>
+            <button type="button" onclick="setLanguage('sw')">Kiswahili</button>
+            <button type="button" onclick="setLanguage('yo')">Yoruba</button>
+            <button type="button" onclick="setLanguage('zu')">isiZulu</button>
+            <button type="button" onclick="setLanguage('ha')">Hausa</button>
+            <button type="button" onclick="setLanguage('ig')">Igbo</button>
+            <button type="button" onclick="setLanguage('am')">Amharic</button>
+            <button type="button" onclick="setLanguage('xh')">isiXhosa</button>
+            <button type="button" onclick="setLanguage('af')">Afrikaans</button>
+            <button type="button" onclick="setLanguage('st')">Sesotho</button>
+            <button type="button" onclick="setLanguage('tn')">Setswana</button>
+            <button type="button" onclick="setLanguage('nso')">Sepedi</button>
+            <button type="button" onclick="closeLanguageModal()" data-i18n="cancel">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+        const SUPPORTED_LANGUAGES = ['en', 'sw', 'yo', 'zu', 'ha', 'ig', 'am', 'xh', 'af', 'st', 'tn', 'nso'];
+        const initialLanguage = {{ initial_language|tojson }};
+        let currentTranslations = {};
+
+        function normalizeLanguage(language) {
+            return SUPPORTED_LANGUAGES.includes(language) ? language : 'en';
+        }
+
+        function t(key, fallback = '') {
+            return currentTranslations[key] || fallback;
+        }
+
+        function applyTranslations() {
+            document.querySelectorAll('[data-i18n]').forEach((element) => {
+                const key = element.getAttribute('data-i18n');
+                const value = currentTranslations[key];
+                if (value) {
+                    element.textContent = value;
+                }
+            });
+
+            document.querySelectorAll('[data-fallback-text]').forEach((element) => {
+                if (element.dataset.dynamic === 'true') {
+                    return;
+                }
+                const key = element.getAttribute('data-fallback-text');
+                const value = currentTranslations[key];
+                if (value && !element.dataset.loaded) {
+                    element.textContent = value;
+                }
+            });
+        }
+
+        async function ensureCsrfToken() {
+            const meta = document.querySelector('meta[name="csrf-token"]');
+            const existing = meta ? meta.getAttribute('content') : '';
+            if (existing) {
+                return existing;
+            }
+
+            const response = await fetch('/api/csrf-token', { credentials: 'include' });
+            const data = await response.json();
+            if (meta && data.csrf_token) {
+                meta.setAttribute('content', data.csrf_token);
+            }
+            return data.csrf_token || '';
+        }
+
+        async function saveLanguagePreference(language) {
+            try {
+                const csrfToken = await ensureCsrfToken();
+                await fetch('/api/user/language', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    },
+                    body: JSON.stringify({ language: normalizeLanguage(language) })
+                });
+            } catch (error) {
+                console.error('Failed to save language preference:', error);
+            }
+        }
+
+        async function getServerLanguage() {
+            try {
+                const response = await fetch('/api/user/language', { credentials: 'include' });
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    return null;
+                }
+                return normalizeLanguage(data.language || 'en');
+            } catch (_error) {
+                return null;
+            }
+        }
+
+        async function loadLanguage(language, persistToServer = false) {
+            const selected = normalizeLanguage(language);
+            try {
+                const response = await fetch(`/static/locales/${selected}.json`, { cache: 'no-cache' });
+                if (!response.ok) {
+                    throw new Error('Failed to load locale');
+                }
+
+                currentTranslations = await response.json();
+                applyTranslations();
+                document.documentElement.lang = selected;
+                localStorage.setItem('zeuschat_language', selected);
+                sessionStorage.setItem('zeuschat_language', selected);
+
+                if (persistToServer) {
+                    await saveLanguagePreference(selected);
+                }
+            } catch (error) {
+                console.error('Failed to load language:', error);
+            }
+        }
+
+        async function setLanguage(language) {
+            await loadLanguage(language, true);
+            closeLanguageModal();
+        }
+
+        function openLanguageModal() {
+            document.getElementById('languageModal').classList.add('open');
+        }
+
+        function closeLanguageModal() {
+            document.getElementById('languageModal').classList.remove('open');
+        }
+
+        function formatDate(value) {
+            if (!value) {
+                return t('unavailable', 'Unavailable');
+            }
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
+        }
+
+        async function loadProfile() {
+            try {
+                const response = await fetch('/api/user/profile', { credentials: 'include' });
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || t('unable_load_profile', 'Unable to load profile'));
+                }
+
+                const user = data.user || {};
+                const name = user.full_name || 'ZeusChat User';
+                document.getElementById('avatar').textContent = name.charAt(0).toUpperCase();
+                document.getElementById('fullName').textContent = name;
+                document.getElementById('fullName').dataset.loaded = 'true';
+                document.getElementById('zeusPin').textContent = user.zeus_pin || '';
+                document.getElementById('email').textContent = user.email || t('unavailable', 'Unavailable');
+                document.getElementById('email').dataset.loaded = 'true';
+                document.getElementById('about').textContent = user.about || t('no_profile_bio', 'No profile bio yet.');
+                document.getElementById('about').dataset.loaded = 'true';
+                document.getElementById('createdAt').textContent = formatDate(user.created_at);
+                document.getElementById('createdAt').dataset.loaded = 'true';
+            } catch (error) {
+                console.error('loadProfile error:', error);
+                document.getElementById('fullName').textContent = t('unable_load_profile', 'Unable to load profile');
+                document.getElementById('email').textContent = t('please_try_again_later', 'Please try again later');
+                document.getElementById('about').textContent = '';
+                document.getElementById('createdAt').textContent = '';
+            }
+        }
+
+        document.getElementById('languageBtn').addEventListener('click', openLanguageModal);
+        document.getElementById('languageModal').addEventListener('click', (event) => {
+            if (event.target.id === 'languageModal') {
+                closeLanguageModal();
+            }
+        });
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            await ensureCsrfToken();
+            const savedLanguage = normalizeLanguage(localStorage.getItem('zeuschat_language') || initialLanguage || 'en');
+            const serverLanguage = await getServerLanguage();
+            await loadLanguage(serverLanguage || savedLanguage, false);
+            await loadProfile();
+        });
+    </script>
+</body>
+</html>

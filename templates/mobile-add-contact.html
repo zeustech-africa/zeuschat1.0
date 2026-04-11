@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="{{ initial_language or 'en' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>ZeusChat - Add Contact</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #0a0a0a;
+            --surface: rgba(20, 20, 20, 0.94);
+            --border: rgba(212, 175, 55, 0.18);
+            --gold: #d4af37;
+            --gold-dark: #b8960c;
+            --text: #fff;
+            --muted: rgba(255,255,255,0.6);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            background: radial-gradient(circle at top, rgba(212, 175, 55, 0.08), transparent 35%), var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            padding: calc(env(safe-area-inset-top, 0px) + 20px) 16px calc(env(safe-area-inset-bottom, 0px) + 24px);
+        }
+
+        .topbar {
+            margin-bottom: 18px;
+        }
+
+        .topbar button {
+            border: none;
+            background: none;
+            color: var(--gold);
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 22px 18px;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        p {
+            color: var(--muted);
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+
+        input {
+            width: 100%;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px;
+            background: #151515;
+            color: var(--text);
+            padding: 14px 16px;
+            font: inherit;
+            text-transform: uppercase;
+            margin-bottom: 14px;
+        }
+
+        button.submit-btn {
+            width: 100%;
+            border: none;
+            border-radius: 14px;
+            padding: 14px 16px;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+            background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+            color: #111;
+        }
+
+        .status {
+            margin-top: 14px;
+            min-height: 20px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <button type="button" onclick="window.location.href='/mobile/chat'">&#8592;</button>
+    </div>
+
+    <div class="card">
+        <h1 data-i18n="send_contact_request">Send Contact Request</h1>
+        <p data-i18n="contact_request_helper">Enter a Zeus PIN to send a handshake request. The other user must accept before messaging starts.</p>
+        <input id="zeusPinInput" type="text" data-i18n-placeholder="enter_zeus_pin_placeholder" placeholder="Enter Zeus PIN" autocomplete="off">
+        <button id="submitButton" class="submit-btn" type="button" data-i18n="send_request">Send Request</button>
+        <div id="status" class="status"></div>
+    </div>
+
+    <script>
+        const SUPPORTED_LANGUAGES = ['en', 'sw', 'yo', 'zu', 'ha', 'ig', 'am', 'xh', 'af', 'st', 'tn', 'nso'];
+        const initialLanguage = {{ initial_language|tojson }};
+        let currentTranslations = {};
+
+        function normalizeLanguage(language) {
+            return SUPPORTED_LANGUAGES.includes(language) ? language : 'en';
+        }
+
+        function t(key, fallback = '') {
+            return currentTranslations[key] || fallback;
+        }
+
+        function applyTranslations() {
+            document.querySelectorAll('[data-i18n]').forEach((element) => {
+                const key = element.getAttribute('data-i18n');
+                const value = currentTranslations[key];
+                if (value) {
+                    element.textContent = value;
+                }
+            });
+
+            document.querySelectorAll('[data-i18n-placeholder]').forEach((element) => {
+                const key = element.getAttribute('data-i18n-placeholder');
+                const value = currentTranslations[key];
+                if (value) {
+                    element.placeholder = value;
+                }
+            });
+        }
+
+        async function getServerLanguage() {
+            try {
+                const response = await fetch('/api/user/language', { credentials: 'include' });
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    return null;
+                }
+                return normalizeLanguage(data.language || 'en');
+            } catch (_error) {
+                return null;
+            }
+        }
+
+        async function loadLanguage(language) {
+            const selected = normalizeLanguage(language);
+            try {
+                const response = await fetch(`/static/locales/${selected}.json`, { cache: 'no-cache' });
+                if (!response.ok) {
+                    throw new Error('Failed to load locale');
+                }
+                currentTranslations = await response.json();
+                applyTranslations();
+                document.documentElement.lang = selected;
+                localStorage.setItem('zeuschat_language', selected);
+                sessionStorage.setItem('zeuschat_language', selected);
+            } catch (error) {
+                console.error('Failed to load language:', error);
+            }
+        }
+
+        async function ensureCsrfToken() {
+            const meta = document.querySelector('meta[name="csrf-token"]');
+            const existing = meta ? meta.getAttribute('content') : '';
+            if (existing) {
+                return existing;
+            }
+
+            const response = await fetch('/api/csrf-token', { credentials: 'include' });
+            const data = await response.json();
+            if (meta && data.csrf_token) {
+                meta.setAttribute('content', data.csrf_token);
+            }
+            return data.csrf_token || '';
+        }
+
+        function setStatus(message, isError = false) {
+            const status = document.getElementById('status');
+            status.textContent = message || '';
+            status.style.color = isError ? '#fca5a5' : '#d4af37';
+        }
+
+        async function sendContactRequest() {
+            const input = document.getElementById('zeusPinInput');
+            const value = input.value.trim().toUpperCase();
+            if (!value) {
+                setStatus(t('enter_zeus_pin_first', 'Enter a Zeus PIN first.'), true);
+                return;
+            }
+
+            try {
+                const csrfToken = await ensureCsrfToken();
+                const response = await fetch('/api/add-contact', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    },
+                    body: JSON.stringify({ zeus_pin: value })
+                });
+
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || t('unable_send_request', 'Unable to send request.'));
+                }
+
+                input.value = '';
+                setStatus(t('contact_request_sent', 'Contact request sent successfully.'));
+            } catch (error) {
+                console.error('sendContactRequest error:', error);
+                setStatus(error.message || t('unable_send_request', 'Unable to send request.'), true);
+            }
+        }
+
+        document.getElementById('submitButton').addEventListener('click', sendContactRequest);
+        document.getElementById('zeusPinInput').addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                sendContactRequest();
+            }
+        });
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            await ensureCsrfToken();
+            const savedLanguage = normalizeLanguage(localStorage.getItem('zeuschat_language') || initialLanguage || 'en');
+            const serverLanguage = await getServerLanguage();
+            await loadLanguage(serverLanguage || savedLanguage);
+        });
+    </script>
+</body>
+</html>

@@ -408,6 +408,11 @@
           <option value="ha">Hausa</option>
           <option value="ig">Igbo</option>
           <option value="am">አማርኛ (Amharic)</option>
+          <option value="xh">isiXhosa</option>
+          <option value="af">Afrikaans</option>
+          <option value="st">Sesotho</option>
+          <option value="tn">Setswana</option>
+          <option value="nso">Sepedi</option>
         </select>
       </div>
     </div>
@@ -580,7 +585,7 @@
       return window.fetch(url, requestOptions);
     }
 
-    const SUPPORTED_LANGUAGES = ['en', 'sw', 'yo', 'zu', 'ha', 'ig', 'am'];
+    const SUPPORTED_LANGUAGES = ['en', 'sw', 'yo', 'zu', 'ha', 'ig', 'am', 'xh', 'af', 'st', 'tn', 'nso'];
     let currentTranslations = {};
 
     function normalizeLanguage(lang) {

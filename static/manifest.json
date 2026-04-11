@@ -7,7 +7,7 @@
   "theme_color": "#D4AF37",
   "background_color": "#0a0a0a",
   "orientation": "portrait",
-  "scope": "/",
+  "scope": "/mobile/",
   "icons": [
     {
       "src": "/zeuschat-icon.png",

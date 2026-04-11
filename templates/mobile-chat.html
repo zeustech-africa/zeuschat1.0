@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="{{ initial_language or 'en' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>ZeusChat - Messages</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #0a0a0a;
+            --panel: rgba(10, 10, 10, 0.95);
+            --surface: #141414;
+            --surface-2: #1d1d1d;
+            --border: rgba(212, 175, 55, 0.18);
+            --gold: #d4af37;
+            --gold-dark: #b8960c;
+            --text: #ffffff;
+            --muted: rgba(255, 255, 255, 0.58);
+            --danger: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+            background: var(--bg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: var(--text);
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .mobile-header {
+            background: var(--panel);
+            backdrop-filter: blur(14px);
+            padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+            min-height: 64px;
+            gap: 12px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .back-btn,
+        .header-icons button,
+        .send-btn,
+        .language-modal-content button {
+            border: none;
+            background: none;
+            cursor: pointer;
+        }
+
+        .back-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            color: var(--gold);
+            font-size: 20px;
+            display: none;
+        }
+
+        .back-btn.visible {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .header-copy {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .header-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--gold);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .header-subtitle {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .header-icons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .header-icons button {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            color: var(--text);
+            font-size: 20px;
+        }
+
+        .screen {
+            flex: 1;
+            min-height: 0;
+            display: none;
+        }
+
+        .screen.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .contacts-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0 120px;
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .contact-item:active,
+        .contact-item.active {
+            background: rgba(212, 175, 55, 0.1);
+        }
+
+        .contact-avatar {
+            width: 48px;
+            height: 48px;
+            flex-shrink: 0;
+            background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+            color: #111;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .contact-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .contact-name {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .contact-pin {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 3px;
+        }
+
+        .loading-state,
+        .empty-state {
+            text-align: center;
+            padding: 40px 24px;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+
+        .messages-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 16px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background:
+                radial-gradient(circle at top, rgba(212, 175, 55, 0.06), transparent 40%),
+                linear-gradient(180deg, #111 0%, #090909 100%);
+        }
+
+        .message-bubble {
+            max-width: 82%;
+            padding: 10px 12px;
+            border-radius: 16px;
+            line-height: 1.4;
+            word-break: break-word;
+            font-size: 14px;
+        }
+
+        .message-bubble.incoming {
+            align-self: flex-start;
+            background: var(--surface-2);
+            color: var(--text);
+            border-bottom-left-radius: 6px;
+        }
+
+        .message-bubble.outgoing {
+            align-self: flex-end;
+            background: linear-gradient(135deg, var(--gold), #e1c15f);
+            color: #111;
+            border-bottom-right-radius: 6px;
+        }
+
+        .message-time {
+            display: block;
+            margin-top: 6px;
+            font-size: 11px;
+            opacity: 0.7;
+        }
+
+        .composer {
+            padding: 12px 16px calc(env(safe-area-inset-bottom, 0px) + 12px);
+            border-top: 1px solid var(--border);
+            background: var(--panel);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .composer-input {
+            flex: 1;
+            min-height: 46px;
+            max-height: 120px;
+            resize: none;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            background: var(--surface);
+            color: var(--text);
+            padding: 12px 16px;
+            font: inherit;
+            outline: none;
+        }
+
+        .send-btn {
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+            color: #111;
+            font-size: 18px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .add-contact-btn {
+            position: fixed;
+            right: 16px;
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 86px);
+            width: 56px;
+            height: 56px;
+            border: none;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+            color: #111;
+            font-size: 32px;
+            cursor: pointer;
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
+            z-index: 10;
+        }
+
+        .add-contact-btn.hidden {
+            display: none;
+        }
+
+        .bottom-nav {
+            background: var(--panel);
+            backdrop-filter: blur(14px);
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
+            border-top: 1px solid var(--border);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            background: none;
+            border: none;
+            color: var(--muted);
+            font-size: 12px;
+            cursor: pointer;
+            min-width: 56px;
+        }
+
+        .nav-item.active {
+            color: var(--gold);
+        }
+
+        .nav-icon {
+            font-size: 22px;
+        }
+
+        .status-banner {
+            margin: 12px 16px 0;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: rgba(212, 175, 55, 0.08);
+            border: 1px solid rgba(212, 175, 55, 0.14);
+            color: var(--muted);
+            font-size: 13px;
+            display: none;
+        }
+
+        .status-banner.visible {
+            display: block;
+        }
+
+        .language-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .language-modal.open {
+            display: flex;
+        }
+
+        .language-modal-content {
+            background: #1a1a1a;
+            border: 1px solid var(--gold);
+            border-radius: 20px;
+            padding: 24px;
+            width: min(300px, 100%);
+            text-align: center;
+        }
+
+        .language-modal-content h3 {
+            color: var(--gold);
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+
+        .language-modal-content button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 40px;
+            color: white;
+            font: inherit;
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-header">
+        <div class="header-left">
+            <button id="backButton" class="back-btn" type="button" aria-label="Back">&#8592;</button>
+            <div class="header-copy">
+                <div id="headerTitle" class="header-title" data-i18n="messages">Messages</div>
+                <div id="headerSubtitle" class="header-subtitle" data-i18n="accepted_contacts">Your accepted ZeusChat contacts</div>
+            </div>
+        </div>
+        <div class="header-icons">
+            <button id="languageBtn" type="button" aria-label="Language">&#127760;</button>
+            <button type="button" onclick="window.location.href='/mobile/profile'" aria-label="Profile">&#128100;</button>
+        </div>
+    </div>
+
+    <div id="statusBanner" class="status-banner"></div>
+
+    <section id="contactsScreen" class="screen active">
+        <div class="contacts-list" id="contactsList">
+            <div class="loading-state" data-i18n="loading_contacts">Loading contacts...</div>
+        </div>
+    </section>
+
+    <section id="conversationScreen" class="screen">
+        <div class="messages-list" id="messagesList">
+            <div class="empty-state" data-i18n="select_chat">Select a chat to view messages.</div>
+        </div>
+        <div class="composer">
+            <textarea id="messageInput" class="composer-input" data-i18n-placeholder="type_message" placeholder="Type a message..."></textarea>
+            <button id="sendButton" class="send-btn" type="button" aria-label="Send">&#10148;</button>
+        </div>
+    </section>
+
+    <button id="addContactButton" class="add-contact-btn" type="button" onclick="window.location.href='/mobile/add-contact'">+</button>
+
+    <div class="bottom-nav">
+        <button class="nav-item active" type="button" onclick="window.location.href='/mobile/chat'">
+            <span class="nav-icon">&#128172;</span>
+            <span data-i18n="chats">Chats</span>
+        </button>
+        <button class="nav-item" type="button" onclick="window.location.href='/mobile/market'">
+            <span class="nav-icon">&#127981;</span>
+            <span data-i18n="market">Market</span>
+        </button>
+        <button class="nav-item" type="button" onclick="window.location.href='/mobile/community'">
+            <span class="nav-icon">&#128123;</span>
+            <span data-i18n="ghost">Ghost</span>
+        </button>
+        <button class="nav-item" type="button" onclick="window.location.href='/mobile/profile'">
+            <span class="nav-icon">&#128100;</span>
+            <span data-i18n="profile">Profile</span>
+        </button>
+    </div>
+
+    <div id="languageModal" class="language-modal" aria-hidden="true">
+        <div class="language-modal-content">
+            <h3 data-i18n="select_language">Select Language</h3>
+            <button type="button" onclick="setLanguage('en')">English</button>
+            <button type="button" onclick="setLanguage('sw')">Kiswahili</button>
+            <button type="button" onclick="setLanguage('yo')">Yoruba</button>
+            <button type="button" onclick="setLanguage('zu')">isiZulu</button>
+            <button type="button" onclick="setLanguage('ha')">Hausa</button>
+            <button type="button" onclick="setLanguage('ig')">Igbo</button>
+            <button type="button" onclick="setLanguage('am')">Amharic</button>
+            <button type="button" onclick="setLanguage('xh')">isiXhosa</button>
+            <button type="button" onclick="setLanguage('af')">Afrikaans</button>
+            <button type="button" onclick="setLanguage('st')">Sesotho</button>
+            <button type="button" onclick="setLanguage('tn')">Setswana</button>
+            <button type="button" onclick="setLanguage('nso')">Sepedi</button>
+            <button type="button" onclick="closeLanguageModal()" data-i18n="cancel">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+        const SUPPORTED_LANGUAGES = ['en', 'sw', 'yo', 'zu', 'ha', 'ig', 'am', 'xh', 'af', 'st', 'tn', 'nso'];
+        const currentUserId = {{ session.get('user_id')|tojson }};
+        const currentUserPin = {{ session.get('zeus_pin', '')|tojson }};
+        const initialChatPin = {{ initial_chat_pin|tojson }};
+        const initialLanguage = {{ initial_language|tojson }};
+
+        let contactsCache = [];
+        let currentChatPin = null;
+        let currentChatName = '';
+        let contactsPollId = null;
+        let messagesPollId = null;
+        let currentTranslations = {};
+
+        function normalizeLanguage(language) {
+            return SUPPORTED_LANGUAGES.includes(language) ? language : 'en';
+        }
+
+        function t(key, fallback = '') {
+            return currentTranslations[key] || fallback;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }
+
+        function applyTranslations() {
+            document.querySelectorAll('[data-i18n]').forEach((element) => {
+                const key = element.getAttribute('data-i18n');
+                const value = currentTranslations[key];
+                if (value) {
+                    element.textContent = value;
+                }
+            });
+
+            document.querySelectorAll('[data-i18n-placeholder]').forEach((element) => {
+                const key = element.getAttribute('data-i18n-placeholder');
+                const value = currentTranslations[key];
+                if (value) {
+                    element.placeholder = value;
+                }
+            });
+        }
+
+        function refreshDynamicText() {
+            if (!currentChatPin) {
+                document.getElementById('headerTitle').textContent = t('messages', 'Messages');
+                document.getElementById('headerSubtitle').textContent = t('accepted_contacts', 'Your accepted ZeusChat contacts');
+            } else {
+                document.getElementById('headerTitle').textContent = currentChatName || currentChatPin;
+                document.getElementById('headerSubtitle').textContent = currentChatPin;
+            }
+        }
+
+        async function ensureCsrfToken() {
+            const meta = document.querySelector('meta[name="csrf-token"]');
+            const existing = meta ? meta.getAttribute('content') : '';
+            if (existing) {
+                return existing;
+            }
+
+            const response = await fetch('/api/csrf-token', { credentials: 'include' });
+            const data = await response.json();
+            if (meta && data.csrf_token) {
+                meta.setAttribute('content', data.csrf_token);
+            }
+            return data.csrf_token || '';
+        }
+
+        async function saveLanguagePreference(language) {
+            try {
+                const csrfToken = await ensureCsrfToken();
+                await fetch('/api/user/language', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    },
+                    body: JSON.stringify({ language: normalizeLanguage(language) })
+                });
+            } catch (error) {
+                console.error('Failed to save language preference:', error);
+            }
+        }
+
+        async function getServerLanguage() {
+            try {
+                const response = await fetch('/api/user/language', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    return null;
+                }
+                return normalizeLanguage(data.language || 'en');
+            } catch (_error) {
+                return null;
+            }
+        }
+
+        async function loadLanguage(language, persistToServer = false) {
+            const selected = normalizeLanguage(language);
+            try {
+                const response = await fetch(`/static/locales/${selected}.json`, { cache: 'no-cache' });
+                if (!response.ok) {
+                    throw new Error('Failed to load locale');
+                }
+
+                currentTranslations = await response.json();
+                applyTranslations();
+                refreshDynamicText();
+                document.documentElement.lang = selected;
+                localStorage.setItem('zeuschat_language', selected);
+                sessionStorage.setItem('zeuschat_language', selected);
+
+                if (persistToServer) {
+                    await saveLanguagePreference(selected);
+                }
+            } catch (error) {
+                console.error('Failed to load language:', error);
+            }
+        }
+
+        async function setLanguage(language) {
+            await loadLanguage(language, true);
+            closeLanguageModal();
+        }
+
+        function openLanguageModal() {
+            document.getElementById('languageModal').classList.add('open');
+        }
+
+        function closeLanguageModal() {
+            document.getElementById('languageModal').classList.remove('open');
+        }
+
+        function showStatus(message, isError = false) {
+            const banner = document.getElementById('statusBanner');
+            if (!message) {
+                banner.textContent = '';
+                banner.classList.remove('visible');
+                banner.style.color = '';
+                banner.style.borderColor = '';
+                return;
+            }
+
+            banner.textContent = message;
+            banner.classList.add('visible');
+            if (isError) {
+                banner.style.color = '#fecaca';
+                banner.style.borderColor = 'rgba(239, 68, 68, 0.25)';
+            } else {
+                banner.style.color = '';
+                banner.style.borderColor = '';
+            }
+        }
+
+        function formatTime(timestamp) {
+            if (!timestamp) {
+                return '';
+            }
+
+            const date = new Date(timestamp);
+            if (Number.isNaN(date.getTime())) {
+                return '';
+            }
+
+            return date.toLocaleTimeString([], {
+                hour: 'numeric',
+                minute: '2-digit'
+            });
+        }
+
+        function renderContacts(contacts) {
+            const container = document.getElementById('contactsList');
+            if (!contacts || contacts.length === 0) {
+                container.innerHTML = `<div class="empty-state">${escapeHtml(t('no_contacts', 'No contacts yet.'))}<br>${escapeHtml(t('tap_add_contact', 'Tap + to add a contact'))}</div>`;
+                return;
+            }
+
+            container.innerHTML = contacts.map((contact) => {
+                const name = contact.full_name || contact.zeus_pin;
+                const initial = escapeHtml(name.charAt(0).toUpperCase());
+                const isActive = currentChatPin === contact.zeus_pin ? ' active' : '';
+                return `
+                    <div class="contact-item${isActive}" onclick="startChat('${encodeURIComponent(contact.zeus_pin)}')">
+                        <div class="contact-avatar">${initial}</div>
+                        <div class="contact-info">
+                            <div class="contact-name">${escapeHtml(name)}</div>
+                            <div class="contact-pin">${escapeHtml(contact.zeus_pin)}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function loadContacts() {
+            const container = document.getElementById('contactsList');
+            if (!contactsCache.length) {
+                container.innerHTML = `<div class="loading-state">${escapeHtml(t('loading_contacts', 'Loading contacts...'))}</div>`;
+            }
+
+            try {
+                const response = await fetch('/api/get-contacts', {
+                    credentials: 'include'
+                });
+
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || 'Failed to load contacts');
+                }
+
+                contactsCache = data.contacts || [];
+                renderContacts(contactsCache);
+
+                if (initialChatPin && !currentChatPin) {
+                    const selected = contactsCache.find((contact) => contact.zeus_pin === initialChatPin);
+                    if (selected) {
+                        openConversation(selected.zeus_pin, selected.full_name || selected.zeus_pin);
+                    }
+                }
+            } catch (error) {
+                console.error('loadContacts error:', error);
+                container.innerHTML = `<div class="empty-state">${escapeHtml(t('unable_load_contacts', 'Unable to load contacts right now.'))}</div>`;
+                showStatus(t('unable_load_contacts', 'Unable to load contacts right now.'), true);
+            }
+        }
+
+        function showContactsView() {
+            currentChatPin = null;
+            currentChatName = '';
+            document.getElementById('contactsScreen').classList.add('active');
+            document.getElementById('conversationScreen').classList.remove('active');
+            document.getElementById('backButton').classList.remove('visible');
+            document.getElementById('addContactButton').classList.remove('hidden');
+            showStatus('');
+            refreshDynamicText();
+            renderContacts(contactsCache);
+            if (messagesPollId) {
+                clearInterval(messagesPollId);
+                messagesPollId = null;
+            }
+            if (window.location.pathname !== '/mobile/chat') {
+                window.history.replaceState({}, '', '/mobile/chat');
+            }
+        }
+
+        function startChat(encodedPin) {
+            window.location.href = `/mobile/chat/${encodedPin}`;
+        }
+
+        async function openConversation(zeusPin, name) {
+            currentChatPin = zeusPin;
+            currentChatName = name || zeusPin;
+            document.getElementById('contactsScreen').classList.remove('active');
+            document.getElementById('conversationScreen').classList.add('active');
+            document.getElementById('backButton').classList.add('visible');
+            document.getElementById('addContactButton').classList.add('hidden');
+            refreshDynamicText();
+            renderContacts(contactsCache);
+            await loadMessages(zeusPin);
+
+            if (messagesPollId) {
+                clearInterval(messagesPollId);
+            }
+            messagesPollId = setInterval(() => loadMessages(zeusPin), 10000);
+        }
+
+        async function loadMessages(zeusPin) {
+            const container = document.getElementById('messagesList');
+            container.innerHTML = `<div class="loading-state">${escapeHtml(t('loading_messages', 'Loading messages...'))}</div>`;
+
+            try {
+                const response = await fetch(`/api/get-messages?contact_pin=${encodeURIComponent(zeusPin)}`, {
+                    credentials: 'include'
+                });
+
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || 'Failed to load messages');
+                }
+
+                const messages = (data.messages || []).slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                if (!messages.length) {
+                    container.innerHTML = `<div class="empty-state">${escapeHtml(t('no_messages_yet', 'No messages yet.'))}<br>${escapeHtml(t('start_conversation', 'Start the conversation below.'))}</div>`;
+                    return;
+                }
+
+                container.innerHTML = messages.map((message) => {
+                    const isOutgoing = message.sender_id === currentUserId || message.sender_pin === currentUserPin;
+                    const bubbleClass = isOutgoing ? 'outgoing' : 'incoming';
+                    return `
+                        <div class="message-bubble ${bubbleClass}">
+                            ${escapeHtml(message.content)}
+                            <span class="message-time">${escapeHtml(formatTime(message.created_at))}</span>
+                        </div>
+                    `;
+                }).join('');
+
+                container.scrollTop = container.scrollHeight;
+            } catch (error) {
+                console.error('loadMessages error:', error);
+                container.innerHTML = `<div class="empty-state">${escapeHtml(t('unable_load_messages', 'Unable to load messages right now.'))}</div>`;
+                showStatus(t('unable_load_messages', 'Unable to load messages right now.'), true);
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const content = input.value.trim();
+            if (!currentChatPin || !content) {
+                return;
+            }
+
+            try {
+                const csrfToken = await ensureCsrfToken();
+                const response = await fetch('/api/send-message', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    },
+                    body: JSON.stringify({
+                        receiver_pin: currentChatPin,
+                        content,
+                        ttl: 3600
+                    })
+                });
+
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || t('unable_send_message', 'Unable to send message.'));
+                }
+
+                input.value = '';
+                showStatus(t('message_sent', 'Message sent.'));
+                await loadMessages(currentChatPin);
+                await loadContacts();
+            } catch (error) {
+                console.error('sendMessage error:', error);
+                showStatus(error.message || t('unable_send_message', 'Unable to send message.'), true);
+            }
+        }
+
+        document.getElementById('backButton').addEventListener('click', showContactsView);
+        document.getElementById('sendButton').addEventListener('click', sendMessage);
+        document.getElementById('languageBtn').addEventListener('click', openLanguageModal);
+        document.getElementById('languageModal').addEventListener('click', (event) => {
+            if (event.target.id === 'languageModal') {
+                closeLanguageModal();
+            }
+        });
+        document.getElementById('messageInput').addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        });
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            await ensureCsrfToken();
+            const savedLanguage = normalizeLanguage(localStorage.getItem('zeuschat_language') || initialLanguage || 'en');
+            const serverLanguage = await getServerLanguage();
+            await loadLanguage(serverLanguage || savedLanguage, false);
+            await loadContacts();
+            contactsPollId = setInterval(loadContacts, 30000);
+        });
+    </script>
+</body>
+</html>

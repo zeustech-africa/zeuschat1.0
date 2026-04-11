@@ -1,26 +1,20 @@
 // ZeusChat Service Worker
-const CACHE_NAME = 'zeuschat-v2';
-const STATIC_CACHE = 'zeuschat-static-v2';
-const DYNAMIC_CACHE = 'zeuschat-dynamic-v2';
+const CACHE_NAME = 'zeuschat-v3-mobile-only';
+const STATIC_CACHE = 'zeuschat-static-v3-mobile-only';
+const DYNAMIC_CACHE = 'zeuschat-dynamic-v3-mobile-only';
 
-// Critical assets to cache on install
-const CRITICAL_ASSETS = [
+// Mobile-only assets for the PWA shell.
+const STATIC_ASSETS = [
   '/',
   '/mobile',
-  '/registration.html',
-  '/chat.html',
-  '/login.html',
-  '/profile.html',
-  '/settings.html',
-  '/subscription',
-  '/pending-approval',
-  '/offline.html',
-  '/static/manifest.json',
-  '/zeuschat-icon.png',
-  '/zeuschat-logo.png',
-  '/splash.png',
-  '/screenshot1.png',
-  '/zeustech-background.mp4'
+  '/mobile/chat',
+  '/mobile/profile',
+  '/mobile/market',
+  '/mobile/community',
+  '/mobile/settings',
+  '/static/mobile.css',
+  '/static/premium.css',
+  '/zeuschat-icon.png'
 ];
 
 // Install event - cache static assets
@@ -31,7 +25,7 @@ self.addEventListener('install', event => {
       .then(cache => {
         console.log('[SW] Caching critical assets');
         return Promise.allSettled(
-          CRITICAL_ASSETS.map(asset => cache.add(asset))
+          STATIC_ASSETS.map(asset => cache.add(asset))
         );
       })
       .then(() => self.skipWaiting())
@@ -70,12 +64,12 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Ensure all HTML navigations have offline fallback.
+  // Keep navigation fallback within mobile routes only.
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then(response => {
-          if (response.status === 200) {
+          if (response.status === 200 && url.pathname.startsWith('/mobile')) {
             const clone = response.clone();
             caches.open(DYNAMIC_CACHE).then(cache => cache.put(request, clone));
           }
@@ -86,7 +80,7 @@ self.addEventListener('fetch', event => {
           if (cachedPage) return cachedPage;
           const cachedMobile = await caches.match('/mobile');
           if (cachedMobile) return cachedMobile;
-          return caches.match('/offline.html');
+          return Response.redirect('/mobile', 302);
         })
     );
     return;
@@ -95,8 +89,8 @@ self.addEventListener('fetch', event => {
   event.respondWith(
     fetch(request)
       .then(response => {
-        // Cache successful responses
-        if (response.status === 200) {
+        // Cache successful mobile responses only.
+        if (response.status === 200 && url.pathname.startsWith('/mobile')) {
           const clone = response.clone();
           caches.open(DYNAMIC_CACHE).then(cache => {
             cache.put(request, clone);
@@ -110,9 +104,9 @@ self.addEventListener('fetch', event => {
           .then(cached => {
             if (cached) return cached;
 
-            // If requesting HTML, return offline page
+            // If requesting HTML, force mobile fallback.
             if ((request.headers.get('accept') || '').includes('text/html')) {
-              return caches.match('/offline.html');
+              return caches.match('/mobile');
             }
             return undefined;
           });
@@ -135,7 +129,7 @@ self.addEventListener('push', event => {
     badge: '/zeuschat-icon.png',
     vibrate: [200, 100, 200],
     data: {
-      url: data.url || '/chat.html'
+      url: data.url || '/mobile/chat'
     },
     actions: [
       { action: 'open', title: 'Open ZeusChat' },
@@ -160,12 +154,12 @@ self.addEventListener('notificationclick', event => {
     clients.matchAll({ type: 'window', includeUncontrolled: true })
       .then(windowClients => {
         for (let client of windowClients) {
-          if (client.url.includes('/chat') && 'focus' in client) {
+          if (client.url.includes('/mobile/chat') && 'focus' in client) {
             return client.focus();
           }
         }
         if (clients.openWindow) {
-          return clients.openWindow(event.notification.data.url || '/chat.html');
+          return clients.openWindow(event.notification.data.url || '/mobile/chat');
         }
       })
   );

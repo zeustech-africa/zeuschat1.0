@@ -640,6 +640,9 @@
       font-size: 11px;
       font-weight: 700;
     }
+    .menu-toggle {
+      display: none;
+    }
     /* Emoji Picker */
     .emoji-picker {
       position: fixed;
@@ -969,6 +972,40 @@
 }
   </style>
   <link rel="stylesheet" href="/static/mobile.css">
+  <style>
+    @media (max-width: 768px) {
+      .sidebar.contacts-panel {
+        display: flex !important;
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 280px;
+        height: 100%;
+        background: #1a1a1a;
+        z-index: 1002;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+      }
+
+      .sidebar.contacts-panel.open {
+        transform: translateX(0);
+      }
+
+      .menu-toggle {
+        display: block;
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        z-index: 1003;
+        background: #D4AF37;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 12px;
+        cursor: pointer;
+        font-weight: 700;
+      }
+    }
+  </style>
 </head>
 <body>
   <!-- ✅ 4K Video Background -->
@@ -976,6 +1013,8 @@
     <source src="zeuschat-chatpage.mp4" type="video/mp4">
   </video>
   <div class="overlay"></div>
+
+  <button class="menu-toggle" onclick="toggleContacts()">☰ Contacts</button>
 
   <!-- Contact Requests Indicator (mobile-friendly) -->
   <div id="contactRequestsBadge" class="requests-badge" style="display: none;" onclick="window.location.href='contact-requests.html'">
@@ -999,7 +1038,7 @@
   </div>
 
   <div class="app">
-    <aside class="sidebar">
+    <aside class="sidebar contacts-panel">
       <div class="sidebar-header">
         <!-- ✅ ZeusTech Logo + Branding (Top-Left, Fixed) -->
         <img src="zeustech-logo-zeushchat.png" class="logo" alt="ZeusTech" style="width:36px;height:36px;border-radius:50%;">
@@ -1013,7 +1052,7 @@
       </div>
       <input class="search" placeholder="Type a message..." data-i18n-placeholder="type_message"/>
       <button class="admin-inbox-btn" id="admin-inbox-btn" onclick="openAdminInbox()">ZeusChat Admin Inbox</button>
-      <div class="chat-list" id="chat-list">
+      <div class="chat-list" id="contactsList">
         <!-- Chats loaded from localStorage -->
       </div>
       <button class="new-chat" id="new-chat-btn" onclick="window.location.href='/add-contact.html'" style="position:relative;">
@@ -2602,7 +2641,7 @@
     // Load contacts from backend API with unread counts
     async function loadChats() {
       console.log('📋 Loading contacts from backend...');
-      const chatList = document.getElementById('chat-list');
+      const chatList = document.getElementById('contactsList') || document.getElementById('chat-list');
       
       console.log('🔍 DIAGNOSTIC: chat-list element:', chatList);
       console.log('🔍 DIAGNOSTIC: chat-list display style:', chatList ? getComputedStyle(chatList).display : 'N/A');
@@ -2726,8 +2765,12 @@
       } catch (error) {
         console.error('❌ Error loading contacts:', error);
         console.error('❌ Error stack:', error.stack);
-        chatList.innerHTML = '<div style="padding:24px 16px;text-align:center;color:#dc3545;">Error loading contacts<br><button onclick="loadChats()" style="margin-top:10px;padding:5px 15px;background:#FFD700;border:none;border-radius:5px;cursor:pointer;">Retry</button></div>';
+        chatList.innerHTML = '<div style="padding:24px 16px;text-align:center;color:#dc3545;">Error loading contacts<br><button onclick="loadContacts()" style="margin-top:10px;padding:5px 15px;background:#FFD700;border:none;border-radius:5px;cursor:pointer;">Retry</button></div>';
       }
+    }
+
+    async function loadContacts() {
+      return loadChats();
     }
 
     async function openChat(contact) {
@@ -2794,6 +2837,13 @@
       // Load messages. Incoming messages will be PIN-locked per-message when the
       // feature is enabled, ensuring no incoming content is shown without unlock.
       await loadMessages(contactPin, contactUserId);
+
+      if (window.innerWidth <= 768) {
+        const panel = document.querySelector('.contacts-panel');
+        if (panel) {
+          panel.classList.remove('open');
+        }
+      }
     }
 
     async function blockContact(contactPin) {
@@ -5228,7 +5278,7 @@
       setupInstallPrompt();
       
       // Load contacts FIRST and WAIT for completion
-      await loadChats();
+      await loadContacts();
       console.log('✅ Contacts fully loaded in DOM');
       
       // Enable protection features
@@ -5478,11 +5528,11 @@
         await loadLanguage(serverLanguage || savedLanguage, false);
         await loadDataSaverSettings();
         setupMessageActionHandlers();
-        console.log('✅ [FALLBACK] Calling loadChats()...');
+        console.log('✅ [FALLBACK] Calling loadContacts()...');
         
         // Load contacts
-        loadChats().then(() => {
-          console.log('✅ [FALLBACK] loadChats() completed');
+        loadContacts().then(() => {
+          console.log('✅ [FALLBACK] loadContacts() completed');
           showEmptyState();
           startPolling();
           loadPendingRequests();
@@ -6288,30 +6338,25 @@
   </script>
 
   <script>
-  // Mobile menu toggle
-  function toggleMobileMenu() {
-    const sidebar = document.querySelector('.sidebar');
-    if (sidebar) {
-      sidebar.classList.toggle('open');
+  function toggleContacts() {
+    const panel = document.querySelector('.contacts-panel');
+    if (panel) {
+      panel.classList.toggle('open');
     }
   }
 
-  // Add menu button for mobile
-  if (window.innerWidth <= 768) {
-    const menuBtn = document.createElement('button');
-    menuBtn.innerHTML = '☰';
-    menuBtn.className = 'menu-toggle';
-    menuBtn.onclick = toggleMobileMenu;
-    document.body.insertBefore(menuBtn, document.body.firstChild);
+  // Close contacts panel when clicking outside
+  document.addEventListener('click', function (e) {
+    const panel = document.querySelector('.contacts-panel');
+    const toggle = document.querySelector('.menu-toggle');
+    if (!panel || !toggle || !panel.classList.contains('open')) {
+      return;
+    }
 
-    // Close menu when clicking outside
-    document.addEventListener('click', function (e) {
-      const sidebar = document.querySelector('.sidebar');
-      if (sidebar && sidebar.classList.contains('open') && !sidebar.contains(e.target) && e.target !== menuBtn) {
-        sidebar.classList.remove('open');
-      }
-    });
-  }
+    if (!panel.contains(e.target) && !toggle.contains(e.target)) {
+      panel.classList.remove('open');
+    }
+  });
   </script>
 
   <!-- Mobile Bottom Navigation -->

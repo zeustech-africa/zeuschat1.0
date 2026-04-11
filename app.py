@@ -6767,6 +6767,7 @@ def user_language():
     """Get and update the user's preferred interface language."""
     user_id = session['user_id']
     valid_languages = {'en', 'sw', 'yo', 'zu', 'ha', 'ig', 'am', 'xh', 'af', 'st', 'tn', 'nso'}
+    if request.method == 'GET':
         with admin_get_db() as conn:
             cursor = conn.cursor()
             cursor.execute('SELECT language FROM users WHERE id = ?', (user_id,))

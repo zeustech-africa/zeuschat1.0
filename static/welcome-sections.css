@@ -343,7 +343,7 @@
 }
 
 .footer-bottom-left img {
-  height: 50px;
+  height: 78px;
   width: auto;
   opacity: 0.8;
 }
@@ -417,5 +417,9 @@
     gap: 14px;
     justify-content: center;
     text-align: center;
+  }
+
+  .footer-bottom-left img {
+    height: 64px;
   }
 }

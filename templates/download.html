@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download ZeusChat</title>
+    <link rel="stylesheet" href="/static/mobile.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            font-family: 'Inter', sans-serif;
+            color: white;
+            padding: 40px 20px;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        .card {
+            background: rgba(17,17,17,0.95);
+            border: 1px solid rgba(212,175,55,0.3);
+            border-radius: 24px;
+            padding: 40px;
+            text-align: center;
+        }
+        h1 { color: #D4AF37; margin-bottom: 20px; }
+        .qr-code { margin: 30px 0; }
+        .qr-code img { width: 200px; height: 200px; }
+        .download-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+        .btn-download {
+            background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%);
+            color: #0a0a0a;
+            padding: 14px 28px;
+            border-radius: 40px;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .back-link { color: #D4AF37; text-decoration: none; display: inline-block; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-link">Back to ZeusChat</a>
+        <div class="card">
+            <h1>Download ZeusChat</h1>
+            <p>Get ZeusChat on your device</p>
+
+            <div class="qr-code">
+                <img src="/static/images/qr-code.png" alt="QR Code" onerror="this.src='https://placehold.co/200x200/1a1a2e/D4AF37?text=Scan+QR'">
+                <p>Scan QR code to install on mobile</p>
+            </div>
+
+            <div class="download-buttons">
+                <a href="#" class="btn-download">Android App (APK)</a>
+                <a href="#" class="btn-download">iPhone App (iOS)</a>
+                <a href="/registration.html" class="btn-download">Web App</a>
+            </div>
+
+            <p style="color: rgba(255,255,255,0.5); font-size: 12px; margin-top: 30px;">
+                App Store and Google Play links coming soon. For now, use Web App or scan QR code.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

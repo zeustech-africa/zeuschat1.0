@@ -8364,6 +8364,11 @@ def blog_page():
     return render_template('blog.html')
 
 
+@app.route('/download')
+def download_page():
+    return render_template('download.html')
+
+
 @app.route('/sitemap.xml')
 def sitemap():
     return current_app.response_class(render_template('sitemap.xml'), mimetype='application/xml')

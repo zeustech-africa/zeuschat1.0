@@ -1,425 +1,1012 @@
 <!DOCTYPE html>
-<html lang="{{ initial_language or 'en' }}">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>ZeusChat - Profile</title>
-    <style>
-        :root {
-            color-scheme: dark;
-            --bg: #0a0a0a;
-            --panel: #141414;
-            --border: rgba(212, 175, 55, 0.18);
-            --gold: #d4af37;
-            --gold-dark: #b8960c;
-            --text: #fff;
-            --muted: rgba(255,255,255,0.58);
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#667eea">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ZeusChat">
+  <link rel="apple-touch-icon" href="/zeuschat-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/zeuschat-icon.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/zeuschat-icon.png">
+  <title>Profile — ZeusChat</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    body {
+      background: #000;
+      overflow: hidden;
+      height: 100vh;
+      color: #fff;
+    }
+    .video-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: -1;
+    }
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      z-index: 0;
+    }
+    .header {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .logo {
+      height: 32px;
+      margin-bottom: 4px;
+    }
+    .byline {
+      font-size: 12px;
+      color: #FFD700;
+      font-weight: 500;
+    }
+    .container {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 20px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      overflow-y: auto;
+    }
+    .box {
+      background: #222;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 16px 0;
+      width: 100%;
+      max-width: 600px;
+      text-align: left;
+    }
+    .box-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #fff;
+      text-align: center;
+    }
+    .input-group {
+      margin-bottom: 16px;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      background: #333;
+      border: 1px solid #444;
+      color: #fff;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+    input:disabled {
+      background: #2a2a2a;
+      color: #aaa;
+      cursor: not-allowed;
+    }
+    .btn {
+      background: #FFD700;
+      color: #000;
+      border: none;
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 16px;
+      width: 100%;
+    }
+    .btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+    .btn.secondary {
+      background: #666;
+      width: auto;
+      margin-left: 8px;
+    }
+    .note {
+      background: #1a1a1a;
+      border-left: 4px solid #d4af37;
+      padding: 12px;
+      margin-top: 16px;
+      font-size: 13px;
+      text-align: left;
+      line-height: 1.5;
+    }
+    .profile-pic-section {
+      margin: 16px 0;
+      text-align: center;
+    }
+    .profile-pic-display {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: #333;
+      margin: 0 auto 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: #999;
+      overflow: hidden;
+    }
+    .profile-pic-display img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .file-input-wrapper {
+      position: relative;
+      overflow: hidden;
+      display: inline-block;
+      width: 100%;
+    }
+    .file-input-wrapper input[type=file] {
+      position: absolute;
+      left: -9999px;
+    }
+    .btn-file {
+      display: inline-block;
+      padding: 10px 16px;
+      background: #444;
+      color: #fff;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 8px 0;
+    }
+    .btn-file:hover {
+      background: #555;
+    }
+    .stat-box {
+      margin: 16px 0;
+      padding: 12px;
+      background: #1a1a1a;
+      border-left: 4px solid #d4af37;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .stat-box span {
+      color: #FFD700;
+      font-weight: bold;
+    }
+    .button-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .button-group .btn {
+      flex: 1;
+      margin-top: 0;
+    }
+    .pro-badge {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
+      margin-left: 8px;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    .feature-locked {
+      opacity: 0.9;
+      cursor: pointer;
+      position: relative;
+    }
+    .feature-locked:hover::after {
+      content: "Pro Feature";
+      position: absolute;
+      background: #1e293b;
+      color: white;
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 8px;
+      white-space: nowrap;
+      top: -30px;
+      left: 0;
+    }
+    @keyframes modalFadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+    .mobile-profile-header,
+    .mobile-settings-section {
+      display: none;
+    }
 
-        body {
-            min-height: 100vh;
-            background: radial-gradient(circle at top, rgba(212, 175, 55, 0.08), transparent 35%), var(--bg);
-            color: var(--text);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            padding: calc(env(safe-area-inset-top, 0px) + 20px) 16px calc(env(safe-area-inset-bottom, 0px) + 24px);
-        }
+    .mobile-bottom-nav {
+      display: none;
+    }
 
-        .topbar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            margin-bottom: 18px;
-        }
+    @media (max-width: 768px) {
+      .mobile-profile-header {
+        display: block;
+        text-align: center;
+        margin-bottom: 20px;
+      }
 
-        .topbar-left,
-        .topbar-right {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+      .profile-avatar-large {
+        position: relative;
+        width: 96px;
+        height: 96px;
+        margin: 0 auto 12px;
+      }
 
-        .topbar button,
-        .language-modal-content button {
-            border: none;
-            background: none;
-            cursor: pointer;
-        }
+      .profile-avatar-large img {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #d4af37;
+      }
 
-        .topbar button {
-            color: var(--gold);
-            font-size: 18px;
-        }
+      .change-avatar-btn {
+        position: absolute;
+        right: -4px;
+        bottom: -4px;
+        border: none;
+        background: #d4af37;
+        color: #000;
+        border-radius: 50%;
+        width: 34px;
+        height: 34px;
+        cursor: pointer;
+      }
 
-        .page-title {
-            font-size: 18px;
-            font-weight: 600;
-            color: var(--gold);
-        }
+      .profile-pin {
+        color: #cbd5e1;
+        font-size: 12px;
+      }
 
-        .card {
-            background: rgba(20, 20, 20, 0.92);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 22px 18px;
-        }
+      .plan-badge-mobile {
+        display: inline-block;
+        margin-top: 8px;
+        font-size: 12px;
+        padding: 4px 10px;
+        background: rgba(212,175,55,0.2);
+        border-radius: 12px;
+      }
 
-        .profile-head {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            margin-bottom: 18px;
-        }
+      .mobile-settings-section {
+        display: block;
+        margin-top: 16px;
+      }
 
-        .avatar {
-            width: 68px;
-            height: 68px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--gold), var(--gold-dark));
-            color: #111;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            font-weight: 700;
-        }
+      .setting-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #1a1a1a;
+        border: 1px solid #333;
+        border-radius: 12px;
+        padding: 12px 14px;
+        margin-bottom: 10px;
+        min-height: 44px;
+        cursor: pointer;
+      }
 
-        .name {
-            font-size: 20px;
-            font-weight: 600;
-        }
+      .setting-name {
+        flex: 1;
+        margin-left: 10px;
+      }
 
-        .pin {
-            margin-top: 4px;
-            color: var(--muted);
-            font-size: 12px;
-        }
+      .mobile-bottom-nav {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        background: rgba(12, 12, 12, 0.98);
+        border-top: 1px solid #2b2b2b;
+        padding: 10px 6px calc(10px + env(safe-area-inset-bottom));
+        z-index: 2000;
+      }
 
-        .field {
-            padding: 14px 0;
-            border-top: 1px solid rgba(255,255,255,0.06);
-        }
+      .nav-item-mobile {
+        min-height: 44px;
+        min-width: 44px;
+        border: none;
+        background: transparent;
+        color: #c8c8c8;
+        font-size: 11px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        padding: 4px 8px;
+        cursor: pointer;
+      }
 
-        .field-label {
-            color: var(--muted);
-            font-size: 12px;
-            margin-bottom: 6px;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-        }
+      .nav-item-mobile.active {
+        color: #FFD700;
+      }
 
-        .field-value {
-            font-size: 15px;
-            line-height: 1.45;
-        }
+      .container {
+        padding-bottom: 96px;
+      }
+    }
 
-        .actions {
-            display: grid;
-            gap: 10px;
-            margin-top: 18px;
-        }
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+    body {
+        padding: 16px;
+    }
 
-        .action-btn {
-            border: none;
-            border-radius: 14px;
-            padding: 14px 16px;
-            font: inherit;
-            font-weight: 600;
-            cursor: pointer;
-        }
+    .container, .card, .main-content {
+        padding: 20px 16px;
+        margin: 0;
+        width: 100%;
+        border-radius: 24px;
+    }
 
-        .action-btn.primary {
-            background: linear-gradient(135deg, var(--gold), var(--gold-dark));
-            color: #111;
-        }
+    h1 {
+        font-size: 28px;
+    }
 
-        .action-btn.secondary {
-            background: #1d1d1d;
-            color: var(--text);
-            border: 1px solid rgba(255,255,255,0.08);
-        }
+    h2 {
+        font-size: 22px;
+    }
 
-        .language-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            padding: 20px;
-        }
+    button, .btn-primary, .btn-secondary {
+        padding: 14px 20px;
+        font-size: 16px;
+    }
 
-        .language-modal.open {
-            display: flex;
-        }
+    input, textarea, select {
+        padding: 14px;
+        font-size: 16px;
+    }
 
-        .language-modal-content {
-            background: #1a1a1a;
-            border: 1px solid var(--gold);
-            border-radius: 20px;
-            padding: 24px;
-            width: min(300px, 100%);
-            text-align: center;
-        }
+    .sidebar {
+        position: fixed;
+        left: -280px;
+        transition: left 0.3s;
+        z-index: 1000;
+    }
 
-        .language-modal-content h3 {
-            color: var(--gold);
-            margin-bottom: 20px;
-            font-size: 18px;
-        }
+    .sidebar.open {
+        left: 0;
+    }
 
-        .language-modal-content button {
-            display: block;
-            width: 100%;
-            padding: 12px;
-            margin: 8px 0;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 40px;
-            color: white;
-            font: inherit;
-        }
-    </style>
+    .menu-toggle {
+        display: block;
+        position: fixed;
+        top: 16px;
+        left: 16px;
+        z-index: 1001;
+        background: #D4AF37;
+        border: none;
+        border-radius: 8px;
+        padding: 10px;
+        cursor: pointer;
+    }
+
+    .main-content {
+        margin-left: 0;
+        padding: 60px 16px 20px;
+    }
+
+    .admin-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .feature-grid, .pricing-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .chat-container {
+        flex-direction: column;
+    }
+
+    .message {
+        max-width: 85%;
+    }
+
+    body {
+        font-size: 14px;
+    }
+
+    button, a, .clickable {
+        min-height: 44px;
+    }
+
+    /* Hidden feature - ready to enable by removing this class */
+    .feature-hidden {
+      display: none !important;
+    }
+}
+  </style>
+  <link rel="stylesheet" href="/static/mobile.css">
 </head>
 <body>
-    <div class="topbar">
-        <div class="topbar-left">
-            <button type="button" onclick="window.location.href='/mobile/chat'">&#8592;</button>
-            <div class="page-title" data-i18n="profile">Profile</div>
+  <video class="video-bg" autoplay muted loop>
+    <source src="zeustech-register.mp4" type="video/mp4">
+  </video>
+  <div class="overlay"></div>
+
+  <!-- Top-left: Logo + Byline -->
+  <div class="header">
+    <img src="zeustech-logo-zeushchat.png" class="logo" alt="ZeusTech">
+    <div class="byline">ZeusChat by ZeusTech</div>
+  </div>
+
+  <div class="container">
+    <div class="box">
+      <!-- Mobile Profile Header -->
+      <div class="mobile-profile-header mobile-only">
+        <div class="profile-avatar-large">
+          <img src="/zeuschat-icon.png" alt="Profile" id="profileAvatar">
+          <button class="change-avatar-btn" id="changeAvatarBtn">📷</button>
         </div>
-        <div class="topbar-right">
-            <button id="languageBtn" type="button" aria-label="Language">&#127760;</button>
-            <button type="button" onclick="window.location.href='/logout?redirect=/mobile/login'" data-i18n="logout">Logout</button>
+        <h2 id="profileName">User Name</h2>
+        <p class="profile-pin" id="profilePin">ZT-XXXX-XXXX</p>
+        <div class="plan-badge-mobile" id="planBadge">Free Plan</div>
+      </div>
+
+      <div class="box-title">Profile</div>
+      
+      <!-- Profile Picture Section -->
+      <div class="profile-pic-section">
+        <div class="profile-pic-display" id="profilePicDisplay">
+          <img id="profilePicImg" style="display:none;">
+          <span id="profilePicPlaceholder">No Photo</span>
         </div>
+        <div class="file-input-wrapper">
+          <input type="file" id="picUpload" accept="image/*" />
+          <label for="picUpload" id="changeProfilePicBtn" class="btn-file feature-locked">Choose Photo <span class="pro-badge">PRO</span></label>
+        </div>
+      </div>
+
+      <!-- Form Fields -->
+      <div class="input-group">
+        <label style="font-size: 12px; color: #999;">Full Name *</label>
+        <input type="text" id="displayName" placeholder="Your full name" />
+        
+        <label style="font-size: 12px; color: #999; margin-top: 12px;">About Me (Optional)</label>
+        <textarea id="about" placeholder="Tell others about yourself"></textarea>
+        
+        <label style="font-size: 12px; color: #999; margin-top: 12px;">Avatar URL (Optional)</label>
+        <input type="text" id="avatarUrl" placeholder="https://example.com/avatar.jpg" />
+      </div>
+
+      <!-- Zeus PIN Display -->
+      <div class="stat-box">
+        <span>Your Zeus-PIN:</span>
+        <span id="zeusPinDisplay">Loading...</span>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="button-group">
+        <button class="btn" id="saveBtn" onclick="saveProfile()">Save Profile</button>
+        <button class="btn secondary" onclick="goBack()">← Back</button>
+      </div>
+
+      <div class="note">
+        ✓ Profile picture helps other users recognize you<br>
+        ✓ Your display name will be shown in conversations<br>
+        ✓ Your Zeus-PIN is your unique identifier (copy-paste to share)
+      </div>
+
+      <!-- Mobile Settings Sections -->
+      <div class="mobile-settings-section mobile-only">
+        <div class="setting-item" onclick="navigateTo('/ghost-market')">
+          <span class="setting-icon">🏪</span>
+          <span class="setting-name">Ghost Market</span>
+          <span class="setting-arrow">→</span>
+        </div>
+        <div class="setting-item" onclick="navigateTo('/subscription')">
+          <span class="setting-icon">💎</span>
+          <span class="setting-name">Upgrade to Pro</span>
+          <span class="setting-arrow">→</span>
+        </div>
+        <div class="setting-item" onclick="navigateTo('/settings.html')">
+          <span class="setting-icon">⚙️</span>
+          <span class="setting-name">Settings</span>
+          <span class="setting-arrow">→</span>
+        </div>
+        <div class="setting-item" onclick="logout()">
+          <span class="setting-icon">🚪</span>
+          <span class="setting-name">Logout</span>
+          <span class="setting-arrow">→</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+    <div class="mobile-bottom-nav mobile-only">
+      <button class="nav-item nav-item-mobile" data-page="chat">
+        <span class="nav-icon">💬</span>
+        <span>Chats</span>
+      </button>
+      <button class="nav-item nav-item-mobile" data-page="market">
+        <span class="nav-icon">🏪</span>
+        <span>Market</span>
+      </button>
+      <button class="nav-item nav-item-mobile" data-page="community">
+        <span class="nav-icon">👻</span>
+        <span>Ghost</span>
+      </button>
+      <button class="nav-item nav-item-mobile active" data-page="profile">
+        <span class="nav-icon">👤</span>
+        <span>Profile</span>
+      </button>
+      <button class="nav-item nav-item-mobile" data-page="settings">
+        <span class="nav-icon">⚙️</span>
+        <span>Settings</span>
+      </button>
     </div>
 
-    <div class="card">
-        <div class="profile-head">
-            <div id="avatar" class="avatar">Z</div>
-            <div>
-                <div id="fullName" class="name" data-fallback-text="loading">Loading...</div>
-                <div id="zeusPin" class="pin"></div>
-            </div>
+    <!-- Dual Upgrade Modal -->
+    <div id="dualUpgradeModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10001; align-items:center; justify-content:center;">
+      <div style="background:white; border-radius:28px; max-width:420px; width:90%; padding:32px; text-align:center;">
+        <div style="font-size:48px; margin-bottom:16px;">🔒</div>
+        <h3 id="dualModalTitle" style="font-size:22px; color:#1e293b;">Feature Locked</h3>
+        <p id="dualModalMessage" style="color:#64748b; margin:16px 0; font-size:14px;">Upgrade to access this feature</p>
+
+        <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap;">
+          <div style="flex:1; background:#f1f5f9; border-radius:16px; padding:16px; min-width:150px;">
+            <div style="font-size:24px; font-weight:800; color:#667eea;">R89<span style="font-size:12px;">/mo</span></div>
+            <div style="font-size:12px; color:#64748b;">Monthly Subscription</div>
+            <div style="font-size:11px; color:#10b981; margin-top:8px;">✓ All Pro features</div>
+            <div style="font-size:11px; color:#10b981;">✓ Cancel anytime</div>
+          </div>
+          <div style="flex:1; background:#f1f5f9; border-radius:16px; padding:16px; min-width:150px;">
+            <div id="oneTimePrice" style="font-size:24px; font-weight:800; color:#764ba2;">R<span>39</span></div>
+            <div style="font-size:12px; color:#64748b;">One-time payment</div>
+            <div style="font-size:11px; color:#10b981; margin-top:8px;">✓ Permanent unlock</div>
+            <div style="font-size:11px; color:#10b981;">✓ No recurring fees</div>
+          </div>
         </div>
 
-        <div class="field">
-            <div class="field-label" data-i18n="email">Email</div>
-            <div id="email" class="field-value" data-fallback-text="loading">Loading...</div>
-        </div>
-        <div class="field">
-            <div class="field-label" data-i18n="about">About</div>
-            <div id="about" class="field-value" data-fallback-text="loading">Loading...</div>
-        </div>
-        <div class="field">
-            <div class="field-label" data-i18n="member_since">Member Since</div>
-            <div id="createdAt" class="field-value" data-fallback-text="loading">Loading...</div>
-        </div>
-
-        <div class="actions">
-            <button class="action-btn primary" type="button" onclick="window.location.href='/mobile/add-contact'" data-i18n="add_contact">Add Contact</button>
-            <button class="action-btn secondary" type="button" onclick="window.location.href='/mobile/chat'" data-i18n="back_to_messages">Back to Messages</button>
-        </div>
+        <button id="dualSubscribeBtn" style="width:100%; padding:14px; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white; border:none; border-radius:40px; font-size:16px; font-weight:600; cursor:pointer; margin-bottom:12px;">Subscribe Monthly →</button>
+        <button id="dualOneTimeBtn" style="width:100%; padding:14px; background:#f1f5f9; color:#1e293b; border:none; border-radius:40px; font-size:16px; font-weight:600; cursor:pointer; margin-bottom:12px;">Pay Once (R<span id="oneTimeAmount">39</span>)</button>
+        <button id="dualCancelBtn" style="background:none; border:none; color:#94a3b8; cursor:pointer;">Not Now</button>
+      </div>
     </div>
 
-    <div id="languageModal" class="language-modal" aria-hidden="true">
-        <div class="language-modal-content">
-            <h3 data-i18n="select_language">Select Language</h3>
-            <button type="button" onclick="setLanguage('en')">English</button>
-            <button type="button" onclick="setLanguage('sw')">Kiswahili</button>
-            <button type="button" onclick="setLanguage('yo')">Yoruba</button>
-            <button type="button" onclick="setLanguage('zu')">isiZulu</button>
-            <button type="button" onclick="setLanguage('ha')">Hausa</button>
-            <button type="button" onclick="setLanguage('ig')">Igbo</button>
-            <button type="button" onclick="setLanguage('am')">Amharic</button>
-            <button type="button" onclick="setLanguage('xh')">isiXhosa</button>
-            <button type="button" onclick="setLanguage('af')">Afrikaans</button>
-            <button type="button" onclick="setLanguage('st')">Sesotho</button>
-            <button type="button" onclick="setLanguage('tn')">Setswana</button>
-            <button type="button" onclick="setLanguage('nso')">Sepedi</button>
-            <button type="button" onclick="closeLanguageModal()" data-i18n="cancel">Cancel</button>
-        </div>
-    </div>
+  <script>
+    console.log('=== PROFILE PAGE LOAD ===');
+    const API_BASE = window.location.origin;
+    let csrfToken = null;
 
-    <script>
-        const SUPPORTED_LANGUAGES = ['en', 'sw', 'yo', 'zu', 'ha', 'ig', 'am', 'xh', 'af', 'st', 'tn', 'nso'];
-        const initialLanguage = {{ initial_language|tojson }};
-        let currentTranslations = {};
+    async function ensureCsrfToken(forceRefresh = false) {
+      if (csrfToken && !forceRefresh) {
+        return csrfToken;
+      }
 
-        function normalizeLanguage(language) {
-            return SUPPORTED_LANGUAGES.includes(language) ? language : 'en';
+      const response = await window.fetch(`${API_BASE}/api/csrf-token`, {
+        method: 'GET',
+        credentials: 'include'
+      });
+      const data = await response.json();
+      csrfToken = data.csrf_token || null;
+      return csrfToken;
+    }
+
+    async function apiFetch(url, options = {}) {
+      const requestOptions = { ...options };
+      const method = (requestOptions.method || 'GET').toUpperCase();
+      requestOptions.method = method;
+      requestOptions.credentials = requestOptions.credentials || 'include';
+      requestOptions.headers = { ...(requestOptions.headers || {}) };
+
+      if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+        const token = await ensureCsrfToken();
+        if (token) {
+          requestOptions.headers['X-CSRF-Token'] = token;
         }
+      }
 
-        function t(key, fallback = '') {
-            return currentTranslations[key] || fallback;
-        }
+      return window.fetch(url, requestOptions);
+    }
+    
+    // Authentication guard
+    window.addEventListener('DOMContentLoaded', () => {
+      ensureCsrfToken().catch((error) => {
+        console.error('Failed to initialize CSRF token:', error);
+      });
 
-        function applyTranslations() {
-            document.querySelectorAll('[data-i18n]').forEach((element) => {
-                const key = element.getAttribute('data-i18n');
-                const value = currentTranslations[key];
-                if (value) {
-                    element.textContent = value;
-                }
-            });
+      const isLoggedIn = sessionStorage.getItem('user_logged_in') === 'true';
+      let userPin = sessionStorage.getItem('user_zeus_pin');
+      
+      console.log('Session check:', { isLoggedIn, userPin });
+      
+      if (!isLoggedIn || !userPin) {
+        console.log('Not logged in, redirecting to login');
+        sessionStorage.setItem('return_url', 'mobile-profile.html');
+        window.location.href = 'login.html';
+        return;
+      }
 
-            document.querySelectorAll('[data-fallback-text]').forEach((element) => {
-                if (element.dataset.dynamic === 'true') {
-                    return;
-                }
-                const key = element.getAttribute('data-fallback-text');
-                const value = currentTranslations[key];
-                if (value && !element.dataset.loaded) {
-                    element.textContent = value;
-                }
-            });
-        }
+      console.log('Session valid, loading profile');
+      loadUserProfile();
+      loadProfileFromBackend();
+      setupPhotoUpload();
 
-        async function ensureCsrfToken() {
-            const meta = document.querySelector('meta[name="csrf-token"]');
-            const existing = meta ? meta.getAttribute('content') : '';
-            if (existing) {
-                return existing;
-            }
+      document.querySelectorAll('.mobile-bottom-nav .nav-item').forEach((item) => {
+        item.addEventListener('click', () => {
+          const page = item.dataset.page;
+          const pages = {
+            chat: '/mobile-chat.html',
+            market: '/mobile-market.html',
+            community: '/mobile-community.html',
+            profile: '/mobile-profile.html',
+            settings: '/mobile-settings.html',
+          };
+          if (pages[page]) window.location.href = pages[page];
+        });
+      });
+    });
 
-            const response = await fetch('/api/csrf-token', { credentials: 'include' });
-            const data = await response.json();
-            if (meta && data.csrf_token) {
-                meta.setAttribute('content', data.csrf_token);
-            }
-            return data.csrf_token || '';
-        }
+    // Load from sessionStorage
+    function loadUserProfile() {
+      const userPin = sessionStorage.getItem('user_zeus_pin');
+      const userName = sessionStorage.getItem('user_full_name');
+      const userPic = sessionStorage.getItem('user_profile_pic');
+      const userAbout = sessionStorage.getItem('user_about');
 
-        async function saveLanguagePreference(language) {
-            try {
-                const csrfToken = await ensureCsrfToken();
-                await fetch('/api/user/language', {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-Token': csrfToken
-                    },
-                    body: JSON.stringify({ language: normalizeLanguage(language) })
-                });
-            } catch (error) {
-                console.error('Failed to save language preference:', error);
-            }
-        }
+      if (userPin) {
+        document.getElementById('zeusPinDisplay').textContent = userPin;
+        const profilePin = document.getElementById('profilePin');
+        if (profilePin) profilePin.textContent = userPin;
+      }
+      if (userName) {
+        document.getElementById('displayName').value = userName;
+        const profileName = document.getElementById('profileName');
+        if (profileName) profileName.textContent = userName;
+      }
+      if (userAbout) {
+        document.getElementById('about').value = userAbout;
+      }
+      if (userPic) {
+        displayProfilePic(userPic);
+      }
+      
+      console.log('Loaded from sessionStorage:', { userName, userPic, userAbout });
+    }
 
-        async function getServerLanguage() {
-            try {
-                const response = await fetch('/api/user/language', { credentials: 'include' });
-                const data = await response.json();
-                if (!response.ok || !data.success) {
-                    return null;
-                }
-                return normalizeLanguage(data.language || 'en');
-            } catch (_error) {
-                return null;
-            }
-        }
-
-        async function loadLanguage(language, persistToServer = false) {
-            const selected = normalizeLanguage(language);
-            try {
-                const response = await fetch(`/static/locales/${selected}.json`, { cache: 'no-cache' });
-                if (!response.ok) {
-                    throw new Error('Failed to load locale');
-                }
-
-                currentTranslations = await response.json();
-                applyTranslations();
-                document.documentElement.lang = selected;
-                localStorage.setItem('zeuschat_language', selected);
-                sessionStorage.setItem('zeuschat_language', selected);
-
-                if (persistToServer) {
-                    await saveLanguagePreference(selected);
-                }
-            } catch (error) {
-                console.error('Failed to load language:', error);
-            }
-        }
-
-        async function setLanguage(language) {
-            await loadLanguage(language, true);
-            closeLanguageModal();
-        }
-
-        function openLanguageModal() {
-            document.getElementById('languageModal').classList.add('open');
-        }
-
-        function closeLanguageModal() {
-            document.getElementById('languageModal').classList.remove('open');
-        }
-
-        function formatDate(value) {
-            if (!value) {
-                return t('unavailable', 'Unavailable');
-            }
-            const date = new Date(value);
-            return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
-        }
-
-        async function loadProfile() {
-            try {
-                const response = await fetch('/api/user/profile', { credentials: 'include' });
-                if (response.status === 401) {
-                    window.location.href = '/login';
-                    return;
-                }
-
-                const data = await response.json();
-                if (!response.ok || !data.success) {
-                    throw new Error(data.error || t('unable_load_profile', 'Unable to load profile'));
-                }
-
-                const user = data.user || {};
-                const name = user.full_name || 'ZeusChat User';
-                document.getElementById('avatar').textContent = name.charAt(0).toUpperCase();
-                document.getElementById('fullName').textContent = name;
-                document.getElementById('fullName').dataset.loaded = 'true';
-                document.getElementById('zeusPin').textContent = user.zeus_pin || '';
-                document.getElementById('email').textContent = user.email || t('unavailable', 'Unavailable');
-                document.getElementById('email').dataset.loaded = 'true';
-                document.getElementById('about').textContent = user.about || t('no_profile_bio', 'No profile bio yet.');
-                document.getElementById('about').dataset.loaded = 'true';
-                document.getElementById('createdAt').textContent = formatDate(user.created_at);
-                document.getElementById('createdAt').dataset.loaded = 'true';
-            } catch (error) {
-                console.error('loadProfile error:', error);
-                document.getElementById('fullName').textContent = t('unable_load_profile', 'Unable to load profile');
-                document.getElementById('email').textContent = t('please_try_again_later', 'Please try again later');
-                document.getElementById('about').textContent = '';
-                document.getElementById('createdAt').textContent = '';
-            }
-        }
-
-        document.getElementById('languageBtn').addEventListener('click', openLanguageModal);
-        document.getElementById('languageModal').addEventListener('click', (event) => {
-            if (event.target.id === 'languageModal') {
-                closeLanguageModal();
-            }
+    // Load full profile from backend
+    async function loadProfileFromBackend() {
+      try {
+        const API_BASE = window.location.origin;
+        const response = await apiFetch(`${API_BASE}/api/user/profile`, {
+          method: 'GET',
+          credentials: 'include'
         });
 
-        window.addEventListener('DOMContentLoaded', async () => {
-            await ensureCsrfToken();
-            const savedLanguage = normalizeLanguage(localStorage.getItem('zeuschat_language') || initialLanguage || 'en');
-            const serverLanguage = await getServerLanguage();
-            await loadLanguage(serverLanguage || savedLanguage, false);
-            await loadProfile();
+        const result = await response.json();
+
+        if (response.ok && result.user) {
+          const user = result.user;
+          document.getElementById('displayName').value = user.full_name || '';
+          document.getElementById('about').value = user.about || '';
+          document.getElementById('avatarUrl').value = user.avatar_url || (user.profile_pic ? 'User uploaded' : '');
+          document.getElementById('zeusPinDisplay').textContent = user.zeus_pin || 'Error loading PIN';
+          
+          if (user.profile_pic) {
+            displayProfilePic(user.profile_pic);
+          }
+
+          // Sync with sessionStorage
+          sessionStorage.setItem('user_full_name', user.full_name || '');
+          sessionStorage.setItem('user_profile_pic', user.profile_pic || '');
+          sessionStorage.setItem('user_about', user.about || '');
+          sessionStorage.setItem('user_zeus_pin', user.zeus_pin || '');
+          
+          console.log('Loaded from backend:', { full_name: user.full_name, has_pic: !!user.profile_pic, has_about: !!user.about });
+        } else {
+          console.warn('Profile load returned:', result);
+        }
+      } catch (error) {
+        console.error('Backend profile load error:', error);
+      }
+    }
+
+    // Photo Upload Handler
+    let uploadedPhotoData = null;
+
+    function setupPhotoUpload() {
+      const input = document.getElementById('picUpload');
+      input.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+          alert('Please select an image file.');
+          return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+          alert('Image must be less than 5MB.');
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          uploadedPhotoData = event.target.result; // Base64 data
+          displayProfilePic(uploadedPhotoData);
+          console.log('Photo selected:', file.name);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function displayProfilePic(picData) {
+      const display = document.getElementById('profilePicDisplay');
+      const img = document.getElementById('profilePicImg');
+      const placeholder = document.getElementById('profilePicPlaceholder');
+      
+      if (picData) {
+        img.src = picData;
+        img.style.display = 'block';
+        placeholder.style.display = 'none';
+        const mobileAvatar = document.getElementById('profileAvatar');
+        if (mobileAvatar) mobileAvatar.src = picData;
+      } else {
+        img.style.display = 'none';
+        placeholder.style.display = 'block';
+      }
+    }
+
+    function navigateTo(path) {
+      window.location.href = path;
+    }
+
+    function logout() {
+      sessionStorage.removeItem('user_logged_in');
+      sessionStorage.removeItem('user_zeus_pin');
+      sessionStorage.removeItem('user_full_name');
+      sessionStorage.removeItem('user_profile_pic');
+      sessionStorage.removeItem('user_about');
+      window.location.href = '/login.html';
+    }
+
+    async function saveProfile() {
+      const displayNameInput = document.getElementById('displayName');
+      const aboutInput = document.getElementById('about');
+      const avatarUrlInput = document.getElementById('avatarUrl');
+      const saveBtn = document.getElementById('saveBtn');
+
+      if (saveBtn.disabled) return;
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving...';
+
+      let userPin = sessionStorage.getItem('user_zeus_pin');
+      const displayName = displayNameInput.value.trim();
+      const about = aboutInput.value.trim();
+      const avatarUrl = avatarUrlInput.value.trim();
+      const profilePic = uploadedPhotoData || sessionStorage.getItem('user_profile_pic') || '';
+      const existingProfilePic = sessionStorage.getItem('user_profile_pic') || '';
+
+      if (!displayName) {
+        alert('Please enter your display name.');
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Profile';
+        return;
+      }
+
+      if (profilePic && profilePic !== existingProfilePic) {
+        const allowed = await checkProfilePicturePermission();
+        if (!allowed) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save Profile';
+          return;
+        }
+      }
+
+      if (!userPin) {
+        const pinText = document.getElementById('zeusPinDisplay').textContent || '';
+        userPin = pinText.trim();
+      }
+      
+      console.log('💾 Saving profile:', { userPin, fullName: displayName, about: about.substring(0, 50) });
+
+      try {
+        const API_BASE = window.location.origin;
+        const response = await apiFetch(`${API_BASE}/api/user/update-profile`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            zeus_pin: userPin,
+            full_name: displayName,
+            about: about,
+            avatar_url: avatarUrl,
+            profile_pic: profilePic
+          })
         });
-    </script>
+
+        const result = await response.json();
+        console.log('📥 Save response:', result);
+
+        if (response.ok && result.success) {
+          sessionStorage.setItem('user_full_name', displayName);
+          sessionStorage.setItem('user_about', about);
+          if (profilePic) {
+            sessionStorage.setItem('user_profile_pic', profilePic);
+          }
+          uploadedPhotoData = null;
+          
+          console.log('✅ Profile saved to session storage');
+          alert('✅ Profile updated successfully!');
+          
+          setTimeout(() => {
+            location.reload();
+          }, 1000);
+        } else {
+          console.error('❌ Save failed:', result.error);
+          alert(result.error || 'Failed to update profile');
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save Profile';
+        }
+      } catch (error) {
+        console.error('❌ Profile update error:', error);
+        alert('Failed to connect to server');
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Profile';
+      }
+    }
+
+    function goBack() {
+      window.location.href = '/mobile-chat.html';
+    }
+
+    let currentFeatureForUpgrade = null;
+
+    function showDualUpgradeModal(featureKey, featureTitle, featureDescription) {
+      currentFeatureForUpgrade = featureKey;
+      const pricing = {
+        profile_picture: 29,
+        custom_ttl: 39,
+        pin_retention: 49,
+        file_sharing: 59,
+        cloud_backup: 99,
+      };
+      const oneTimePrice = pricing[featureKey] || 39;
+
+      document.getElementById('dualModalTitle').textContent = featureTitle;
+      document.getElementById('dualModalMessage').textContent = featureDescription;
+      document.getElementById('oneTimePrice').innerHTML = `R${oneTimePrice}<span style="font-size:12px;"></span>`;
+      document.getElementById('oneTimeAmount').textContent = String(oneTimePrice);
+      document.getElementById('dualUpgradeModal').style.display = 'flex';
+    }
+
+    function showUpgradeModal(featureName) {
+      if (featureName === 'profile_picture') {
+        showDualUpgradeModal('profile_picture', 'Change Profile Picture', 'Unlimited profile picture changes');
+      }
+    }
+
+    function hideUpgradeModal() {
+      document.getElementById('dualUpgradeModal').style.display = 'none';
+    }
+
+    async function checkProfilePicturePermission() {
+      const response = await apiFetch('/api/user/has-feature/profile_picture_unlimited', { credentials: 'include' });
+      const data = await response.json();
+
+      if (!data.has_access) {
+        showDualUpgradeModal('profile_picture', 'Change Profile Picture', 'Unlimited profile picture changes');
+        return false;
+      }
+      return true;
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      const subscribeBtn = document.getElementById('dualSubscribeBtn');
+      const oneTimeBtn = document.getElementById('dualOneTimeBtn');
+      const cancelBtn = document.getElementById('dualCancelBtn');
+      if (subscribeBtn) subscribeBtn.onclick = () => window.location.href = '/subscription';
+      if (cancelBtn) cancelBtn.onclick = hideUpgradeModal;
+
+      document.getElementById('dualUpgradeModal')?.addEventListener('click', function(e) {
+        if (e.target === this) hideUpgradeModal();
+      });
+
+      if (oneTimeBtn) {
+        oneTimeBtn.onclick = async () => {
+          const endpointMap = {
+            profile_picture: '/api/user/request-profile-picture',
+            custom_ttl: '/api/user/request-extended-ttl',
+            pin_retention: '/api/user/request-pin-retention',
+            file_sharing: '/api/user/request-file-sharing',
+            cloud_backup: '/api/user/request-cloud-backup',
+          };
+          const endpoint = endpointMap[currentFeatureForUpgrade];
+          if (!endpoint) {
+            window.location.href = '/subscription?mode=oneoff';
+            return;
+          }
+
+          try {
+            const response = await apiFetch(endpoint, { method: 'POST', credentials: 'include' });
+            const result = await response.json();
+            if (response.ok && result.redirect_url) {
+              window.location.href = result.redirect_url;
+              return;
+            }
+          } catch (_error) {
+            // Fall through to subscription if endpoint is unavailable.
+          }
+          window.location.href = `/subscription?mode=oneoff&feature=${encodeURIComponent(currentFeatureForUpgrade || '')}`;
+        };
+      }
+
+      document.getElementById('changeProfilePicBtn')?.addEventListener('click', async (e) => {
+        const allowed = await checkProfilePicturePermission();
+        if (!allowed) {
+          e.preventDefault();
+          return;
+        }
+        document.getElementById('picUpload').click();
+      });
+
+      document.getElementById('changeAvatarBtn')?.addEventListener('click', function () {
+        document.getElementById('picUpload')?.click();
+      });
+    });
+  </script>
+
+  <script>
+  // Register Service Worker
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/static/sw.js')
+        .then(registration => {
+          console.log('SW registered:', registration.scope);
+        })
+        .catch(error => {
+          console.log('SW registration failed:', error);
+        });
+    });
+  }
+  </script>
+  <div style="text-align:center;padding:12px 0 16px;font-size:12px;">
+    <a href="/terms" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">Terms</a> |
+    <a href="/privacy" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">Privacy</a> |
+    <a href="/kyc-policy" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">KYC Policy</a> |
+    <a href="/ghost-market-policy" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">Ghost Market Policy</a> |
+    <a href="/refund-policy" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">Refunds</a>
+  </div>
 </body>
 </html>

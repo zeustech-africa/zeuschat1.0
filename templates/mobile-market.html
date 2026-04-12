@@ -1,218 +1,513 @@
 <!DOCTYPE html>
-<html lang="{{ initial_language or 'en' }}">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>ZeusChat - Market</title>
+    <title>Ghost Market - ZeusChat</title>
+    <link rel="stylesheet" href="/static/mobile.css">
     <style>
-        :root {
-            color-scheme: dark;
-            --bg: #0a0a0a;
-            --panel: #141414;
-            --gold: #d4af37;
-            --muted: rgba(255, 255, 255, 0.64);
-            --border: rgba(212, 175, 55, 0.2);
-            --text: #fff;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            min-height: 100vh;
-            color: var(--text);
-            background: radial-gradient(circle at top, rgba(212, 175, 55, 0.08), transparent 35%), var(--bg);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            padding: calc(env(safe-area-inset-top, 0px) + 16px) 16px calc(env(safe-area-inset-bottom, 0px) + 24px);
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: white;
+            padding-bottom: 80px;
         }
-
-        .topbar {
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .market-header {
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
         }
-
-        .topbar button {
-            border: none;
-            background: none;
-            color: var(--gold);
-            font-size: 18px;
+        .back-btn {
+            background: rgba(212, 175, 55, 0.2);
+            border: 1px solid #D4AF37;
+            color: #D4AF37;
+            padding: 10px 16px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .back-btn:hover {
+            background: rgba(212, 175, 55, 0.4);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        h1 {
+            color: #D4AF37;
+            font-size: 28px;
+        }
+        .subtitle {
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 24px;
+        }
+        .market-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .tab-btn {
+            border: 1px solid rgba(212,175,55,0.35);
+            background: rgba(255,255,255,0.08);
+            color: #e5e7eb;
+            border-radius: 999px;
+            padding: 10px 16px;
+            cursor: pointer;
+            min-height: 44px;
+            font-weight: 600;
+        }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%);
+            color: #0a0a0a;
+            border-color: #D4AF37;
+        }
+        .search-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        .search-bar input {
+            flex: 1;
+            padding: 14px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(212,175,55,0.3);
+            border-radius: 40px;
+            color: white;
+            font-size: 16px;
+            min-height: 44px;
+        }
+        .search-bar select, .search-bar button {
+            padding: 14px 20px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(212,175,55,0.3);
+            border-radius: 40px;
+            color: white;
+            cursor: pointer;
+            min-height: 44px;
+        }
+        .search-bar select option { background: #1a1a1a; }
+        .items-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+            margin-top: 20px;
+        }
+        .item-card {
+            background: rgba(17, 17, 17, 0.95);
+            border: 1px solid rgba(212,175,55,0.2);
+            border-radius: 20px;
+            overflow: hidden;
+            transition: transform 0.2s;
             cursor: pointer;
         }
-
-        .card {
-            background: var(--panel);
-            border: 1px solid var(--border);
-            border-radius: 18px;
-            padding: 20px 16px;
+        .item-card:hover { transform: translateY(-4px); }
+        .item-image {
+            width: 100%;
+            height: 200px;
+            background: #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #D4AF37;
+            font-size: 48px;
         }
-
-        h1 {
-            color: var(--gold);
-            font-size: 22px;
+        .item-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .item-info { padding: 16px; }
+        .item-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+        .item-price {
+            color: #D4AF37;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .item-seller {
+            font-size: 12px;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 12px;
+        }
+        .item-status {
+            min-height: 22px;
             margin-bottom: 10px;
         }
-
-        p {
-            color: var(--muted);
-            line-height: 1.5;
-            margin-bottom: 14px;
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            margin-top: 2px;
+            font-weight: 600;
         }
-
-        .link-btn {
-            display: block;
-            width: 100%;
-            margin-top: 10px;
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 12px 14px;
-            background: #1d1d1d;
-            color: var(--text);
-            text-align: left;
-            cursor: pointer;
-            font: inherit;
+        .status-badge.pending {
+            background: #fef3c7;
+            color: #d97706;
         }
-
-        .primary {
-            border: none;
-            color: #111;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--gold), #b8960c);
+        .status-badge.rejected {
+            background: #fee2e2;
+            color: #dc2626;
         }
-
-        .language-modal {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.7);
-            z-index: 999;
-            align-items: flex-end;
-            justify-content: center;
+        .buy-btn[disabled] {
+            cursor: not-allowed;
+            background: #374151;
+            color: #d1d5db;
         }
-        .language-modal.open { display: flex; }
-        .language-modal-content {
-            background: #1a1a1a;
-            border-radius: 20px 20px 0 0;
-            padding: 24px 16px 32px;
-            width: 100%;
-            max-width: 480px;
-        }
-        .language-modal-content h3 {
-            color: var(--gold);
-            margin-bottom: 12px;
-            font-size: 17px;
-        }
-        .language-modal-content button {
-            display: block;
+        .buy-btn {
             width: 100%;
             padding: 12px;
-            margin-top: 8px;
-            border-radius: 10px;
-            border: 1px solid var(--border);
-            background: #222;
-            color: var(--text);
-            font: inherit;
+            background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%);
+            color: #0a0a0a;
+            border: none;
+            border-radius: 40px;
+            font-weight: bold;
             cursor: pointer;
-            text-align: left;
+            min-height: 44px;
+        }
+        .seller-section {
+            margin-top: 40px;
+            padding: 20px;
+            background: rgba(212,175,55,0.1);
+            border-radius: 20px;
+            text-align: center;
+        }
+        .seller-section h3 { margin-bottom: 8px; color: #D4AF37; }
+        .seller-section p { color: rgba(255,255,255,0.6); margin-bottom: 16px; }
+        .note {
+            color: rgba(255,255,255,0.45);
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        .sell-btn {
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%);
+            color: #0a0a0a;
+            border: none;
+            border-radius: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            min-height: 44px;
+        }
+        .upgrade-card {
+            border: 1px solid rgba(212, 175, 55, 0.35);
+            border-radius: 18px;
+            padding: 18px;
+            background: rgba(17, 17, 17, 0.45);
+        }
+        .btn-gold {
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%);
+            color: #0a0a0a;
+            border: none;
+            border-radius: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            min-height: 44px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: rgba(255,255,255,0.5);
+        }
+        @media (max-width: 768px) {
+            .container { padding: 16px; }
+            .items-grid { grid-template-columns: 1fr; }
+            h1 { font-size: 24px; }
         }
     </style>
 </head>
 <body>
-    <div class="topbar">
-        <button type="button" onclick="window.location.href='/mobile/chat'" aria-label="Back">&#8592;</button>
-        <button type="button" onclick="openLanguageModal()" aria-label="Change Language">&#127760;</button>
-        <button type="button" onclick="window.location.href='/mobile/settings'" aria-label="Settings">&#9881;</button>
-    </div>
+    <div class="container">
+        <div class="market-header">
+            <button class="back-btn" onclick="window.location.href='/mobile-chat.html'">← Back to Chats</button>
+            <h1>🏪 Ghost Market</h1>
+        </div>
+        <p class="subtitle">Buy and sell anonymously. No names. No shame. Every item reviewed by admin.</p>
 
-    <div class="card">
-        <h1 data-i18n="market">Market</h1>
-        <p data-i18n="market_description">Browse and trade in the mobile Ghost Market.</p>
-        <button class="link-btn primary" type="button" onclick="window.location.href='/mobile/chat'" data-i18n="go_to_messages">Go to Messages</button>
-        <button class="link-btn" type="button" onclick="window.location.href='/mobile/community'" data-i18n="open_community">Open Community</button>
-        <button class="link-btn" type="button" onclick="window.location.href='/mobile/profile'" data-i18n="open_profile">Open Profile</button>
-    </div>
+        <div class="market-tabs">
+            <button class="tab-btn active" data-tab="browse">🏪 Browse Market</button>
+            <button class="tab-btn" data-tab="my-listings">📦 My Listings</button>
+        </div>
 
-    <div id="languageModal" class="language-modal" aria-hidden="true">
-        <div class="language-modal-content">
-            <h3 data-i18n="select_language">Select Language</h3>
-            <button type="button" onclick="setLanguage('en')">English</button>
-            <button type="button" onclick="setLanguage('sw')">Kiswahili</button>
-            <button type="button" onclick="setLanguage('yo')">Yoruba</button>
-            <button type="button" onclick="setLanguage('zu')">isiZulu</button>
-            <button type="button" onclick="setLanguage('ha')">Hausa</button>
-            <button type="button" onclick="setLanguage('ig')">Igbo</button>
-            <button type="button" onclick="setLanguage('am')">Amharic</button>
-            <button type="button" onclick="setLanguage('xh')">isiXhosa</button>
-            <button type="button" onclick="setLanguage('af')">Afrikaans</button>
-            <button type="button" onclick="setLanguage('st')">Sesotho</button>
-            <button type="button" onclick="setLanguage('tn')">Setswana</button>
-            <button type="button" onclick="setLanguage('nso')">Sepedi</button>
-            <button type="button" onclick="closeLanguageModal()" data-i18n="cancel">Cancel</button>
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="Search ghost market...">
+            <select id="categoryFilter">
+                <option value="">All Categories</option>
+                <option value="Electronics">Electronics</option>
+                <option value="Clothing">Clothing</option>
+                <option value="Furniture">Furniture</option>
+                <option value="Books">Books</option>
+                <option value="Home">Home &amp; Garden</option>
+                <option value="Sports">Sports</option>
+                <option value="Toys">Toys &amp; Hobbies</option>
+                <option value="Other">Other</option>
+            </select>
+            <button id="searchBtn">🔍 Search</button>
+        </div>
+
+        <div id="itemsGrid" class="items-grid">
+            <div class="loading">Loading ghost market...</div>
+        </div>
+
+        <div id="sellerSection" class="seller-section" style="display: none;">
+            <h3>Become a Ghost Seller</h3>
+            <p>Sell your used items anonymously. Admin approves every listing.</p>
+            <button id="applySellerBtn" class="sell-btn">Apply to Sell →</button>
         </div>
     </div>
 
+    <!-- Mobile Bottom Navigation -->
+    <div class="mobile-bottom-nav mobile-only">
+        <button class="nav-item nav-item-mobile" data-page="chat">
+            <span class="nav-icon">💬</span>
+            <span>Chats</span>
+        </button>
+        <button class="nav-item nav-item-mobile active" data-page="market">
+            <span class="nav-icon">🏪</span>
+            <span>Market</span>
+        </button>
+        <button class="nav-item nav-item-mobile" data-page="community">
+            <span class="nav-icon">👻</span>
+            <span>Ghost</span>
+        </button>
+        <button class="nav-item nav-item-mobile" data-page="profile">
+            <span class="nav-icon">👤</span>
+            <span>Profile</span>
+        </button>
+        <button class="nav-item nav-item-mobile" data-page="settings">
+            <span class="nav-icon">⚙️</span>
+            <span>Settings</span>
+        </button>
+    </div>
+
     <script>
-        const SUPPORTED_LANGUAGES = ['en', 'sw', 'yo', 'zu', 'ha', 'ig', 'am', 'xh', 'af', 'st', 'tn', 'nso'];
-        const initialLanguage = {{ initial_language|tojson }};
+        let isSeller = false;
+        let currentTab = 'browse';
+        let allItems = [];
 
-        function normalizeLanguage(lang) {
-            return SUPPORTED_LANGUAGES.includes(lang) ? lang : 'en';
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
         }
 
-        let currentTranslations = {};
-
-        async function loadLanguage(lang) {
-            lang = normalizeLanguage(lang);
-            try {
-                const r = await fetch('/static/locales/' + lang + '.json?v=1');
-                if (!r.ok) throw new Error('fetch failed');
-                currentTranslations = await r.json();
-            } catch(e) {
-                currentTranslations = {};
+        function getStatusBadge(status, rejectionReason) {
+            if (status === 'pending_approval') {
+                return '<span class="status-badge pending">⏳ Pending Admin Approval</span>';
             }
-            applyTranslations();
-            document.documentElement.lang = lang;
-            localStorage.setItem('zeuschat_lang', lang);
+            if (status === 'rejected') {
+                return '<span class="status-badge rejected">❌ Rejected: ' + escapeHtml(rejectionReason || 'No reason provided') + '</span>';
+            }
+            return '';
         }
 
-        function applyTranslations() {
-            document.querySelectorAll('[data-i18n]').forEach(el => {
-                const key = el.getAttribute('data-i18n');
-                if (currentTranslations[key]) el.textContent = currentTranslations[key];
+        function renderItems() {
+            const grid = document.getElementById('itemsGrid');
+            const visibleItems = allItems.filter(function (item) {
+                if (currentTab === 'my-listings') {
+                    return !!item.is_owner;
+                }
+                return item.status === 'approved';
             });
+
+            if (!visibleItems.length) {
+                grid.innerHTML = currentTab === 'my-listings'
+                    ? '<div class="loading">No listings yet. Tap "Sell an Item" to submit your first listing.</div>'
+                    : '<div class="loading">No items found in Ghost Market</div>';
+                return;
+            }
+
+            grid.innerHTML = visibleItems.map(function (item) {
+                const imgHtml = item.images
+                    ? '<img src="/' + escapeHtml(item.images.split(',')[0]) + '" alt="' + escapeHtml(item.title) + '">'
+                    : '📦';
+                const statusHtml = getStatusBadge(item.status, item.rejection_reason);
+                const canBuy = item.status === 'approved' && !item.is_owner;
+                const buyButton = canBuy
+                    ? '<button class="buy-btn" onclick="event.stopPropagation(); buyItem(' + item.id + ')">Buy Now</button>'
+                    : '<button class="buy-btn" disabled>' + (item.is_owner ? 'Your Listing' : 'Not Available') + '</button>';
+
+                return '<div class="item-card" data-status="' + escapeHtml(item.status || 'approved') + '" data-owner="' + (item.is_owner ? '1' : '0') + '">' +
+                    '<div class="item-image">' + imgHtml + '</div>' +
+                    '<div class="item-info">' +
+                    '<div class="item-title">' + escapeHtml(item.title) + '</div>' +
+                    '<div class="item-price">R' + item.price + '</div>' +
+                    '<div class="item-seller">Seller: ' + escapeHtml(item.seller_pin_half || 'ZT-XXXX') + '</div>' +
+                    '<div class="item-status">' + statusHtml + '</div>' +
+                    buyButton +
+                    '</div></div>';
+            }).join('');
         }
 
-        function openLanguageModal() {
-            const m = document.getElementById('languageModal');
-            m.classList.add('open');
-            m.setAttribute('aria-hidden', 'false');
-        }
+        async function loadItems() {
+            const search = document.getElementById('searchInput').value;
+            const category = document.getElementById('categoryFilter').value;
 
-        function closeLanguageModal() {
-            const m = document.getElementById('languageModal');
-            m.classList.remove('open');
-            m.setAttribute('aria-hidden', 'true');
-        }
-
-        async function setLanguage(lang) {
-            closeLanguageModal();
-            await loadLanguage(lang);
             try {
-                const csrf = document.querySelector('meta[name="csrf-token"]').content;
-                await fetch('/api/user/language', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
-                    credentials: 'include',
-                    body: JSON.stringify({ language: lang })
-                });
-            } catch(e) {}
+                const response = await fetch(
+                    '/api/ghost-market/items?search=' + encodeURIComponent(search) +
+                    '&category=' + encodeURIComponent(category)
+                );
+                const data = await response.json();
+
+                if (data.success) {
+                    allItems = data.items || [];
+                    renderItems();
+                } else {
+                    document.getElementById('itemsGrid').innerHTML = '<div class="loading">No items found in Ghost Market</div>';
+                }
+            } catch (err) {
+                document.getElementById('itemsGrid').innerHTML = '<div class="loading">Failed to load items</div>';
+            }
         }
 
-        const savedLang = normalizeLanguage(localStorage.getItem('zeuschat_lang') || initialLanguage || 'en');
-        loadLanguage(savedLang);
+        async function buyItem(itemId) {
+            if (!confirm('Buy this item? Payment will be held in escrow until you confirm receipt.')) return;
+
+            try {
+                const response = await fetch('/api/ghost-market/buy/' + itemId, { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success && data.redirect_url) {
+                    window.location.href = data.redirect_url;
+                } else {
+                    alert(data.error || 'Unable to process purchase');
+                }
+            } catch (err) {
+                alert('Network error. Please try again.');
+            }
+        }
+
+        async function checkSellerAccess() {
+            const sellerSection = document.getElementById('sellerSection');
+            sellerSection.style.display = 'block';
+
+            let isLoggedIn = true;
+            let tier = 'free';
+
+            try {
+                const subResponse = await fetch('/api/user/subscription');
+                if (subResponse.status === 401) {
+                    isLoggedIn = false;
+                } else {
+                    const subData = await subResponse.json();
+                    tier = (subData.tier || 'free').toLowerCase();
+                }
+            } catch (err) {
+                isLoggedIn = false;
+            }
+
+            if (!isLoggedIn) {
+                sellerSection.innerHTML =
+                    '<h3>Become a Ghost Seller</h3>' +
+                    '<p>Login to apply to become a seller</p>' +
+                    '<button class="sell-btn" onclick="window.location.href=\'/login.html\'">Login →</button>';
+                return;
+            }
+
+            if (tier === 'free') {
+                sellerSection.innerHTML =
+                    '<div class="upgrade-card">' +
+                    '<h3>👑 Become a Seller</h3>' +
+                    '<p>Only Pro and Teams subscribers can sell on Ghost Market.</p>' +
+                    '<button class="btn-gold" onclick="window.location.href=\'/subscription\'">Upgrade to Pro → R89/month</button>' +
+                    '<p class="note">Free users can browse and buy anonymously.</p>' +
+                    '</div>';
+                return;
+            }
+
+            try {
+                const sellerResponse = await fetch('/api/ghost-market/seller-status');
+                const sellerData = await sellerResponse.json();
+
+                if (sellerData.is_seller) {
+                    isSeller = true;
+                    sellerSection.innerHTML = '<button class="sell-btn" id="sellBtn">📦 Sell an Item</button>';
+                    const sellBtn = document.getElementById('sellBtn');
+                    if (sellBtn) {
+                        sellBtn.addEventListener('click', function () {
+                            window.location.href = '/ghost-market/sell';
+                        });
+                    }
+                } else if (sellerData.status === 'pending') {
+                    sellerSection.innerHTML =
+                        '<h3>⏳ Seller Application Pending</h3>' +
+                        '<p>Your application is being reviewed by admin.</p>' +
+                        '<p class="note">You will be notified when approved.</p>';
+                } else {
+                    sellerSection.innerHTML =
+                        '<h3>Become a Ghost Seller</h3>' +
+                        '<p>Sell your used items anonymously. Admin approves every listing.</p>' +
+                        '<button class="sell-btn" id="applySellerBtn">Apply to Sell →</button>';
+                    const applyBtn = document.getElementById('applySellerBtn');
+                    if (applyBtn) {
+                        applyBtn.addEventListener('click', function () {
+                            window.location.href = '/ghost-market/apply-seller';
+                        });
+                    }
+                }
+            } catch (err) {
+                sellerSection.innerHTML =
+                    '<h3>Unable to load seller status</h3>' +
+                    '<p>Please refresh the page and try again.</p>';
+            }
+        }
+
+        document.getElementById('searchBtn').addEventListener('click', loadItems);
+        document.getElementById('searchInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') loadItems();
+        });
+
+        document.querySelectorAll('.tab-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                document.querySelectorAll('.tab-btn').forEach(function (item) {
+                    item.classList.remove('active');
+                });
+                btn.classList.add('active');
+                currentTab = btn.dataset.tab;
+                renderItems();
+            });
+        });
+
+        // Mobile navigation
+        document.querySelectorAll('.mobile-bottom-nav .nav-item').forEach(function (item) {
+            item.addEventListener('click', function () {
+                const page = item.dataset.page;
+                const pages = {
+                    'chat': '/mobile-chat.html',
+                    'community': '/mobile-community.html',
+                    'profile': '/mobile-profile.html',
+                    'market': '/mobile-market.html',
+                    'settings': '/mobile-settings.html'
+                };
+                if (pages[page]) window.location.href = pages[page];
+            });
+        });
+
+        loadItems();
+        checkSellerAccess();
     </script>
+    <div style="text-align:center;padding:12px 0 16px;font-size:12px;">
+        <a href="/terms" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">Terms</a> |
+        <a href="/privacy" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">Privacy</a> |
+        <a href="/kyc-policy" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">KYC Policy</a> |
+        <a href="/ghost-market-policy" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">Ghost Market Policy</a> |
+        <a href="/refund-policy" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">Refunds</a>
+    </div>
 </body>
 </html>

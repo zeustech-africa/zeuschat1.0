@@ -1,244 +1,297 @@
 <!DOCTYPE html>
-<html lang="{{ initial_language or 'en' }}">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>ZeusChat - Add Contact</title>
-    <style>
-        :root {
-            color-scheme: dark;
-            --bg: #0a0a0a;
-            --surface: rgba(20, 20, 20, 0.94);
-            --border: rgba(212, 175, 55, 0.18);
-            --gold: #d4af37;
-            --gold-dark: #b8960c;
-            --text: #fff;
-            --muted: rgba(255,255,255,0.6);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            min-height: 100vh;
-            background: radial-gradient(circle at top, rgba(212, 175, 55, 0.08), transparent 35%), var(--bg);
-            color: var(--text);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            padding: calc(env(safe-area-inset-top, 0px) + 20px) 16px calc(env(safe-area-inset-bottom, 0px) + 24px);
-        }
-
-        .topbar {
-            margin-bottom: 18px;
-        }
-
-        .topbar button {
-            border: none;
-            background: none;
-            color: var(--gold);
-            font-size: 18px;
-            cursor: pointer;
-        }
-
-        .card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 22px 18px;
-        }
-
-        h1 {
-            font-size: 24px;
-            margin-bottom: 10px;
-        }
-
-        p {
-            color: var(--muted);
-            line-height: 1.5;
-            margin-bottom: 16px;
-        }
-
-        input {
-            width: 100%;
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 14px;
-            background: #151515;
-            color: var(--text);
-            padding: 14px 16px;
-            font: inherit;
-            text-transform: uppercase;
-            margin-bottom: 14px;
-        }
-
-        button.submit-btn {
-            width: 100%;
-            border: none;
-            border-radius: 14px;
-            padding: 14px 16px;
-            font: inherit;
-            font-weight: 700;
-            cursor: pointer;
-            background: linear-gradient(135deg, var(--gold), var(--gold-dark));
-            color: #111;
-        }
-
-        .status {
-            margin-top: 14px;
-            min-height: 20px;
-            font-size: 14px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>Add Contact — ZeusChat</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    body {
+      background: #000;
+      min-height: 100vh;
+      color: #fff;
+      overflow-y: auto;
+      padding-bottom: 92px;
+    }
+    .video-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: -1;
+    }
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      z-index: 0;
+    }
+    .header {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .logo {
+      height: 32px;
+      margin-bottom: 4px;
+    }
+    .byline {
+      font-size: 12px;
+      color: #FFD700;
+      font-weight: 500;
+    }
+    .container {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 84px 20px 24px;
+      min-height: calc(100vh - 92px);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+    }
+    .box {
+      background: #222;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 16px 0;
+      width: 100%;
+      max-width: 600px;
+      text-align: left;
+    }
+    .box-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #fff;
+    }
+    .input-group {
+      margin-bottom: 16px;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      background: #333;
+      border: 1px solid #444;
+      color: #fff;
+      border-radius: 6px;
+      min-height: 44px;
+    }
+    .btn {
+      background: #FFD700;
+      color: #000;
+      border: none;
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 16px;
+      width: 100%;
+      max-width: 400px;
+      min-height: 44px;
+    }
+    .note {
+      background: #1a1a1a;
+      border-left: 4px solid #d4af37;
+      padding: 12px;
+      margin-top: 16px;
+      font-size: 13px;
+      text-align: left;
+      line-height: 1.5;
+    }
+    .back-btn {
+      background: #666;
+      margin-top: 8px;
+      width: auto;
+      max-width: 200px;
+    }
+    .mobile-bottom-nav .nav-item {
+      min-height: 44px;
+    }
+  </style>
+  <link rel="stylesheet" href="/static/mobile.css">
 </head>
 <body>
-    <div class="topbar">
-        <button type="button" onclick="window.location.href='/mobile/chat'">&#8592;</button>
+  <video class="video-bg" autoplay muted loop>
+    <source src="zeustech-register.mp4" type="video/mp4">
+  </video>
+  <div class="overlay"></div>
+
+  <div class="header">
+    <img src="zeustech-logo-zeushchat.png" class="logo" alt="ZeusTech">
+    <div class="byline">ZeusChat by ZeusTech</div>
+  </div>
+
+  <div class="container">
+    <div class="box">
+      <div class="box-title">Add Contact</div>
+      <div class="input-group">
+        <input type="text" id="zeusPin" placeholder="Enter Zeus-PIN (e.g. ZT-1234-5678)" />
+      </div>
+      <button class="btn" id="addBtn" onclick="addContact()">Send Request</button>
+      <button class="btn back-btn" onclick="goBack()">← Back to Chat</button>
+      <div class="note">
+        Enter the Zeus-PIN of the user you want to connect with.<br>
+        They must accept your request before messaging.
+      </div>
     </div>
+  </div>
 
-    <div class="card">
-        <h1 data-i18n="send_contact_request">Send Contact Request</h1>
-        <p data-i18n="contact_request_helper">Enter a Zeus PIN to send a handshake request. The other user must accept before messaging starts.</p>
-        <input id="zeusPinInput" type="text" data-i18n-placeholder="enter_zeus_pin_placeholder" placeholder="Enter Zeus PIN" autocomplete="off">
-        <button id="submitButton" class="submit-btn" type="button" data-i18n="send_request">Send Request</button>
-        <div id="status" class="status"></div>
-    </div>
+  <div class="mobile-bottom-nav">
+    <button class="nav-item" data-page="chat">
+      <span class="nav-icon">💬</span>
+      <span>Chats</span>
+    </button>
+    <button class="nav-item" data-page="market">
+      <span class="nav-icon">🏪</span>
+      <span>Market</span>
+    </button>
+    <button class="nav-item" data-page="community">
+      <span class="nav-icon">👻</span>
+      <span>Ghost</span>
+    </button>
+    <button class="nav-item" data-page="profile">
+      <span class="nav-icon">👤</span>
+      <span>Profile</span>
+    </button>
+    <button class="nav-item" data-page="settings">
+      <span class="nav-icon">⚙️</span>
+      <span>Settings</span>
+    </button>
+  </div>
 
-    <script>
-        const SUPPORTED_LANGUAGES = ['en', 'sw', 'yo', 'zu', 'ha', 'ig', 'am', 'xh', 'af', 'st', 'tn', 'nso'];
-        const initialLanguage = {{ initial_language|tojson }};
-        let currentTranslations = {};
+  <script>
+    console.log('=== ADD CONTACT PAGE LOAD ===');
 
-        function normalizeLanguage(language) {
-            return SUPPORTED_LANGUAGES.includes(language) ? language : 'en';
-        }
+    function getCsrfToken() {
+      return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    }
 
-        function t(key, fallback = '') {
-            return currentTranslations[key] || fallback;
-        }
+    function initMobileNav() {
+      const pages = {
+        chat: '/mobile-chat.html',
+        market: '/mobile-market.html',
+        community: '/mobile-community.html',
+        profile: '/mobile-profile.html',
+        settings: '/mobile-settings.html'
+      };
 
-        function applyTranslations() {
-            document.querySelectorAll('[data-i18n]').forEach((element) => {
-                const key = element.getAttribute('data-i18n');
-                const value = currentTranslations[key];
-                if (value) {
-                    element.textContent = value;
-                }
-            });
+      document.querySelectorAll('.mobile-bottom-nav .nav-item').forEach((item) => {
+        item.addEventListener('click', () => {
+          const page = item.dataset.page;
+          if (pages[page]) {
+            window.location.href = pages[page];
+          }
+        });
+      });
+    }
 
-            document.querySelectorAll('[data-i18n-placeholder]').forEach((element) => {
-                const key = element.getAttribute('data-i18n-placeholder');
-                const value = currentTranslations[key];
-                if (value) {
-                    element.placeholder = value;
-                }
-            });
-        }
+    // Authentication guard using sessionStorage
+    window.addEventListener('DOMContentLoaded', () => {
+      const isLoggedIn = sessionStorage.getItem('user_logged_in') === 'true';
+      const userPin = sessionStorage.getItem('user_zeus_pin');
 
-        async function getServerLanguage() {
-            try {
-                const response = await fetch('/api/user/language', { credentials: 'include' });
-                const data = await response.json();
-                if (!response.ok || !data.success) {
-                    return null;
-                }
-                return normalizeLanguage(data.language || 'en');
-            } catch (_error) {
-                return null;
-            }
-        }
+      console.log('Session check:', { isLoggedIn, userPin });
 
-        async function loadLanguage(language) {
-            const selected = normalizeLanguage(language);
-            try {
-                const response = await fetch(`/static/locales/${selected}.json`, { cache: 'no-cache' });
-                if (!response.ok) {
-                    throw new Error('Failed to load locale');
-                }
-                currentTranslations = await response.json();
-                applyTranslations();
-                document.documentElement.lang = selected;
-                localStorage.setItem('zeuschat_language', selected);
-                sessionStorage.setItem('zeuschat_language', selected);
-            } catch (error) {
-                console.error('Failed to load language:', error);
-            }
-        }
+      if (!isLoggedIn || !userPin) {
+        console.log('Not logged in, redirecting to login');
+        sessionStorage.setItem('return_url', 'mobile-add-contact.html');
+        window.location.href = 'login.html';
+        return;
+      }
 
-        async function ensureCsrfToken() {
-            const meta = document.querySelector('meta[name="csrf-token"]');
-            const existing = meta ? meta.getAttribute('content') : '';
-            if (existing) {
-                return existing;
-            }
+      initMobileNav();
+    });
 
-            const response = await fetch('/api/csrf-token', { credentials: 'include' });
-            const data = await response.json();
-            if (meta && data.csrf_token) {
-                meta.setAttribute('content', data.csrf_token);
-            }
-            return data.csrf_token || '';
-        }
+    function goBack() {
+      window.location.href = '/mobile-chat.html';
+    }
 
-        function setStatus(message, isError = false) {
-            const status = document.getElementById('status');
-            status.textContent = message || '';
-            status.style.color = isError ? '#fca5a5' : '#d4af37';
-        }
+    function validateZeusPIN(pin) {
+      const pattern = /^ZT-\d{4}-\d{4}$/;
+      return pattern.test(pin);
+    }
 
-        async function sendContactRequest() {
-            const input = document.getElementById('zeusPinInput');
-            const value = input.value.trim().toUpperCase();
-            if (!value) {
-                setStatus(t('enter_zeus_pin_first', 'Enter a Zeus PIN first.'), true);
-                return;
-            }
+    async function addContact() {
+      const zeusPinInput = document.getElementById('zeusPin');
+      const addBtn = document.getElementById('addBtn');
+      const API_BASE = window.location.origin;
 
-            try {
-                const csrfToken = await ensureCsrfToken();
-                const response = await fetch('/api/add-contact', {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-Token': csrfToken
-                    },
-                    body: JSON.stringify({ zeus_pin: value })
-                });
+      if (addBtn.disabled) return;
+      addBtn.disabled = true;
+      addBtn.textContent = 'Sending...';
 
-                if (response.status === 401) {
-                    window.location.href = '/login';
-                    return;
-                }
+      const zeusPin = zeusPinInput.value.trim().toUpperCase();
+      const currentUserPin = sessionStorage.getItem('user_zeus_pin');
 
-                const data = await response.json();
-                if (!response.ok || !data.success) {
-                    throw new Error(data.error || t('unable_send_request', 'Unable to send request.'));
-                }
+      if (!zeusPin) {
+        alert('Please enter a Zeus-PIN.');
+        addBtn.disabled = false;
+        addBtn.textContent = 'Send Request';
+        return;
+      }
 
-                input.value = '';
-                setStatus(t('contact_request_sent', 'Contact request sent successfully.'));
-            } catch (error) {
-                console.error('sendContactRequest error:', error);
-                setStatus(error.message || t('unable_send_request', 'Unable to send request.'), true);
-            }
-        }
+      if (!validateZeusPIN(zeusPin)) {
+        alert('Invalid Zeus-PIN format. Use: ZT-XXXX-XXXX');
+        addBtn.disabled = false;
+        addBtn.textContent = 'Send Request';
+        return;
+      }
 
-        document.getElementById('submitButton').addEventListener('click', sendContactRequest);
-        document.getElementById('zeusPinInput').addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                sendContactRequest();
-            }
+      if (zeusPin === currentUserPin) {
+        alert('You cannot add yourself as a contact!');
+        addBtn.disabled = false;
+        addBtn.textContent = 'Send Request';
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/api/add-contact`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': getCsrfToken()
+          },
+          body: JSON.stringify({ contact_pin: zeusPin })
         });
 
-        window.addEventListener('DOMContentLoaded', async () => {
-            await ensureCsrfToken();
-            const savedLanguage = normalizeLanguage(localStorage.getItem('zeuschat_language') || initialLanguage || 'en');
-            const serverLanguage = await getServerLanguage();
-            await loadLanguage(serverLanguage || savedLanguage);
-        });
-    </script>
+        const result = await response.json();
+
+        if (response.ok) {
+          console.log('Contact request sent:', zeusPin);
+          alert('✅ Contact request sent!');
+          zeusPinInput.value = '';
+          addBtn.disabled = false;
+          addBtn.textContent = 'Send Request';
+        } else {
+          throw new Error(result.error || 'Failed to send request');
+        }
+      } catch (error) {
+        console.error('Add contact error:', error);
+        alert('Error: ' + error.message);
+        addBtn.disabled = false;
+        addBtn.textContent = 'Send Request';
+      }
+    }
+  </script>
 </body>
 </html>

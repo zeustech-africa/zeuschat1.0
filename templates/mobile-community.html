@@ -1,218 +1,126 @@
 <!DOCTYPE html>
-<html lang="{{ initial_language or 'en' }}">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>ZeusChat - Community</title>
-    <style>
-        :root {
-            color-scheme: dark;
-            --bg: #0a0a0a;
-            --panel: #141414;
-            --gold: #d4af37;
-            --muted: rgba(255, 255, 255, 0.64);
-            --border: rgba(212, 175, 55, 0.2);
-            --text: #fff;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-            min-height: 100vh;
-            color: var(--text);
-            background: radial-gradient(circle at top, rgba(212, 175, 55, 0.08), transparent 35%), var(--bg);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            padding: calc(env(safe-area-inset-top, 0px) + 16px) 16px calc(env(safe-area-inset-bottom, 0px) + 24px);
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-        }
-
-        .topbar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .topbar button {
-            border: none;
-            background: none;
-            color: var(--gold);
-            font-size: 18px;
-            cursor: pointer;
-        }
-
-        .card {
-            background: var(--panel);
-            border: 1px solid var(--border);
-            border-radius: 18px;
-            padding: 20px 16px;
-        }
-
-        h1 {
-            color: var(--gold);
-            font-size: 22px;
-            margin-bottom: 10px;
-        }
-
-        p {
-            color: var(--muted);
-            line-height: 1.5;
-            margin-bottom: 14px;
-        }
-
-        .link-btn {
-            display: block;
-            width: 100%;
-            margin-top: 10px;
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 12px 14px;
-            background: #1d1d1d;
-            color: var(--text);
-            text-align: left;
-            cursor: pointer;
-            font: inherit;
-        }
-
-        .primary {
-            border: none;
-            color: #111;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--gold), #b8960c);
-        }
-
-        .language-modal {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.7);
-            z-index: 999;
-            align-items: flex-end;
-            justify-content: center;
-        }
-        .language-modal.open { display: flex; }
-        .language-modal-content {
-            background: #1a1a1a;
-            border-radius: 20px 20px 0 0;
-            padding: 24px 16px 32px;
-            width: 100%;
-            max-width: 480px;
-        }
-        .language-modal-content h3 {
-            color: var(--gold);
-            margin-bottom: 12px;
-            font-size: 17px;
-        }
-        .language-modal-content button {
-            display: block;
-            width: 100%;
-            padding: 12px;
-            margin-top: 8px;
-            border-radius: 10px;
-            border: 1px solid var(--border);
-            background: #222;
-            color: var(--text);
-            font: inherit;
-            cursor: pointer;
-            text-align: left;
-        }
-    </style>
+    <title>Ghost Community - ZeusChat</title>
+    <link rel="stylesheet" href="/static/ghost.css">
+    <link rel="stylesheet" href="/static/mobile.css">
 </head>
 <body>
-    <div class="topbar">
-        <button type="button" onclick="window.location.href='/mobile/chat'" aria-label="Back">&#8592;</button>
-        <button type="button" onclick="openLanguageModal()" aria-label="Change Language">&#127760;</button>
-        <button type="button" onclick="window.location.href='/mobile/settings'" aria-label="Settings">&#9881;</button>
+    <div class="feed-container" id="feedContainer">
+        <div id="postsLoader" style="text-align: center; padding: 40px; color: #D4AF37;">Loading...</div>
     </div>
 
-    <div class="card">
-        <h1 data-i18n="community">Community</h1>
-        <p data-i18n="community_description">Explore the Ghost Community feed.</p>
-        <button class="link-btn primary" type="button" onclick="window.location.href='/mobile/chat'" data-i18n="go_to_messages">Go to Messages</button>
-        <button class="link-btn" type="button" onclick="window.location.href='/mobile/market'" data-i18n="open_market">Open Market</button>
-        <button class="link-btn" type="button" onclick="window.location.href='/mobile/profile'" data-i18n="open_profile">Open Profile</button>
+    <a class="wallet-link" href="/creator-wallet">Creator Wallet</a>
+
+    <div class="create-post-btn" id="createPostBtn">
+        <span style="font-size: 28px;">+</span>
     </div>
 
-    <div id="languageModal" class="language-modal" aria-hidden="true">
-        <div class="language-modal-content">
-            <h3 data-i18n="select_language">Select Language</h3>
-            <button type="button" onclick="setLanguage('en')">English</button>
-            <button type="button" onclick="setLanguage('sw')">Kiswahili</button>
-            <button type="button" onclick="setLanguage('yo')">Yoruba</button>
-            <button type="button" onclick="setLanguage('zu')">isiZulu</button>
-            <button type="button" onclick="setLanguage('ha')">Hausa</button>
-            <button type="button" onclick="setLanguage('ig')">Igbo</button>
-            <button type="button" onclick="setLanguage('am')">Amharic</button>
-            <button type="button" onclick="setLanguage('xh')">isiXhosa</button>
-            <button type="button" onclick="setLanguage('af')">Afrikaans</button>
-            <button type="button" onclick="setLanguage('st')">Sesotho</button>
-            <button type="button" onclick="setLanguage('tn')">Setswana</button>
-            <button type="button" onclick="setLanguage('nso')">Sepedi</button>
-            <button type="button" onclick="closeLanguageModal()" data-i18n="cancel">Cancel</button>
+    <div class="mobile-bottom-nav mobile-only">
+        <button class="nav-item nav-item-mobile" data-page="chat">
+            <span class="nav-icon">💬</span>
+            <span>Chats</span>
+        </button>
+        <button class="nav-item nav-item-mobile" data-page="market">
+            <span class="nav-icon">🏪</span>
+            <span>Market</span>
+        </button>
+        <button class="nav-item nav-item-mobile active" data-page="community">
+            <span class="nav-icon">👻</span>
+            <span>Ghost</span>
+        </button>
+        <button class="nav-item nav-item-mobile" data-page="profile">
+            <span class="nav-icon">👤</span>
+            <span>Profile</span>
+        </button>
+        <button class="nav-item nav-item-mobile" data-page="settings">
+            <span class="nav-icon">⚙️</span>
+            <span>Settings</span>
+        </button>
+    </div>
+
+    <div id="createPostModal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <h2 style="color:#D4AF37;">Create Ghost Post</h2>
+
+            <div class="form-group">
+                <label>Title/Caption *</label>
+                <input type="text" id="postTitle" placeholder="Enter title...">
+            </div>
+
+            <div class="form-group">
+                <label>Content (optional)</label>
+                <textarea id="postContent" rows="4" placeholder="Write your story..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Media</label>
+                <input type="file" id="postMedia" accept="image/*,video/*">
+            </div>
+
+            <div class="form-group">
+                <label>💰 Monetization</label>
+                <div style="display:flex; gap:16px; margin-bottom:12px;">
+                    <label><input type="radio" name="paidType" value="free" checked> Free Post</label>
+                    <label><input type="radio" name="paidType" value="paid"> Paid Post</label>
+                </div>
+            </div>
+
+            <div class="form-group hidden" id="priceGroup">
+                <label>Price (R)</label>
+                <select id="postPrice">
+                    <option value="5">R5</option>
+                    <option value="10">R10</option>
+                    <option value="20">R20</option>
+                    <option value="50">R50</option>
+                    <option value="100">R100</option>
+                </select>
+            </div>
+
+            <div class="form-group hidden" id="previewGroup">
+                <label>Preview Text (what free users see)</label>
+                <textarea id="previewText" rows="2" placeholder="This post contains exclusive content..."></textarea>
+            </div>
+
+            <div style="display:flex; gap:12px; margin-top:20px;">
+                <button id="cancelPostBtn" class="secondary-action" style="flex:1;">Cancel</button>
+                <button id="submitPostBtn" class="primary-action" style="flex:2;">Post →</button>
+            </div>
         </div>
     </div>
 
+    <div id="payModal" class="modal-overlay hidden">
+        <div class="pay-modal-card">
+            <div style="font-size:48px; margin-bottom:16px;">🔒</div>
+            <h3 id="payModalTitle" style="color:#D4AF37;">Locked Content</h3>
+            <p id="payModalPrice" style="margin:16px 0;">Price: R20</p>
+            <button id="confirmPayBtn" class="primary-action" style="width:100%;">Pay to Unlock →</button>
+            <button id="cancelPayBtn" class="secondary-action" style="width:100%; margin-top:12px;">Cancel</button>
+        </div>
+    </div>
+
+    <script src="/static/ghost.js"></script>
     <script>
-        const SUPPORTED_LANGUAGES = ['en', 'sw', 'yo', 'zu', 'ha', 'ig', 'am', 'xh', 'af', 'st', 'tn', 'nso'];
-        const initialLanguage = {{ initial_language|tojson }};
+      (function initMobileNavOverride() {
+        const pages = {
+          chat: '/mobile-chat.html',
+          market: '/mobile-market.html',
+          community: '/mobile-community.html',
+          profile: '/mobile-profile.html',
+          settings: '/mobile-settings.html'
+        };
 
-        function normalizeLanguage(lang) {
-            return SUPPORTED_LANGUAGES.includes(lang) ? lang : 'en';
-        }
-
-        let currentTranslations = {};
-
-        async function loadLanguage(lang) {
-            lang = normalizeLanguage(lang);
-            try {
-                const r = await fetch('/static/locales/' + lang + '.json?v=1');
-                if (!r.ok) throw new Error('fetch failed');
-                currentTranslations = await r.json();
-            } catch(e) {
-                currentTranslations = {};
+        document.querySelectorAll('.mobile-bottom-nav .nav-item').forEach(function (item) {
+          item.addEventListener('click', function () {
+            const page = item.dataset.page;
+            if (pages[page]) {
+              window.location.href = pages[page];
             }
-            applyTranslations();
-            document.documentElement.lang = lang;
-            localStorage.setItem('zeuschat_lang', lang);
-        }
-
-        function applyTranslations() {
-            document.querySelectorAll('[data-i18n]').forEach(el => {
-                const key = el.getAttribute('data-i18n');
-                if (currentTranslations[key]) el.textContent = currentTranslations[key];
-            });
-        }
-
-        function openLanguageModal() {
-            const m = document.getElementById('languageModal');
-            m.classList.add('open');
-            m.setAttribute('aria-hidden', 'false');
-        }
-
-        function closeLanguageModal() {
-            const m = document.getElementById('languageModal');
-            m.classList.remove('open');
-            m.setAttribute('aria-hidden', 'true');
-        }
-
-        async function setLanguage(lang) {
-            closeLanguageModal();
-            await loadLanguage(lang);
-            try {
-                const csrf = document.querySelector('meta[name="csrf-token"]').content;
-                await fetch('/api/user/language', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
-                    credentials: 'include',
-                    body: JSON.stringify({ language: lang })
-                });
-            } catch(e) {}
-        }
-
-        const savedLang = normalizeLanguage(localStorage.getItem('zeuschat_lang') || initialLanguage || 'en');
-        loadLanguage(savedLang);
+          });
+        });
+      })();
     </script>
 </body>
 </html>

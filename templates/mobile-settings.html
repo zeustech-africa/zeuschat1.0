@@ -1,218 +1,1162 @@
 <!DOCTYPE html>
-<html lang="{{ initial_language or 'en' }}">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>ZeusChat - Settings</title>
-    <style>
-        :root {
-            color-scheme: dark;
-            --bg: #0a0a0a;
-            --panel: #141414;
-            --gold: #d4af37;
-            --muted: rgba(255, 255, 255, 0.64);
-            --border: rgba(212, 175, 55, 0.2);
-            --text: #fff;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#667eea">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ZeusChat">
+  <link rel="apple-touch-icon" href="/zeuschat-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/zeuschat-icon.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/zeuschat-icon.png">
+  <title>Settings — ZeusChat</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    body {
+      background: #0b0b0b;
+      color: #fff;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .container {
+      padding: 20px;
+      flex: 1;
+    }
+    .section {
+      background: #121212;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .section-title {
+      color: #d4af37;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .setting {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      border-bottom: 1px solid #222;
+    }
+    .setting:last-child {
+      border-bottom: none;
+    }
+    .setting-label {
+      font-size: 14px;
+    }
+    select {
+      background: #222;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 14px;
+    }
+    .btn {
+      background: #d4af37;
+      color: #000;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 16px;
+      width: 100%;
+    }
+    .back-btn {
+      background: #222;
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-bottom: 16px;
+    }
+    .logout-btn {
+      background: #2a2a2a;
+    }
+    .delete-btn {
+      background: #ff3b30;
+      margin-top: 8px;
+    }
+    .warning {
+      color: #ffcc00;
+      font-size: 13px;
+      margin-top: 6px;
+    }
+    .pro-badge {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
+      margin-left: 8px;
+      display: inline-block;
+    }
+    .feature-locked {
+      opacity: 0.85;
+      cursor: pointer;
+      position: relative;
+    }
+    .feature-locked:hover::after {
+      content: "Pro Feature";
+      position: absolute;
+      background: #1e293b;
+      color: white;
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 8px;
+      white-space: nowrap;
+      top: -30px;
+      left: 0;
+      z-index: 20;
+    }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 48px;
+      height: 26px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #444;
+      transition: .2s;
+      border-radius: 26px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .2s;
+      border-radius: 50%;
+    }
+    .switch input:checked + .slider {
+      background-color: #d4af37;
+    }
+    .switch input:checked + .slider:before {
+      transform: translateX(22px);
+    }
+    @keyframes modalFadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+    body {
+        padding: 16px;
+    }
 
-        body {
-            min-height: 100vh;
-            color: var(--text);
-            background: radial-gradient(circle at top, rgba(212, 175, 55, 0.08), transparent 35%), var(--bg);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            padding: calc(env(safe-area-inset-top, 0px) + 16px) 16px calc(env(safe-area-inset-bottom, 0px) + 24px);
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-        }
+    .container, .card, .main-content {
+        padding: 20px 16px;
+        margin: 0;
+        width: 100%;
+        border-radius: 24px;
+    }
 
-        .topbar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
+    h1 {
+        font-size: 28px;
+    }
 
-        .topbar button {
-            border: none;
-            background: none;
-            color: var(--gold);
-            font-size: 18px;
-            cursor: pointer;
-        }
+    h2 {
+        font-size: 22px;
+    }
 
-        .card {
-            background: var(--panel);
-            border: 1px solid var(--border);
-            border-radius: 18px;
-            padding: 20px 16px;
-        }
+    button, .btn-primary, .btn-secondary {
+        padding: 14px 20px;
+        font-size: 16px;
+    }
 
-        h1 {
-            color: var(--gold);
-            font-size: 22px;
-            margin-bottom: 10px;
-        }
+    input, textarea, select {
+        padding: 14px;
+        font-size: 16px;
+    }
 
-        p {
-            color: var(--muted);
-            line-height: 1.5;
-            margin-bottom: 14px;
-        }
+    .sidebar {
+        position: fixed;
+        left: -280px;
+        transition: left 0.3s;
+        z-index: 1000;
+    }
 
-        .link-btn {
-            display: block;
-            width: 100%;
-            margin-top: 10px;
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 12px 14px;
-            background: #1d1d1d;
-            color: var(--text);
-            text-align: left;
-            cursor: pointer;
-            font: inherit;
-        }
+    .sidebar.open {
+        left: 0;
+    }
 
-        .primary {
-            border: none;
-            color: #111;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--gold), #b8960c);
-        }
+    .menu-toggle {
+        display: block;
+        position: fixed;
+        top: 16px;
+        left: 16px;
+        z-index: 1001;
+        background: #D4AF37;
+        border: none;
+        border-radius: 8px;
+        padding: 10px;
+        cursor: pointer;
+    }
 
-        .language-modal {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.7);
-            z-index: 999;
-            align-items: flex-end;
-            justify-content: center;
-        }
-        .language-modal.open { display: flex; }
-        .language-modal-content {
-            background: #1a1a1a;
-            border-radius: 20px 20px 0 0;
-            padding: 24px 16px 32px;
-            width: 100%;
-            max-width: 480px;
-        }
-        .language-modal-content h3 {
-            color: var(--gold);
-            margin-bottom: 12px;
-            font-size: 17px;
-        }
-        .language-modal-content button {
-            display: block;
-            width: 100%;
-            padding: 12px;
-            margin-top: 8px;
-            border-radius: 10px;
-            border: 1px solid var(--border);
-            background: #222;
-            color: var(--text);
-            font: inherit;
-            cursor: pointer;
-            text-align: left;
-        }
-    </style>
+    .main-content {
+        margin-left: 0;
+        padding: 60px 16px 20px;
+    }
+
+    .admin-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .feature-grid, .pricing-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .chat-container {
+        flex-direction: column;
+    }
+
+    .message {
+        max-width: 85%;
+    }
+
+    body {
+        font-size: 14px;
+    }
+
+    button, a, .clickable {
+        min-height: 44px;
+    }
+
+    /* Hidden feature - ready to enable by removing this class */
+    .feature-hidden {
+      display: none !important;
+    }
+}
+  </style>
+  <link rel="stylesheet" href="/static/mobile.css">
 </head>
 <body>
-    <div class="topbar">
-        <button type="button" onclick="window.location.href='/mobile/chat'" aria-label="Back">&#8592;</button>
-        <button type="button" onclick="openLanguageModal()" aria-label="Change Language">&#127760;</button>
-        <button type="button" onclick="window.location.href='/logout?redirect=/mobile/login'" data-i18n="logout">Logout</button>
+  <div class="container">
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+      <button class="back-btn" onclick="window.location.href='chat.html'" data-i18n="chats">Chats</button>
+      <button class="back-btn" onclick="window.location.href='/ghost-market'">Ghost Market</button>
+      <button class="back-btn" onclick="window.location.href='/ghost-forums'">Ghost Forums</button>
+      <button class="back-btn" onclick="window.location.href='/ghost-ultimate'">Ghost Ultimate</button>
     </div>
-
-    <div class="card">
-        <h1 data-i18n="settings">Settings</h1>
-        <p data-i18n="settings_description">Manage your ZeusChat preferences.</p>
-        <button class="link-btn primary" type="button" onclick="window.location.href='/mobile/profile'" data-i18n="open_profile">Open Profile</button>
-        <button class="link-btn" type="button" onclick="window.location.href='/mobile/market'" data-i18n="open_market">Open Market</button>
-        <button class="link-btn" type="button" onclick="window.location.href='/mobile/community'" data-i18n="open_community">Open Community</button>
+    <div class="section">
+      <div class="section-title" data-i18n="privacy">Privacy</div>
+      <div class="setting">
+        <div class="setting-label">Last seen & online</div>
+        <select class="setting-value" onchange="saveSetting('lastSeen', this.value)">
+          <option value="myContacts">My contacts</option>
+          <option value="everyone">Everyone</option>
+          <option value="nobody">Nobody</option>
+        </select>
+      </div>
+      <div class="setting">
+        <div class="setting-label">Profile photo</div>
+        <select class="setting-value" onchange="saveSetting('profilePhoto', this.value)">
+          <option value="myContacts">My contacts</option>
+          <option value="everyone">Everyone</option>
+          <option value="nobody">Nobody</option>
+        </select>
+      </div>
+      <div class="setting">
+        <div class="setting-label">About</div>
+        <select class="setting-value" onchange="saveSetting('about', this.value)">
+          <option value="myContacts">My contacts</option>
+          <option value="everyone">Everyone</option>
+          <option value="nobody">Nobody</option>
+        </select>
+      </div>
+      <div class="setting">
+        <div class="setting-label">Status</div>
+        <select class="setting-value" onchange="saveSetting('status', this.value)">
+          <option value="myContacts">My contacts</option>
+          <option value="everyone">Everyone</option>
+          <option value="nobody">Nobody</option>
+        </select>
+      </div>
+      <div class="setting">
+        <div class="setting-label">Groups</div>
+        <select class="setting-value" onchange="saveSetting('groups', this.value)">
+          <option value="myContacts">My contacts</option>
+          <option value="everyone">Everyone</option>
+          <option value="nobody">Nobody</option>
+        </select>
+      </div>
     </div>
-
-    <div id="languageModal" class="language-modal" aria-hidden="true">
-        <div class="language-modal-content">
-            <h3 data-i18n="select_language">Select Language</h3>
-            <button type="button" onclick="setLanguage('en')">English</button>
-            <button type="button" onclick="setLanguage('sw')">Kiswahili</button>
-            <button type="button" onclick="setLanguage('yo')">Yoruba</button>
-            <button type="button" onclick="setLanguage('zu')">isiZulu</button>
-            <button type="button" onclick="setLanguage('ha')">Hausa</button>
-            <button type="button" onclick="setLanguage('ig')">Igbo</button>
-            <button type="button" onclick="setLanguage('am')">Amharic</button>
-            <button type="button" onclick="setLanguage('xh')">isiXhosa</button>
-            <button type="button" onclick="setLanguage('af')">Afrikaans</button>
-            <button type="button" onclick="setLanguage('st')">Sesotho</button>
-            <button type="button" onclick="setLanguage('tn')">Setswana</button>
-            <button type="button" onclick="setLanguage('nso')">Sepedi</button>
-            <button type="button" onclick="closeLanguageModal()" data-i18n="cancel">Cancel</button>
+    <div class="section">
+      <div class="section-title" data-i18n="security">Security</div>
+      <div class="setting">
+        <div class="setting-label">PIN-to-View (for files & voice notes)</div>
+        <select class="setting-value" onchange="saveSetting('pinToView', this.value)">
+          <option value="enabled">Enabled</option>
+          <option value="disabled">Disabled</option>
+        </select>
+      </div>
+      <div class="setting feature-locked" id="cloudBackupToggle" role="button" tabindex="0">
+        <div class="setting-label">Cloud backup <span class="pro-badge">PRO</span></div>
+        <div style="font-size: 12px; color: #888;">10GB encrypted backup</div>
+      </div>
+    </div>
+    
+    <!-- 🔔 NOTIFICATION SETTINGS SECTION -->
+    <div class="section">
+      <div class="section-title">🔔 <span data-i18n="notifications">Notifications</span></div>
+      <div class="setting">
+        <div class="setting-label">Notification Type</div>
+        <select id="notification-type" class="setting-value" onchange="saveNotificationSetting()">
+          <option value="both">Sound + Vibration</option>
+          <option value="sound">Sound Only</option>
+          <option value="vibrate">Vibration Only</option>
+          <option value="none">Silent (No Notifications)</option>
+        </select>
+      </div>
+      <div class="setting">
+        <div class="setting-label">
+          <input type="checkbox" id="online-status" onchange="toggleOnlineStatus()" style="margin-right: 8px;">
+          Show Online Status
         </div>
+        <div style="font-size: 0.85em; color: #888; margin-top: 5px;">
+          When disabled, you appear offline to contacts
+        </div>
+      </div>
     </div>
 
-    <script>
-        const SUPPORTED_LANGUAGES = ['en', 'sw', 'yo', 'zu', 'ha', 'ig', 'am', 'xh', 'af', 'st', 'tn', 'nso'];
-        const initialLanguage = {{ initial_language|tojson }};
+    <div class="section">
+      <div class="section-title">📡 <span data-i18n="data_saver">Data Saver</span></div>
+      <div class="setting">
+        <div>
+          <div class="setting-label">Data Saver Mode</div>
+          <div style="font-size: 12px; color: #888;">Reduce data usage by up to 80%</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="dataSaverToggle">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="setting" id="imageQualityGroup">
+        <div>
+          <div class="setting-label" data-i18n="image_quality">Image Quality</div>
+          <div style="font-size: 12px; color: #888;">Lower quality = less data used</div>
+        </div>
+        <select id="imageQuality" class="setting-value">
+          <option value="low" data-i18n="low">Low</option>
+          <option value="medium" data-i18n="medium">Medium</option>
+          <option value="high" data-i18n="high">High</option>
+        </select>
+      </div>
+      <div class="setting">
+        <div>
+          <div class="setting-label">Auto-download Images</div>
+          <div style="font-size: 12px; color: #888;">Automatically download images</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="autoDownloadImages">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="setting">
+        <div>
+          <div class="setting-label">Auto-download Videos</div>
+          <div style="font-size: 12px; color: #888;">Automatically download videos (data heavy)</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="autoDownloadVideos">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
 
-        function normalizeLanguage(lang) {
-            return SUPPORTED_LANGUAGES.includes(lang) ? lang : 'en';
+    <div class="section">
+      <div class="section-title">🌍 Language / Lugha / Èdè / Ulimi / Harshe / Asụsụ / ቋንቋ</div>
+      <div class="setting">
+        <div>
+          <div class="setting-label" data-i18n="language">Language</div>
+          <div style="font-size: 12px; color: #888;" data-i18n="select_language">Select Language</div>
+        </div>
+        <select id="languageSelect" class="setting-value" aria-label="Language selector">
+          <option value="en">English</option>
+          <option value="sw">Kiswahili</option>
+          <option value="yo">Yoruba</option>
+          <option value="zu">isiZulu</option>
+          <option value="ha">Hausa</option>
+          <option value="ig">Igbo</option>
+          <option value="am">አማርኛ (Amharic)</option>
+          <option value="xh">isiXhosa</option>
+          <option value="af">Afrikaans</option>
+          <option value="st">Sesotho</option>
+          <option value="tn">Setswana</option>
+          <option value="nso">Sepedi</option>
+        </select>
+      </div>
+    </div>
+    
+    <!-- 🔐 PIN-TO-VIEW MESSAGE SECURITY -->
+    <div class="section">
+      <div class="section-title">🔐 Message Security</div>
+      <div class="setting">
+        <div class="setting-label">
+          <input type="checkbox" id="pin-view-toggle" onchange="togglePinView()" style="margin-right: 8px;">
+          Require password to view messages
+        </div>
+        <div style="font-size: 0.85em; color: #888; margin-top: 5px;">
+          When enabled, every incoming message is locked and requires your password to open. Wrong password keeps the message locked.
+        </div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">🚫 Blocked Contacts</div>
+      <div id="blocked-contacts-container" style="padding: 12px;">
+        <div id="blocked-list" style="max-height: 250px; overflow-y: auto;">
+          <!-- Populated by JavaScript -->
+        </div>
+        <div id="blocked-empty" style="text-align: center; color: #888; padding: 20px;">
+          No blocked contacts
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">💬 <span data-i18n="help">Help</span> & Feedback</div>
+      <div style="padding: 12px;">
+        <p style="color: #888; font-size: 13px; margin-bottom: 12px;">
+          Need help or have feedback? Share your thoughts with our team.
+        </p>
+        
+        <div style="margin-bottom: 12px;">
+          <label style="display: block; font-size: 13px; margin-bottom: 6px; color: #d4af37;">Feedback Type</label>
+          <select id="feedback-type" style="background: #222; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 6px 8px; width: 100%; font-size: 13px; box-sizing: border-box;">
+            <option value="bug">Bug Report</option>
+            <option value="feature">Feature Request</option>
+            <option value="general">General Feedback</option>
+            <option value="security">Security Issue</option>
+          </select>
+        </div>
+        
+        <div style="margin-bottom: 12px;">
+          <label style="display: block; font-size: 13px; margin-bottom: 6px; color: #d4af37;">Your Message (5-1000 characters)</label>
+          <textarea id="feedback-message" placeholder="Tell us what you think..." style="background: #222; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 8px; width: 100%; font-size: 13px; font-family: inherit; resize: vertical; min-height: 80px; box-sizing: border-box;" maxlength="1000"></textarea>
+          <div style="font-size: 11px; color: #888; margin-top: 4px; text-align: right;">
+            <span id="char-count">0</span>/1000 characters
+          </div>
+        </div>
+        
+        <button class="btn" style="background: #d4af37; color: #000; border: none; padding: 10px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; width: 100%;" onclick="submitFeedback()">Submit Feedback</button>
+        
+        <hr style="border: none; border-top: 1px solid #333; margin: 16px 0;">
+        
+        <div style="font-size: 12px; color: #888;">
+          <div style="margin-bottom: 8px;">📧 <strong>Email:</strong> <a href="mailto:info@zeustechafrica.com" style="color: #d4af37; text-decoration: none;">info@zeustechafrica.com</a></div>
+          <div style="margin-bottom: 8px;">📞 <strong>Call:</strong> <a href="tel:+27796288382" style="color: #d4af37; text-decoration: none;">+27 79 628 8382</a></div>
+          <div>🌐 <strong>Website:</strong> <a href="https://zeustechafrica.com" target="_blank" style="color: #d4af37; text-decoration: none;">zeustechafrica.com</a></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ✅ ONLY NEW SECTION — Log Out & Delete Account -->
+    <div class="section">
+      <div class="section-title" data-i18n="settings">Settings</div>
+      <button class="btn logout-btn" onclick="logout()" data-i18n="logout">Logout</button>
+      <button class="btn delete-btn" onclick="deleteAccount()">Delete Account</button>
+      <div class="warning">
+        🔒 Log out: Ends session, keeps all data.<br>
+        🗑️ Delete: Permanently removes everything — irreversible.
+      </div>
+    </div>
+
+    <button class="btn" onclick="saveAllSettings()" data-i18n="get_started">Get Started</button>
+  </div>
+
+    <div class="mobile-bottom-nav mobile-only">
+      <button class="nav-item nav-item-mobile" data-page="chat">
+        <span class="nav-icon">💬</span>
+        <span>Chats</span>
+      </button>
+      <button class="nav-item nav-item-mobile" data-page="market">
+        <span class="nav-icon">🏪</span>
+        <span>Market</span>
+      </button>
+      <button class="nav-item nav-item-mobile" data-page="community">
+        <span class="nav-icon">👻</span>
+        <span>Ghost</span>
+      </button>
+      <button class="nav-item nav-item-mobile" data-page="profile">
+        <span class="nav-icon">👤</span>
+        <span>Profile</span>
+      </button>
+      <button class="nav-item nav-item-mobile active" data-page="settings">
+        <span class="nav-icon">⚙️</span>
+        <span>Settings</span>
+      </button>
+    </div>
+
+    <!-- Dual Upgrade Modal -->
+    <div id="dualUpgradeModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10001; align-items:center; justify-content:center;">
+      <div style="background:white; border-radius:28px; max-width:420px; width:90%; padding:32px; text-align:center;">
+        <div style="font-size:48px; margin-bottom:16px;">🔒</div>
+        <h3 id="dualModalTitle" style="font-size:22px; color:#1e293b;">Feature Locked</h3>
+        <p id="dualModalMessage" style="color:#64748b; margin:16px 0; font-size:14px;">Upgrade to access this feature</p>
+
+        <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap;">
+          <div style="flex:1; background:#f1f5f9; border-radius:16px; padding:16px; min-width:150px;">
+            <div style="font-size:24px; font-weight:800; color:#667eea;">R89<span style="font-size:12px;">/mo</span></div>
+            <div style="font-size:12px; color:#64748b;">Monthly Subscription</div>
+            <div style="font-size:11px; color:#10b981; margin-top:8px;">✓ All Pro features</div>
+            <div style="font-size:11px; color:#10b981;">✓ Cancel anytime</div>
+          </div>
+          <div style="flex:1; background:#f1f5f9; border-radius:16px; padding:16px; min-width:150px;">
+            <div id="oneTimePrice" style="font-size:24px; font-weight:800; color:#764ba2;">R<span>39</span></div>
+            <div style="font-size:12px; color:#64748b;">One-time payment</div>
+            <div style="font-size:11px; color:#10b981; margin-top:8px;">✓ Permanent unlock</div>
+            <div style="font-size:11px; color:#10b981;">✓ No recurring fees</div>
+          </div>
+        </div>
+
+        <button id="dualSubscribeBtn" style="width:100%; padding:14px; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white; border:none; border-radius:40px; font-size:16px; font-weight:600; cursor:pointer; margin-bottom:12px;">Subscribe Monthly →</button>
+        <button id="dualOneTimeBtn" style="width:100%; padding:14px; background:#f1f5f9; color:#1e293b; border:none; border-radius:40px; font-size:16px; font-weight:600; cursor:pointer; margin-bottom:12px;">Pay Once (R<span id="oneTimeAmount">39</span>)</button>
+        <button id="dualCancelBtn" style="background:none; border:none; color:#94a3b8; cursor:pointer;">Not Now</button>
+      </div>
+    </div>
+
+  <script>
+    const API_BASE = window.location.origin;
+    let csrfToken = null;
+    let dataSaverState = {
+      data_saver_mode: false,
+      auto_download_images: false,
+      auto_download_videos: false,
+      image_quality: 'medium',
+    };
+
+    async function ensureCsrfToken(forceRefresh = false) {
+      if (csrfToken && !forceRefresh) {
+        return csrfToken;
+      }
+
+      const response = await window.fetch(`${API_BASE}/api/csrf-token`, {
+        method: 'GET',
+        credentials: 'include'
+      });
+      const data = await response.json();
+      csrfToken = data.csrf_token || null;
+      return csrfToken;
+    }
+
+    async function apiFetch(url, options = {}) {
+      const requestOptions = { ...options };
+      const method = (requestOptions.method || 'GET').toUpperCase();
+      requestOptions.method = method;
+      requestOptions.credentials = requestOptions.credentials || 'include';
+      requestOptions.headers = { ...(requestOptions.headers || {}) };
+
+      if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+        const token = await ensureCsrfToken();
+        if (token) {
+          requestOptions.headers['X-CSRF-Token'] = token;
+        }
+      }
+
+      return window.fetch(url, requestOptions);
+    }
+
+    const SUPPORTED_LANGUAGES = ['en', 'sw', 'yo', 'zu', 'ha', 'ig', 'am', 'xh', 'af', 'st', 'tn', 'nso'];
+    let currentTranslations = {};
+
+    function normalizeLanguage(lang) {
+      return SUPPORTED_LANGUAGES.includes(lang) ? lang : 'en';
+    }
+
+    function applyTranslations() {
+      document.querySelectorAll('[data-i18n]').forEach((element) => {
+        const key = element.getAttribute('data-i18n');
+        const value = currentTranslations[key];
+        if (!value) return;
+        element.textContent = value;
+      });
+
+      document.querySelectorAll('[data-i18n-placeholder]').forEach((element) => {
+        const key = element.getAttribute('data-i18n-placeholder');
+        const value = currentTranslations[key];
+        if (!value) return;
+        element.placeholder = value;
+      });
+    }
+
+    async function getServerLanguage() {
+      try {
+        const response = await apiFetch('/api/user/language', { method: 'GET' });
+        const data = await response.json();
+        if (!response.ok || !data.success) return null;
+        return normalizeLanguage(data.language || 'en');
+      } catch (_error) {
+        return null;
+      }
+    }
+
+    async function saveLanguagePreference(language) {
+      const payload = { language: normalizeLanguage(language) };
+      try {
+        await apiFetch('/api/user/language', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } catch (error) {
+        console.error('Failed to save language preference:', error);
+      }
+    }
+
+    async function loadLanguage(language, persistToServer = false) {
+      const selected = normalizeLanguage(language);
+      try {
+        const response = await window.fetch(`/static/locales/${selected}.json`, { cache: 'no-cache' });
+        if (!response.ok) {
+          throw new Error(`Failed to load locale: ${selected}`);
         }
 
-        let currentTranslations = {};
+        currentTranslations = await response.json();
+        applyTranslations();
+        document.documentElement.lang = selected;
 
-        async function loadLanguage(lang) {
-            lang = normalizeLanguage(lang);
-            try {
-                const r = await fetch('/static/locales/' + lang + '.json?v=1');
-                if (!r.ok) throw new Error('fetch failed');
-                currentTranslations = await r.json();
-            } catch(e) {
-                currentTranslations = {};
+        const languageSelect = document.getElementById('languageSelect');
+        if (languageSelect) {
+          languageSelect.value = selected;
+        }
+
+        localStorage.setItem('zeuschat_language', selected);
+        sessionStorage.setItem('zeuschat_language', selected);
+
+        if (persistToServer) {
+          await saveLanguagePreference(selected);
+        }
+      } catch (error) {
+        console.error('Failed to load language:', error);
+      }
+    }
+
+    async function loadDataSaverSettings() {
+      try {
+        const response = await apiFetch('/api/user/data-saver-settings', { method: 'GET' });
+        const data = await response.json();
+        if (!response.ok || !data.success) return;
+
+        dataSaverState = {
+          data_saver_mode: !!data.data_saver_mode,
+          auto_download_images: !!data.auto_download_images,
+          auto_download_videos: !!data.auto_download_videos,
+          image_quality: data.image_quality || 'medium',
+        };
+
+        document.getElementById('dataSaverToggle').checked = dataSaverState.data_saver_mode;
+        document.getElementById('imageQuality').value = dataSaverState.image_quality;
+        document.getElementById('autoDownloadImages').checked = dataSaverState.auto_download_images;
+        document.getElementById('autoDownloadVideos').checked = dataSaverState.auto_download_videos;
+        document.getElementById('imageQualityGroup').style.display = dataSaverState.data_saver_mode ? 'flex' : 'none';
+
+        sessionStorage.setItem('data_saver_mode', dataSaverState.data_saver_mode ? 'true' : 'false');
+        sessionStorage.setItem('data_saver_image_quality', dataSaverState.image_quality);
+        sessionStorage.setItem('auto_download_images', dataSaverState.auto_download_images ? 'true' : 'false');
+        sessionStorage.setItem('auto_download_videos', dataSaverState.auto_download_videos ? 'true' : 'false');
+      } catch (error) {
+        console.error('Failed to load data saver settings:', error);
+      }
+    }
+
+    async function saveDataSaverSettings() {
+      const payload = {
+        data_saver_mode: document.getElementById('dataSaverToggle').checked,
+        image_quality: document.getElementById('imageQuality').value,
+        auto_download_images: document.getElementById('autoDownloadImages').checked,
+        auto_download_videos: document.getElementById('autoDownloadVideos').checked,
+      };
+
+      document.getElementById('imageQualityGroup').style.display = payload.data_saver_mode ? 'flex' : 'none';
+
+      try {
+        const response = await apiFetch('/api/user/data-saver-settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          console.error('Failed to save data saver settings:', data.error || 'Unknown error');
+          return;
+        }
+
+        sessionStorage.setItem('data_saver_mode', payload.data_saver_mode ? 'true' : 'false');
+        sessionStorage.setItem('data_saver_image_quality', payload.image_quality);
+        sessionStorage.setItem('auto_download_images', payload.auto_download_images ? 'true' : 'false');
+        sessionStorage.setItem('auto_download_videos', payload.auto_download_videos ? 'true' : 'false');
+      } catch (error) {
+        console.error('Failed to save data saver settings:', error);
+      }
+    }
+
+    // Authentication guard
+    const isLoggedIn = sessionStorage.getItem('user_logged_in') === 'true';
+    const userPin = sessionStorage.getItem('user_zeus_pin');
+    if (!isLoggedIn || !userPin) {
+      sessionStorage.setItem('return_url', 'mobile-settings.html');
+      window.location.href = 'login.html';
+    }
+
+    // Load saved settings on page load
+    window.addEventListener('DOMContentLoaded', async () => {
+      ensureCsrfToken().catch((error) => {
+        console.error('Failed to initialize CSRF token:', error);
+      });
+
+      const savedLanguage = normalizeLanguage(localStorage.getItem('zeuschat_language') || 'en');
+      const serverLanguage = await getServerLanguage();
+      await loadLanguage(serverLanguage || savedLanguage, false);
+
+      document.getElementById('languageSelect')?.addEventListener('change', async (event) => {
+        await loadLanguage(event.target.value, true);
+      });
+
+      const settings = JSON.parse(localStorage.getItem('settings')) || {};
+      document.querySelector('select[onchange*="lastSeen"]').value = settings.lastSeen || 'myContacts';
+      document.querySelector('select[onchange*="profilePhoto"]').value = settings.profilePhoto || 'myContacts';
+      document.querySelector('select[onchange*="about"]').value = settings.about || 'myContacts';
+      document.querySelector('select[onchange*="status"]').value = settings.status || 'myContacts';
+      document.querySelector('select[onchange*="groups"]').value = settings.groups || 'everyone';
+      document.querySelector('select[onchange*="pinToView"]').value = settings.pinToView || 'enabled';
+      
+      // Load notification settings from localStorage or sessionStorage
+      let notificationSetting = sessionStorage.getItem('notification_setting') || localStorage.getItem('notification_setting') || 'both';
+      document.getElementById('notification-type').value = notificationSetting;
+      // Ensure both storages are synced
+      sessionStorage.setItem('notification_setting', notificationSetting);
+      localStorage.setItem('notification_setting', notificationSetting);
+      
+      const onlineStatus = sessionStorage.getItem('show_online_status') !== 'false';
+      document.getElementById('online-status').checked = onlineStatus;
+      
+      // Load PIN-to-view setting
+      const pinViewEnabled = sessionStorage.getItem('pin_view_enabled') === 'true';
+      const pinViewToggle = document.getElementById('pin-view-toggle');
+      if (pinViewToggle) {
+        pinViewToggle.checked = pinViewEnabled;
+      }
+
+      await loadDataSaverSettings();
+
+      document.getElementById('dataSaverToggle')?.addEventListener('change', saveDataSaverSettings);
+      document.getElementById('imageQuality')?.addEventListener('change', saveDataSaverSettings);
+      document.getElementById('autoDownloadImages')?.addEventListener('change', saveDataSaverSettings);
+      document.getElementById('autoDownloadVideos')?.addEventListener('change', saveDataSaverSettings);
+      
+      // Load blocked contacts list
+      loadBlockedContacts();
+      
+      // Set up character counter for feedback
+      const feedbackMessage = document.getElementById('feedback-message');
+      if (feedbackMessage) {
+        feedbackMessage.addEventListener('input', () => {
+          document.getElementById('char-count').textContent = feedbackMessage.value.length;
+        });
+      }
+
+      const subscribeBtn = document.getElementById('dualSubscribeBtn');
+      const oneTimeBtn = document.getElementById('dualOneTimeBtn');
+      const cancelBtn = document.getElementById('dualCancelBtn');
+      if (subscribeBtn) subscribeBtn.onclick = () => window.location.href = '/subscription';
+      if (cancelBtn) cancelBtn.onclick = hideUpgradeModal;
+
+      document.getElementById('dualUpgradeModal')?.addEventListener('click', function(e) {
+        if (e.target === this) hideUpgradeModal();
+      });
+
+      if (oneTimeBtn) {
+        oneTimeBtn.onclick = async () => {
+          const endpoints = {
+            profile_picture: '/api/user/request-profile-picture',
+            custom_ttl: '/api/user/request-extended-ttl',
+            pin_retention: '/api/user/request-pin-retention',
+            file_sharing: '/api/user/request-file-sharing',
+            cloud_backup: '/api/user/request-cloud-backup',
+          };
+          const endpoint = endpoints[currentFeatureForUpgrade];
+          if (!endpoint) {
+            window.location.href = '/subscription?mode=oneoff';
+            return;
+          }
+
+          try {
+            const response = await apiFetch(endpoint, { method: 'POST', credentials: 'include' });
+            const result = await response.json();
+            if (response.ok && result.redirect_url) {
+              window.location.href = result.redirect_url;
+              return;
             }
-            applyTranslations();
-            document.documentElement.lang = lang;
-            localStorage.setItem('zeuschat_lang', lang);
-        }
+          } catch (_error) {
+            // Fall through to subscription if endpoint is unavailable.
+          }
+          window.location.href = `/subscription?mode=oneoff&feature=${encodeURIComponent(currentFeatureForUpgrade || '')}`;
+        };
+      }
 
-        function applyTranslations() {
-            document.querySelectorAll('[data-i18n]').forEach(el => {
-                const key = el.getAttribute('data-i18n');
-                if (currentTranslations[key]) el.textContent = currentTranslations[key];
-            });
-        }
+      document.querySelectorAll('.mobile-bottom-nav .nav-item').forEach((item) => {
+        item.addEventListener('click', () => {
+          const page = item.dataset.page;
+          const pages = {
+            chat: '/mobile-chat.html',
+            market: '/mobile-market.html',
+            community: '/mobile-community.html',
+            profile: '/mobile-profile.html',
+            settings: '/mobile-settings.html',
+          };
+          if (pages[page]) window.location.href = pages[page];
+        });
+      });
 
-        function openLanguageModal() {
-            const m = document.getElementById('languageModal');
-            m.classList.add('open');
-            m.setAttribute('aria-hidden', 'false');
+      document.getElementById('cloudBackupToggle')?.addEventListener('click', async () => {
+        const response = await apiFetch('/api/user/has-feature/cloud_backup_10gb');
+        const data = await response.json();
+        if (!data.has_access) {
+          showUpgradeModal('cloud_backup');
+          return;
         }
+        alert('Cloud backup enabled.');
+      });
+    });
 
-        function closeLanguageModal() {
-            const m = document.getElementById('languageModal');
-            m.classList.remove('open');
-            m.setAttribute('aria-hidden', 'true');
+    let currentFeatureForUpgrade = null;
+
+    function showDualUpgradeModal(featureKey, featureTitle, featureDescription) {
+      currentFeatureForUpgrade = featureKey;
+      const pricing = {
+        profile_picture: 29,
+        custom_ttl: 39,
+        pin_retention: 49,
+        file_sharing: 59,
+        cloud_backup: 99,
+      };
+      const oneTimePrice = pricing[featureKey] || 39;
+
+      document.getElementById('dualModalTitle').textContent = featureTitle;
+      document.getElementById('dualModalMessage').textContent = featureDescription;
+      document.getElementById('oneTimePrice').innerHTML = `R${oneTimePrice}<span style="font-size:12px;"></span>`;
+      document.getElementById('oneTimeAmount').textContent = String(oneTimePrice);
+      document.getElementById('dualUpgradeModal').style.display = 'flex';
+    }
+
+    function showUpgradeModal(featureName) {
+      if (featureName === 'cloud_backup') {
+        showDualUpgradeModal('cloud_backup', 'Cloud Backup', '10GB encrypted cloud backup');
+      }
+    }
+
+    function hideUpgradeModal() {
+      document.getElementById('dualUpgradeModal').style.display = 'none';
+    }
+
+    function saveSetting(key, value) {
+      let settings = JSON.parse(localStorage.getItem('settings')) || {};
+      settings[key] = value;
+      localStorage.setItem('settings', JSON.stringify(settings));
+    }
+    
+    function saveNotificationSetting() {
+      const select = document.getElementById('notification-type');
+      const value = select.value;
+      
+      // Save to both sessionStorage and localStorage
+      sessionStorage.setItem('notification_setting', value);
+      localStorage.setItem('notification_setting', value);
+      
+      const messages = {
+        'both': 'Notifications: Sound + Vibration enabled',
+        'sound': 'Notifications: Sound only',
+        'vibrate': 'Notifications: Vibration only',
+        'none': 'Notifications: Silent mode'
+      };
+      
+      alert(messages[value] + ' ✅');
+      console.log(`🔔 Notification setting saved to localStorage and sessionStorage: ${value}`);
+    }
+    
+    function toggleOnlineStatus() {
+      const checkbox = document.getElementById('online-status');
+      const isOnline = checkbox.checked;
+      
+      sessionStorage.setItem('show_online_status', isOnline);
+      
+      const API_BASE = window.location.origin;
+      const userPin = sessionStorage.getItem('user_zeus_pin');
+      
+      apiFetch(`${API_BASE}/api/update-online-status`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          zeus_pin: userPin,
+          is_online: isOnline
+        })
+      }).catch(e => console.error('Update status error:', e));
+      
+      alert(isOnline ? 'You are now visible as online' : 'You now appear offline');
+    }
+    
+    // Toggle PIN-to-view messages
+    function togglePinView() {
+      const checkbox = document.getElementById('pin-view-toggle');
+      const enabled = checkbox.checked;
+      
+      sessionStorage.setItem('pin_view_enabled', enabled);
+      
+      if (enabled) {
+        alert('✅ PIN protection enabled\n\nEvery incoming message is now locked.\nYou must enter your password each time you open an incoming message.\n\nWrong password = message stays locked.');
+      } else {
+        alert('❌ PIN protection disabled\n\nAll messages will display without password verification.');
+      }
+    }
+
+    function saveAllSettings() {
+      // Collect all settings values
+      const settings = {
+        last_seen_visibility: document.querySelector('select[onchange*="lastSeen"]').value,
+        profile_photo_visibility: document.querySelector('select[onchange*="profilePhoto"]').value,
+        about_visibility: document.querySelector('select[onchange*="about"]').value,
+        status_visibility: document.querySelector('select[onchange*="status"]').value,
+        groups_visibility: document.querySelector('select[onchange*="groups"]').value,
+        pin_to_view_enabled: document.getElementById('pin-view-toggle').checked,
+        notification_type: document.getElementById('notification-type').value,
+        show_online_status: document.getElementById('online-status').checked
+      };
+      
+      // Also save to backend
+      
+      const API_BASE = window.location.origin;
+      const userPin = sessionStorage.getItem('user_zeus_pin');
+      
+      apiFetch(`${API_BASE}/api/save-user-settings`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings)
+      }).then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            console.log('✅ Settings saved to server');
+            alert('✅ Settings saved!');
+            window.location.href = 'chat.html';
+          } else {
+            alert('⚠️ Settings saved locally but server sync failed: ' + (data.error || 'Unknown error'));
+            window.location.href = 'chat.html';
+          }
+        })
+        .catch(error => {
+          console.error('Error saving settings:', error);
+          alert('⚠️ Settings saved locally but could not sync with server');
+          window.location.href = 'chat.html';
+        });
+    }
+
+    function logout() {
+      if (confirm('Are you sure you want to logout?')) {
+        sessionStorage.clear();
+        window.location.href = 'login.html';
+      }
+    }
+
+    async function deleteAccount() {
+      const currentUserPin = sessionStorage.getItem('user_zeus_pin');
+      const password = prompt('Enter your password to confirm deletion:');
+
+      if (!password) return;
+
+      const confirmDelete = prompt(`Type "DELETE" to confirm account deletion for ${currentUserPin}:`);
+      if (confirmDelete !== 'DELETE') {
+        alert('Account deletion cancelled.');
+        return;
+      }
+
+      try {
+        const API_BASE = window.location.origin;
+        const response = await apiFetch(`${API_BASE}/api/delete-account`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            zeus_pin: currentUserPin,
+            password: password
+          })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+          alert('Account deleted successfully.');
+          sessionStorage.clear();
+          window.location.href = 'index.html';
+        } else {
+          alert(result.error || 'Failed to delete account');
         }
+      } catch (error) {
+        console.error('Delete account error:', error);
+        alert('Failed to connect to server');
+      }
+    }
 
-        async function setLanguage(lang) {
-            closeLanguageModal();
-            await loadLanguage(lang);
-            try {
-                const csrf = document.querySelector('meta[name="csrf-token"]').content;
-                await fetch('/api/user/language', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
-                    credentials: 'include',
-                    body: JSON.stringify({ language: lang })
-                });
-            } catch(e) {}
+    // Load and display blocked contacts
+    async function loadBlockedContacts() {
+      const API_BASE = window.location.origin;
+      try {
+        const response = await apiFetch(`${API_BASE}/api/get-blocked-contacts`, {
+          method: 'GET',
+          credentials: 'include'
+        });
+
+        const data = await response.json();
+        
+        if (data.success && data.blocked_contacts.length > 0) {
+          const blockedList = document.getElementById('blocked-list');
+          const blockedEmpty = document.getElementById('blocked-empty');
+          
+          blockedList.innerHTML = '';
+          blockedEmpty.style.display = 'none';
+          
+          data.blocked_contacts.forEach(contact => {
+            const div = document.createElement('div');
+            div.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #222; font-size: 13px;';
+            div.innerHTML = `
+              <div>
+                <div style="color: #fff; font-weight: 500;">${contact.full_name}</div>
+                <div style="color: #888; font-size: 11px;">${contact.zeus_pin}</div>
+              </div>
+              <button onclick="unblockContact('${contact.zeus_pin}')" style="background: #d4af37; color: #000; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 12px; font-weight: 600;">Unblock</button>
+            `;
+            blockedList.appendChild(div);
+          });
+        } else {
+          document.getElementById('blocked-empty').style.display = 'block';
+          document.getElementById('blocked-list').innerHTML = '';
         }
+      } catch (error) {
+        console.error('Error loading blocked contacts:', error);
+      }
+    }
 
-        const savedLang = normalizeLanguage(localStorage.getItem('zeuschat_lang') || initialLanguage || 'en');
-        loadLanguage(savedLang);
-    </script>
+    // Unblock a contact
+    async function unblockContact(contactPin) {
+      if (!confirm(`Unblock ${contactPin}? They will be able to send you messages again.`)) {
+        return;
+      }
+
+      const API_BASE = window.location.origin;
+      try {
+        const response = await apiFetch(`${API_BASE}/api/unblock-from-settings`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contact_pin: contactPin })
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+          alert(`✅ ${contactPin} has been unblocked`);
+          loadBlockedContacts(); // Refresh the list
+        } else {
+          alert('⚠️ Error unblocking contact: ' + (data.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Error unblocking contact:', error);
+        alert('Failed to unblock contact');
+      }
+    }
+
+    // Submit feedback
+    async function submitFeedback() {
+      const feedbackType = document.getElementById('feedback-type').value;
+      const message = document.getElementById('feedback-message').value.trim();
+
+      if (!message) {
+        alert('Please enter your feedback message');
+        return;
+      }
+
+      if (message.length < 5) {
+        alert('Message must be at least 5 characters');
+        return;
+      }
+
+      const API_BASE = window.location.origin;
+      try {
+        const response = await apiFetch(`${API_BASE}/api/submit-feedback`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            feedback_type: feedbackType,
+            message: message
+          })
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+          alert('✅ Thank you! Your feedback has been sent to our team.');
+          document.getElementById('feedback-message').value = '';
+          document.getElementById('char-count').textContent = '0';
+          document.getElementById('feedback-type').value = 'general';
+        } else {
+          alert('⚠️ Error submitting feedback: ' + (data.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Error submitting feedback:', error);
+        alert('Failed to submit feedback');
+      }
+    }
+  </script>
+
+  <script>
+  // Register Service Worker
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/static/sw.js')
+        .then(registration => {
+          console.log('SW registered:', registration.scope);
+        })
+        .catch(error => {
+          console.log('SW registration failed:', error);
+        });
+    });
+  }
+  </script>
+  <div style="text-align:center;padding:12px 0 16px;font-size:12px;">
+    <a href="/terms" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">Terms</a> |
+    <a href="/privacy" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">Privacy</a> |
+    <a href="/kyc-policy" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">KYC Policy</a> |
+    <a href="/ghost-market-policy" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">Ghost Market Policy</a> |
+    <a href="/refund-policy" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">Refunds</a>
+  </div>
 </body>
 </html>

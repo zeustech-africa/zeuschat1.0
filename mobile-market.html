@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Ghost Market - ZeusChat</title>
+    <link rel="stylesheet" href="/static/mobile.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: white;
+            padding-bottom: 80px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .market-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .back-btn {
+            background: rgba(212, 175, 55, 0.2);
+            border: 1px solid #D4AF37;
+            color: #D4AF37;
+            padding: 10px 16px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .back-btn:hover {
+            background: rgba(212, 175, 55, 0.4);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        h1 {
+            color: #D4AF37;
+            font-size: 28px;
+        }
+        .subtitle {
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 24px;
+        }
+        .market-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .tab-btn {
+            border: 1px solid rgba(212,175,55,0.35);
+            background: rgba(255,255,255,0.08);
+            color: #e5e7eb;
+            border-radius: 999px;
+            padding: 10px 16px;
+            cursor: pointer;
+            min-height: 44px;
+            font-weight: 600;
+        }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%);
+            color: #0a0a0a;
+            border-color: #D4AF37;
+        }
+        .search-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        .search-bar input {
+            flex: 1;
+            padding: 14px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(212,175,55,0.3);
+            border-radius: 40px;
+            color: white;
+            font-size: 16px;
+            min-height: 44px;
+        }
+        .search-bar select, .search-bar button {
+            padding: 14px 20px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(212,175,55,0.3);
+            border-radius: 40px;
+            color: white;
+            cursor: pointer;
+            min-height: 44px;
+        }
+        .search-bar select option { background: #1a1a1a; }
+        .items-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+            margin-top: 20px;
+        }
+        .item-card {
+            background: rgba(17, 17, 17, 0.95);
+            border: 1px solid rgba(212,175,55,0.2);
+            border-radius: 20px;
+            overflow: hidden;
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+        .item-card:hover { transform: translateY(-4px); }
+        .item-image {
+            width: 100%;
+            height: 200px;
+            background: #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #D4AF37;
+            font-size: 48px;
+        }
+        .item-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .item-info { padding: 16px; }
+        .item-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+        .item-price {
+            color: #D4AF37;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .item-seller {
+            font-size: 12px;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 12px;
+        }
+        .item-status {
+            min-height: 22px;
+            margin-bottom: 10px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            margin-top: 2px;
+            font-weight: 600;
+        }
+        .status-badge.pending {
+            background: #fef3c7;
+            color: #d97706;
+        }
+        .status-badge.rejected {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        .buy-btn[disabled] {
+            cursor: not-allowed;
+            background: #374151;
+            color: #d1d5db;
+        }
+        .buy-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%);
+            color: #0a0a0a;
+            border: none;
+            border-radius: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            min-height: 44px;
+        }
+        .seller-section {
+            margin-top: 40px;
+            padding: 20px;
+            background: rgba(212,175,55,0.1);
+            border-radius: 20px;
+            text-align: center;
+        }
+        .seller-section h3 { margin-bottom: 8px; color: #D4AF37; }
+        .seller-section p { color: rgba(255,255,255,0.6); margin-bottom: 16px; }
+        .note {
+            color: rgba(255,255,255,0.45);
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        .sell-btn {
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%);
+            color: #0a0a0a;
+            border: none;
+            border-radius: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            min-height: 44px;
+        }
+        .upgrade-card {
+            border: 1px solid rgba(212, 175, 55, 0.35);
+            border-radius: 18px;
+            padding: 18px;
+            background: rgba(17, 17, 17, 0.45);
+        }
+        .btn-gold {
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%);
+            color: #0a0a0a;
+            border: none;
+            border-radius: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            min-height: 44px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: rgba(255,255,255,0.5);
+        }
+        @media (max-width: 768px) {
+            .container { padding: 16px; }
+            .items-grid { grid-template-columns: 1fr; }
+            h1 { font-size: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="market-header">
+            <button class="back-btn" onclick="window.location.href='/mobile-chat.html'">← Back to Chats</button>
+            <h1>🏪 Ghost Market</h1>
+        </div>
+        <p class="subtitle">Buy and sell anonymously. No names. No shame. Every item reviewed by admin.</p>
+
+        <div class="market-tabs">
+            <button class="tab-btn active" data-tab="browse">🏪 Browse Market</button>
+            <button class="tab-btn" data-tab="my-listings">📦 My Listings</button>
+        </div>
+
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="Search ghost market...">
+            <select id="categoryFilter">
+                <option value="">All Categories</option>
+                <option value="Electronics">Electronics</option>
+                <option value="Clothing">Clothing</option>
+                <option value="Furniture">Furniture</option>
+                <option value="Books">Books</option>
+                <option value="Home">Home &amp; Garden</option>
+                <option value="Sports">Sports</option>
+                <option value="Toys">Toys &amp; Hobbies</option>
+                <option value="Other">Other</option>
+            </select>
+            <button id="searchBtn">🔍 Search</button>
+        </div>
+
+        <div id="itemsGrid" class="items-grid">
+            <div class="loading">Loading ghost market...</div>
+        </div>
+
+        <div id="sellerSection" class="seller-section" style="display: none;">
+            <h3>Become a Ghost Seller</h3>
+            <p>Sell your used items anonymously. Admin approves every listing.</p>
+            <button id="applySellerBtn" class="sell-btn">Apply to Sell →</button>
+        </div>
+    </div>
+
+    <!-- Mobile Bottom Navigation -->
+    <div class="mobile-bottom-nav mobile-only">
+        <button class="nav-item nav-item-mobile" data-page="chat">
+            <span class="nav-icon">💬</span>
+            <span>Chats</span>
+        </button>
+        <button class="nav-item nav-item-mobile active" data-page="market">
+            <span class="nav-icon">🏪</span>
+            <span>Market</span>
+        </button>
+        <button class="nav-item nav-item-mobile" data-page="community">
+            <span class="nav-icon">👻</span>
+            <span>Ghost</span>
+        </button>
+        <button class="nav-item nav-item-mobile" data-page="profile">
+            <span class="nav-icon">👤</span>
+            <span>Profile</span>
+        </button>
+        <button class="nav-item nav-item-mobile" data-page="settings">
+            <span class="nav-icon">⚙️</span>
+            <span>Settings</span>
+        </button>
+    </div>
+
+    <script>
+        let isSeller = false;
+        let currentTab = 'browse';
+        let allItems = [];
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }
+
+        function getStatusBadge(status, rejectionReason) {
+            if (status === 'pending_approval') {
+                return '<span class="status-badge pending">⏳ Pending Admin Approval</span>';
+            }
+            if (status === 'rejected') {
+                return '<span class="status-badge rejected">❌ Rejected: ' + escapeHtml(rejectionReason || 'No reason provided') + '</span>';
+            }
+            return '';
+        }
+
+        function renderItems() {
+            const grid = document.getElementById('itemsGrid');
+            const visibleItems = allItems.filter(function (item) {
+                if (currentTab === 'my-listings') {
+                    return !!item.is_owner;
+                }
+                return item.status === 'approved';
+            });
+
+            if (!visibleItems.length) {
+                grid.innerHTML = currentTab === 'my-listings'
+                    ? '<div class="loading">No listings yet. Tap "Sell an Item" to submit your first listing.</div>'
+                    : '<div class="loading">No items found in Ghost Market</div>';
+                return;
+            }
+
+            grid.innerHTML = visibleItems.map(function (item) {
+                const imgHtml = item.images
+                    ? '<img src="/' + escapeHtml(item.images.split(',')[0]) + '" alt="' + escapeHtml(item.title) + '">'
+                    : '📦';
+                const statusHtml = getStatusBadge(item.status, item.rejection_reason);
+                const canBuy = item.status === 'approved' && !item.is_owner;
+                const buyButton = canBuy
+                    ? '<button class="buy-btn" onclick="event.stopPropagation(); buyItem(' + item.id + ')">Buy Now</button>'
+                    : '<button class="buy-btn" disabled>' + (item.is_owner ? 'Your Listing' : 'Not Available') + '</button>';
+
+                return '<div class="item-card" data-status="' + escapeHtml(item.status || 'approved') + '" data-owner="' + (item.is_owner ? '1' : '0') + '">' +
+                    '<div class="item-image">' + imgHtml + '</div>' +
+                    '<div class="item-info">' +
+                    '<div class="item-title">' + escapeHtml(item.title) + '</div>' +
+                    '<div class="item-price">R' + item.price + '</div>' +
+                    '<div class="item-seller">Seller: ' + escapeHtml(item.seller_pin_half || 'ZT-XXXX') + '</div>' +
+                    '<div class="item-status">' + statusHtml + '</div>' +
+                    buyButton +
+                    '</div></div>';
+            }).join('');
+        }
+
+        async function loadItems() {
+            const search = document.getElementById('searchInput').value;
+            const category = document.getElementById('categoryFilter').value;
+
+            try {
+                const response = await fetch(
+                    '/api/ghost-market/items?search=' + encodeURIComponent(search) +
+                    '&category=' + encodeURIComponent(category)
+                );
+                const data = await response.json();
+
+                if (data.success) {
+                    allItems = data.items || [];
+                    renderItems();
+                } else {
+                    document.getElementById('itemsGrid').innerHTML = '<div class="loading">No items found in Ghost Market</div>';
+                }
+            } catch (err) {
+                document.getElementById('itemsGrid').innerHTML = '<div class="loading">Failed to load items</div>';
+            }
+        }
+
+        async function buyItem(itemId) {
+            if (!confirm('Buy this item? Payment will be held in escrow until you confirm receipt.')) return;
+
+            try {
+                const response = await fetch('/api/ghost-market/buy/' + itemId, { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success && data.redirect_url) {
+                    window.location.href = data.redirect_url;
+                } else {
+                    alert(data.error || 'Unable to process purchase');
+                }
+            } catch (err) {
+                alert('Network error. Please try again.');
+            }
+        }
+
+        async function checkSellerAccess() {
+            const sellerSection = document.getElementById('sellerSection');
+            sellerSection.style.display = 'block';
+
+            let isLoggedIn = true;
+            let tier = 'free';
+
+            try {
+                const subResponse = await fetch('/api/user/subscription');
+                if (subResponse.status === 401) {
+                    isLoggedIn = false;
+                } else {
+                    const subData = await subResponse.json();
+                    tier = (subData.tier || 'free').toLowerCase();
+                }
+            } catch (err) {
+                isLoggedIn = false;
+            }
+
+            if (!isLoggedIn) {
+                sellerSection.innerHTML =
+                    '<h3>Become a Ghost Seller</h3>' +
+                    '<p>Login to apply to become a seller</p>' +
+                    '<button class="sell-btn" onclick="window.location.href=\'/login.html\'">Login →</button>';
+                return;
+            }
+
+            if (tier === 'free') {
+                sellerSection.innerHTML =
+                    '<div class="upgrade-card">' +
+                    '<h3>👑 Become a Seller</h3>' +
+                    '<p>Only Pro and Teams subscribers can sell on Ghost Market.</p>' +
+                    '<button class="btn-gold" onclick="window.location.href=\'/subscription\'">Upgrade to Pro → R89/month</button>' +
+                    '<p class="note">Free users can browse and buy anonymously.</p>' +
+                    '</div>';
+                return;
+            }
+
+            try {
+                const sellerResponse = await fetch('/api/ghost-market/seller-status');
+                const sellerData = await sellerResponse.json();
+
+                if (sellerData.is_seller) {
+                    isSeller = true;
+                    sellerSection.innerHTML = '<button class="sell-btn" id="sellBtn">📦 Sell an Item</button>';
+                    const sellBtn = document.getElementById('sellBtn');
+                    if (sellBtn) {
+                        sellBtn.addEventListener('click', function () {
+                            window.location.href = '/ghost-market/sell';
+                        });
+                    }
+                } else if (sellerData.status === 'pending') {
+                    sellerSection.innerHTML =
+                        '<h3>⏳ Seller Application Pending</h3>' +
+                        '<p>Your application is being reviewed by admin.</p>' +
+                        '<p class="note">You will be notified when approved.</p>';
+                } else {
+                    sellerSection.innerHTML =
+                        '<h3>Become a Ghost Seller</h3>' +
+                        '<p>Sell your used items anonymously. Admin approves every listing.</p>' +
+                        '<button class="sell-btn" id="applySellerBtn">Apply to Sell →</button>';
+                    const applyBtn = document.getElementById('applySellerBtn');
+                    if (applyBtn) {
+                        applyBtn.addEventListener('click', function () {
+                            window.location.href = '/ghost-market/apply-seller';
+                        });
+                    }
+                }
+            } catch (err) {
+                sellerSection.innerHTML =
+                    '<h3>Unable to load seller status</h3>' +
+                    '<p>Please refresh the page and try again.</p>';
+            }
+        }
+
+        document.getElementById('searchBtn').addEventListener('click', loadItems);
+        document.getElementById('searchInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') loadItems();
+        });
+
+        document.querySelectorAll('.tab-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                document.querySelectorAll('.tab-btn').forEach(function (item) {
+                    item.classList.remove('active');
+                });
+                btn.classList.add('active');
+                currentTab = btn.dataset.tab;
+                renderItems();
+            });
+        });
+
+        // Mobile navigation
+        document.querySelectorAll('.mobile-bottom-nav .nav-item').forEach(function (item) {
+            item.addEventListener('click', function () {
+                const page = item.dataset.page;
+                const pages = {
+                    'chat': '/mobile-chat.html',
+                    'community': '/mobile-community.html',
+                    'profile': '/mobile-profile.html',
+                    'market': '/mobile-market.html',
+                    'settings': '/mobile-settings.html'
+                };
+                if (pages[page]) window.location.href = pages[page];
+            });
+        });
+
+        loadItems();
+        checkSellerAccess();
+    </script>
+    <div style="text-align:center;padding:12px 0 16px;font-size:12px;">
+        <a href="/terms" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">Terms</a> |
+        <a href="/privacy" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">Privacy</a> |
+        <a href="/kyc-policy" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">KYC Policy</a> |
+        <a href="/ghost-market-policy" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">Ghost Market Policy</a> |
+        <a href="/refund-policy" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">Refunds</a>
+    </div>
+</body>
+</html>

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>Add Contact — ZeusChat</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    body {
+      background: #000;
+      min-height: 100vh;
+      color: #fff;
+      overflow-y: auto;
+      padding-bottom: 92px;
+    }
+    .video-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: -1;
+    }
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      z-index: 0;
+    }
+    .header {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .logo {
+      height: 32px;
+      margin-bottom: 4px;
+    }
+    .byline {
+      font-size: 12px;
+      color: #FFD700;
+      font-weight: 500;
+    }
+    .container {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 84px 20px 24px;
+      min-height: calc(100vh - 92px);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+    }
+    .box {
+      background: #222;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 16px 0;
+      width: 100%;
+      max-width: 600px;
+      text-align: left;
+    }
+    .box-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #fff;
+    }
+    .input-group {
+      margin-bottom: 16px;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      background: #333;
+      border: 1px solid #444;
+      color: #fff;
+      border-radius: 6px;
+      min-height: 44px;
+    }
+    .btn {
+      background: #FFD700;
+      color: #000;
+      border: none;
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 16px;
+      width: 100%;
+      max-width: 400px;
+      min-height: 44px;
+    }
+    .note {
+      background: #1a1a1a;
+      border-left: 4px solid #d4af37;
+      padding: 12px;
+      margin-top: 16px;
+      font-size: 13px;
+      text-align: left;
+      line-height: 1.5;
+    }
+    .back-btn {
+      background: #666;
+      margin-top: 8px;
+      width: auto;
+      max-width: 200px;
+    }
+    .mobile-bottom-nav .nav-item {
+      min-height: 44px;
+    }
+  </style>
+  <link rel="stylesheet" href="/static/mobile.css">
+</head>
+<body>
+  <video class="video-bg" autoplay muted loop>
+    <source src="zeustech-register.mp4" type="video/mp4">
+  </video>
+  <div class="overlay"></div>
+
+  <div class="header">
+    <img src="zeustech-logo-zeushchat.png" class="logo" alt="ZeusTech">
+    <div class="byline">ZeusChat by ZeusTech</div>
+  </div>
+
+  <div class="container">
+    <div class="box">
+      <div class="box-title">Add Contact</div>
+      <div class="input-group">
+        <input type="text" id="zeusPin" placeholder="Enter Zeus-PIN (e.g. ZT-1234-5678)" />
+      </div>
+      <button class="btn" id="addBtn" onclick="addContact()">Send Request</button>
+      <button class="btn back-btn" onclick="goBack()">← Back to Chat</button>
+      <div class="note">
+        Enter the Zeus-PIN of the user you want to connect with.<br>
+        They must accept your request before messaging.
+      </div>
+    </div>
+  </div>
+
+  <div class="mobile-bottom-nav">
+    <button class="nav-item" data-page="chat">
+      <span class="nav-icon">💬</span>
+      <span>Chats</span>
+    </button>
+    <button class="nav-item" data-page="market">
+      <span class="nav-icon">🏪</span>
+      <span>Market</span>
+    </button>
+    <button class="nav-item" data-page="community">
+      <span class="nav-icon">👻</span>
+      <span>Ghost</span>
+    </button>
+    <button class="nav-item" data-page="profile">
+      <span class="nav-icon">👤</span>
+      <span>Profile</span>
+    </button>
+    <button class="nav-item" data-page="settings">
+      <span class="nav-icon">⚙️</span>
+      <span>Settings</span>
+    </button>
+  </div>
+
+  <script>
+    console.log('=== ADD CONTACT PAGE LOAD ===');
+
+    function getCsrfToken() {
+      return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    }
+
+    function initMobileNav() {
+      const pages = {
+        chat: '/mobile-chat.html',
+        market: '/mobile-market.html',
+        community: '/mobile-community.html',
+        profile: '/mobile-profile.html',
+        settings: '/mobile-settings.html'
+      };
+
+      document.querySelectorAll('.mobile-bottom-nav .nav-item').forEach((item) => {
+        item.addEventListener('click', () => {
+          const page = item.dataset.page;
+          if (pages[page]) {
+            window.location.href = pages[page];
+          }
+        });
+      });
+    }
+
+    // Authentication guard using sessionStorage
+    window.addEventListener('DOMContentLoaded', () => {
+      const isLoggedIn = sessionStorage.getItem('user_logged_in') === 'true';
+      const userPin = sessionStorage.getItem('user_zeus_pin');
+
+      console.log('Session check:', { isLoggedIn, userPin });
+
+      if (!isLoggedIn || !userPin) {
+        console.log('Not logged in, redirecting to login');
+        sessionStorage.setItem('return_url', 'mobile-add-contact.html');
+        window.location.href = 'login.html';
+        return;
+      }
+
+      initMobileNav();
+    });
+
+    function goBack() {
+      window.location.href = '/mobile-chat.html';
+    }
+
+    function validateZeusPIN(pin) {
+      const pattern = /^ZT-\d{4}-\d{4}$/;
+      return pattern.test(pin);
+    }
+
+    async function addContact() {
+      const zeusPinInput = document.getElementById('zeusPin');
+      const addBtn = document.getElementById('addBtn');
+      const API_BASE = window.location.origin;
+
+      if (addBtn.disabled) return;
+      addBtn.disabled = true;
+      addBtn.textContent = 'Sending...';
+
+      const zeusPin = zeusPinInput.value.trim().toUpperCase();
+      const currentUserPin = sessionStorage.getItem('user_zeus_pin');
+
+      if (!zeusPin) {
+        alert('Please enter a Zeus-PIN.');
+        addBtn.disabled = false;
+        addBtn.textContent = 'Send Request';
+        return;
+      }
+
+      if (!validateZeusPIN(zeusPin)) {
+        alert('Invalid Zeus-PIN format. Use: ZT-XXXX-XXXX');
+        addBtn.disabled = false;
+        addBtn.textContent = 'Send Request';
+        return;
+      }
+
+      if (zeusPin === currentUserPin) {
+        alert('You cannot add yourself as a contact!');
+        addBtn.disabled = false;
+        addBtn.textContent = 'Send Request';
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/api/add-contact`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': getCsrfToken()
+          },
+          body: JSON.stringify({ contact_pin: zeusPin })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          console.log('Contact request sent:', zeusPin);
+          alert('✅ Contact request sent!');
+          zeusPinInput.value = '';
+          addBtn.disabled = false;
+          addBtn.textContent = 'Send Request';
+        } else {
+          throw new Error(result.error || 'Failed to send request');
+        }
+      } catch (error) {
+        console.error('Add contact error:', error);
+        alert('Error: ' + error.message);
+        addBtn.disabled = false;
+        addBtn.textContent = 'Send Request';
+      }
+    }
+  </script>
+</body>
+</html>

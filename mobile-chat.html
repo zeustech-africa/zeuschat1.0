@@ -1006,6 +1006,31 @@
       }
     }
   </style>
+  <style>
+    @media (orientation: portrait) {
+      /* Ensure all primary containers stay visible in portrait. */
+      .contacts-list,
+      #contactsList,
+      .chat-area,
+      .sidebar,
+      .main-content,
+      .contacts-panel,
+      .sidebar.contacts-panel {
+        display: block !important;
+        width: 100% !important;
+      }
+
+      /* Keep chat stacked for narrow screens. */
+      .chat-container {
+        flex-direction: column !important;
+      }
+
+      /* Mobile nav must remain visible in portrait. */
+      .mobile-bottom-nav {
+        display: flex !important;
+      }
+    }
+  </style>
 </head>
 <body>
   <!-- ✅ 4K Video Background -->
@@ -3352,6 +3377,81 @@
       return div.innerHTML;
     }
 
+    function showToast(message) {
+      if (!message) {
+        return;
+      }
+
+      const toast = document.createElement('div');
+      toast.textContent = message;
+      toast.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:rgba(20,20,20,0.95);color:#fff;padding:10px 14px;border-radius:10px;z-index:4000;border:1px solid rgba(212,175,55,0.35);font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,0.35);';
+      document.body.appendChild(toast);
+
+      setTimeout(() => {
+        toast.remove();
+      }, 2200);
+    }
+
+    async function startChat(zeusPin) {
+      if (!zeusPin) {
+        return;
+      }
+      return openChat({ zeus_pin: zeusPin, full_name: zeusPin });
+    }
+
+    // Force refresh contacts after handshake or periodic sync.
+    async function refreshContactsAfterHandshake(showSuccess = false) {
+      try {
+        localStorage.removeItem('contacts_cache');
+
+        const API_BASE = window.location.origin;
+        const response = await apiFetch(`${API_BASE}/api/get-contacts`, {
+          method: 'GET',
+          credentials: 'include'
+        });
+        const data = await response.json();
+
+        const contactList = document.getElementById('contactsList');
+        if (contactList && Array.isArray(data.contacts)) {
+          contactList.innerHTML = data.contacts.map((contact) => {
+            const contactPin = escapeHtml(contact.zeus_pin || '');
+            const contactName = escapeHtml(contact.full_name || contact.zeus_pin || 'Unknown');
+            const safePin = contactPin.replace(/'/g, "\\'");
+            return `
+              <div class="chat-item" data-contact-pin="${contactPin}" onclick="startChat('${safePin}')">
+                <div class="avatar">${contactName.charAt(0).toUpperCase()}</div>
+                <div class="chat-info">
+                  <div class="chat-name">${contactName}</div>
+                  <div class="chat-preview">${contactPin}</div>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+
+        if (showSuccess) {
+          showToast('Contact added successfully!');
+        }
+      } catch (error) {
+        console.error('Error refreshing contacts after handshake:', error);
+      }
+    }
+
+    function onContactRequestAccepted() {
+      refreshContactsAfterHandshake(true);
+    }
+
+    let handshakeRefreshInterval = null;
+
+    function startHandshakeAutoRefresh() {
+      if (handshakeRefreshInterval) {
+        return;
+      }
+      handshakeRefreshInterval = setInterval(() => {
+        refreshContactsAfterHandshake(false);
+      }, 30000);
+    }
+
     // Check for pending contact requests
     async function loadPendingRequests() {
       console.log('Checking for pending contact requests...');
@@ -4846,7 +4946,7 @@
         console.log(`✅ [CONTACT] Request accepted by ${accepter_name} (${accepter_pin}) - contact_id: ${contact_id}`);
         
         // Refresh contact list immediately to show the newly accepted contact
-        loadChats();
+        onContactRequestAccepted();
         
         // Optional: Show a notification to the user
         if (Notification && Notification.permission === 'granted') {
@@ -5470,6 +5570,9 @@
       // Check for pending contact requests
       loadPendingRequests();
       setInterval(loadPendingRequests, 30000);
+
+      // Keep mobile contacts synced after handshakes.
+      startHandshakeAutoRefresh();
       
       // Update contact statuses every minute
       setInterval(loadAllContactStatuses, 60000);
@@ -5536,6 +5639,7 @@
           showEmptyState();
           startPolling();
           loadPendingRequests();
+          startHandshakeAutoRefresh();
         }).catch(err => {
           console.error('❌ [FALLBACK] Error in initialization:', err);
         });

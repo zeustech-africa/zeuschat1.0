@@ -320,3 +320,22 @@
         display: none !important;
     }
 }
+
+@media (orientation: portrait) {
+    /* Ensure all primary containers stay visible in portrait mode. */
+    .contacts-list,
+    .chat-area,
+    .sidebar,
+    .main-content {
+        display: block !important;
+        width: 100% !important;
+    }
+
+    .chat-container {
+        flex-direction: column !important;
+    }
+
+    .mobile-bottom-nav {
+        display: flex !important;
+    }
+}

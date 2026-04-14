@@ -1,6 +1,5 @@
 from flask import Flask, request, jsonify, send_from_directory, session, current_app, render_template, render_template_string, redirect
 from flask_cors import CORS
-from flask_socketio import SocketIO, join_room, emit
 from flask_compress import Compress
 import sqlite3
 import os
@@ -150,275 +149,14 @@ CORS(
     methods=["GET", "POST", "OPTIONS", "PUT", "DELETE"],
 )
 
-# Socket.IO for realtime status updates - OPTIMIZED FOR LOW-BANDWIDTH
-socketio = SocketIO(
-    app,
-    cors_allowed_origins=ALLOWED_ORIGINS,
-    async_mode='threading',
-    
-    # ℹ️ Low-bandwidth network optimization
-    ping_interval=60,              # Reduce from 25s to 60s (fewer keepalive packets)
-    ping_timeout=120,              # Increase timeout window for poor networks
-    max_http_buffer_size=256,      # Limit buffer to trigger message batching
-    transports=['websocket', 'polling'],  # Allow both, prefer websocket
-    
-    # Connection reliability
-    reconnect_delay=[100, 200, 300, 500],  # Random backoff: 100-500ms
-    reconnect_delay_max=5000,      # Max 5 seconds between reconnection attempts
-    
-    # Logging and debugging
-    engineio_logger=False,         # Disable engineio logging to reduce overhead
-    logger=False,                  # Disable socketio logging
-)
-
-# Track connected users in Socket.IO
-connected_users = {}  # Maps user_id -> socket_id
-
-# Burst-safe queue for realtime message emits.
-realtime_emit_queue = deque(maxlen=1000)
-realtime_emit_lock = threading.Lock()
+# Realtime is temporarily disabled (polling-only mode).
+# Keep the shape of calls so existing business logic remains intact.
+connected_users = {}  # Maps user_id -> socket_id (unused in polling mode)
 
 
-def _process_realtime_emit_queue():
-    while True:
-        event = None
-        with realtime_emit_lock:
-            if realtime_emit_queue:
-                event = realtime_emit_queue.popleft()
-
-        if event:
-            try:
-                socketio.emit(event['name'], event['payload'], room=event['room'])
-            except Exception as e:
-                print(f"⚠️ realtime emit queue error: {e}")
-        else:
-            time.sleep(0.02)
-
-
-threading.Thread(target=_process_realtime_emit_queue, daemon=True).start()
-
-@socketio.on('connect')
-def handle_socket_connect():
-    """Handle Socket.IO connection - user passes their ID from client"""
-    try:
-        print(f"🔌 Socket connection attempt from {request.sid}")
-        # Don't reject connection - clients will authenticate themselves
-        emit('socket_ready', {'success': True, 'socket_id': request.sid})
-        print(f"✅ Socket connection accepted")
-    except Exception as e:
-        print(f"⚠️ Socket connect error: {e}")
-
-@socketio.on('register_user')
-def handle_register_user(data):
-    """Register user with Socket.IO when they authenticate"""
-    try:
-        user_id = data.get('user_id')
-        if not user_id:
-            print(f"❌ register_user: No user_id provided in data: {data}")
-            emit('error', {'message': 'No user_id provided'})
-            return
-        
-        # Convert to int if string
-        try:
-            user_id = int(user_id)
-        except (ValueError, TypeError):
-            print(f"❌ register_user: Invalid user_id format: {user_id}")
-            emit('error', {'message': 'Invalid user_id format'})
-            return
-        
-        # Map user to their socket
-        connected_users[user_id] = request.sid
-        join_room(f"user:{user_id}")
-        
-        print(f"✅ User {user_id} registered on Socket.IO (sid: {request.sid})")
-        print(f"📋 Connected users: {list(connected_users.keys())}")
-        print(f"🎯 User {user_id} joined room: user:{user_id}")
-        
-        emit('user_registered', {'success': True, 'user_id': user_id})
-        
-        # Flush any queued messages for this user
-        flush_message_queue(user_id)
-    except Exception as e:
-        print(f"⚠️ register_user error: {e}")
-        import traceback
-        traceback.print_exc()
-
-@socketio.on('disconnect')
-def handle_socket_disconnect():
-    """Handle Socket.IO disconnection"""
-    try:
-        # Find and remove user from connected_users
-        for user_id, sid in list(connected_users.items()):
-            if sid == request.sid:
-                del connected_users[user_id]
-                print(f"🔌 User {user_id} disconnected (sid: {request.sid})")
-                break
-    except Exception as e:
-        print(f"⚠️ Socket disconnect error: {e}")
-
-@socketio.on('typing_start')
-def handle_typing_start(data):
-    """Handle typing indicator (user started typing)"""
-    try:
-        sender_id = data.get('sender_id')
-        receiver_id = data.get('receiver_id')
-        if not sender_id or not receiver_id:
-            return
-        
-        # Emit to receiver
-        room = f"user:{receiver_id}"
-        socketio.emit('user_typing', {'user_id': sender_id, 'typing': True}, room=room)
-        print(f"⌨️ User {sender_id} typing to {receiver_id}")
-    except Exception as e:
-        print(f"⚠️ typing_start error: {e}")
-
-@socketio.on('typing_stop')
-def handle_typing_stop(data):
-    """Handle typing indicator (user stopped typing)"""
-    try:
-        sender_id = data.get('sender_id')
-        receiver_id = data.get('receiver_id')
-        if not sender_id or not receiver_id:
-            return
-        
-        # Emit to receiver
-        room = f"user:{receiver_id}"
-        socketio.emit('user_typing', {'user_id': sender_id, 'typing': False}, room=room)
-        print(f"🛑 User {sender_id} stopped typing to {receiver_id}")
-    except Exception as e:
-        print(f"⚠️ typing_stop error: {e}")
-
-@socketio.on('ping')
-def handle_ping():
-    """Handle heartbeat ping from client"""
-    emit('pong', {'timestamp': datetime.now().isoformat()})
-
-# ============ BBM FEATURE SOCKET.IO HANDLERS ============
-
-@socketio.on('status_change')
-def handle_status_change(data):
-    """BBM Feature: Broadcast status change (available/away/busy) to all contacts"""
-    try:
-        user_id = data.get('user_id')
-        status_state = data.get('status_state')  # 'available', 'away', 'busy'
-        status_message = data.get('status_message', '')
-        
-        if not user_id or not status_state:
-            return
-        
-        # Update database
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                UPDATE users 
-                SET status_state = ?, status_message = ?
-                WHERE id = ?
-            ''', (status_state, status_message, user_id))
-            conn.commit()
-        
-        # Broadcast to all contacts of this user
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                SELECT contact_user_id FROM contacts 
-                WHERE user_id = ? AND status = 'accepted'
-            ''', (user_id,))
-            contacts = cursor.fetchall()
-            
-            for contact_row in contacts:
-                contact_id = contact_row[0]
-                room = f"user:{contact_id}"
-                socketio.emit('contact_status_changed', {
-                    'user_id': user_id,
-                    'status_state': status_state,
-                    'status_message': status_message,
-                    'timestamp': datetime.now().isoformat()
-                }, room=room)
-        
-        print(f"🎨 User {user_id} status changed to {status_state}")
-    except Exception as e:
-        print(f"⚠️ status_change error: {e}")
-
-@socketio.on('send_ping')
-def handle_send_ping(data):
-    """BBM Feature: Send tactile PING nudge to a contact (Socket.IO alternative)"""
-    try:
-        sender_id = data.get('sender_id')
-        receiver_id = data.get('receiver_id')
-        ping_type = data.get('ping_type', 'standard')  # 'standard' or 'urgent'
-        
-        # Type conversion and validation
-        try:
-            sender_id = int(sender_id)
-            receiver_id = int(receiver_id)
-        except (ValueError, TypeError):
-            print(f"⚠️ send_ping: Invalid ID types - sender_id={sender_id}, receiver_id={receiver_id}")
-            return
-        
-        if not sender_id or not receiver_id:
-            print(f"⚠️ send_ping: Missing IDs - sender_id={sender_id}, receiver_id={receiver_id}")
-            return
-        
-        # Get sender details
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('SELECT zeus_pin, full_name FROM users WHERE id = ?', (sender_id,))
-            sender_row = cursor.fetchone()
-            
-            if not sender_row:
-                print(f"⚠️ send_ping: Sender {sender_id} not found")
-                return
-            
-            sender_pin = sender_row[0]
-            sender_name = sender_row[1]
-            
-            # Verify they are contacts
-            cursor.execute('''
-                SELECT id FROM contacts 
-                WHERE user_id = ? AND contact_user_id = ? AND status = 'accepted'
-            ''', (sender_id, receiver_id))
-            
-            if not cursor.fetchone():
-                print(f"⚠️ send_ping: Not authorized - {sender_id} and {receiver_id} not contacts")
-                return
-        
-        # Emit PING with vibration pattern (using ping_incoming to match frontend listener)
-        room = f"user:{receiver_id}"
-        vibration = [100, 50, 100] if ping_type == 'standard' else [200, 100, 200, 100, 200]
-        
-        socketio.emit('ping_incoming', {
-            'sender_id': sender_id,
-            'sender_pin': sender_pin,
-            'sender_name': sender_name,
-            'ping_type': ping_type,
-            'vibration_pattern': vibration,
-            'timestamp': datetime.now().isoformat()
-        }, room=room)
-        
-        print(f"📳 PING sent from {sender_pin} ({sender_id}) to user:{receiver_id} ({ping_type})")
-    except Exception as e:
-        print(f"❌ send_ping error: {str(e)}")
-
-@socketio.on('message_deleted')
-def handle_message_deleted(data):
-    """BBM Feature: Sync message deletion (Delete Everywhere) via Socket.IO"""
-    try:
-        message_id = data.get('message_id')
-        receiver_id = data.get('receiver_id')
-        
-        if not message_id or not receiver_id:
-            return
-        
-        # Emit deletion to receiver
-        room = f"user:{receiver_id}"
-        socketio.emit('message_removed', {
-            'message_id': message_id,
-            'timestamp': datetime.now().isoformat()
-        }, room=room)
-        
-        print(f"🗑️ Message {message_id} deletion synced to user {receiver_id}")
-    except Exception as e:
-        print(f"⚠️ message_deleted error: {e}")
+def broadcast_event(event_name, payload, room=None, skip_sid=None):
+    """No-op realtime broadcaster while Flask-SocketIO is removed."""
+    return None
 
 def emit_message_status(sender_id, message_id, status, delivered_at=None, viewed_at=None):
     """
@@ -448,7 +186,7 @@ def emit_message_status(sender_id, message_id, status, delivered_at=None, viewed
     # ALWAYS emit via Socket.IO for real-time (best-effort)
     try:
         print(f"📤 [WebSocket] Emitting {status} for message {message_id} to room {room}")
-        socketio.emit('message_status', payload, room=room, skip_sid=None)
+        broadcast_event('message_status', payload, room=room, skip_sid=None)
         print(f"✅ [WebSocket] Status event sent")
     except Exception as e:
         print(f"⚠️ [WebSocket] Emit failed: {e}")
@@ -529,7 +267,7 @@ def flush_message_queue(user_id):
                     try:
                         import json
                         message_dict = eval(msg_data)  # Convert string back to dict
-                        socketio.emit('new_message', message_dict, room=room)
+                        broadcast_event('new_message', message_dict, room=room)
                     except Exception as e:
                         print(f"⚠️ Error flushing message {msg_id}: {e}")
                 
@@ -4185,7 +3923,7 @@ def send_message():
         if is_high_priority or is_ping:
             print(f"🚨 HIGH-PRIORITY message {message_id} - bypassing queue")
             # Emit with high priority flag to ensure immediate delivery
-            socketio.emit('high_priority_message', message_data, room=f"user:{receiver_id}")
+            broadcast_event('high_priority_message', message_data, room=f"user:{receiver_id}")
         else:
             # Emit new message to receiver via Socket.IO (instant delivery, no polling)
             emit_new_message(receiver_id, message_data)
@@ -4939,8 +4677,8 @@ def delete_message():
                     'deleted_by': user_id,
                     'timestamp': datetime.now().isoformat()
                 }
-                socketio.emit('message_deleted', payload, room=f"user:{sender_id}")
-                socketio.emit('message_deleted', payload, room=f"user:{receiver_id}")
+                broadcast_event('message_deleted', payload, room=f"user:{sender_id}")
+                broadcast_event('message_deleted', payload, room=f"user:{receiver_id}")
                 
                 print(f"🗑️ Message {message_id} deleted everywhere (BBM Delete feature)")
             else:
@@ -5237,7 +4975,7 @@ def accept_contact():
         print(f"✅ Contact request {contact_id} accepted: {user_id} <-> {requester_id}")
         
         # ⭐ REAL-TIME UPDATE: Notify the requester that their contact request was accepted
-        socketio.emit('contact_request_accepted', {
+        broadcast_event('contact_request_accepted', {
             'accepter_id': user_id,
             'accepter_pin': accepter_pin,
             'accepter_name': accepter_name,
@@ -5411,13 +5149,13 @@ def block_contact():
         
         # Emit Socket.IO event to notify both users (NOT broadcast to all)
         # Only notify the user and the blocked user
-        socketio.emit('contact_blocked', {
+        broadcast_event('contact_blocked', {
             'user_id': user_id,
             'blocked_user_id': target_id,
             'blocked_user_name': target_name,
             'timestamp': datetime.now().isoformat()
         }, room=f"user:{user_id}")
-        socketio.emit('contact_blocked', {
+        broadcast_event('contact_blocked', {
             'user_id': user_id,
             'blocked_user_id': target_id,
             'blocked_user_name': target_name,
@@ -5502,13 +5240,13 @@ def unblock_contact():
         
         # Emit Socket.IO event to notify both users (NOT broadcast to all)
         # Only notify the user and the unblocked user
-        socketio.emit('contact_unblocked', {
+        broadcast_event('contact_unblocked', {
             'user_id': user_id,
             'unblocked_user_id': target_id,
             'unblocked_user_name': target_name,
             'timestamp': datetime.now().isoformat()
         }, room=f"user:{user_id}")
-        socketio.emit('contact_unblocked', {
+        broadcast_event('contact_unblocked', {
             'user_id': user_id,
             'unblocked_user_id': target_id,
             'unblocked_user_name': target_name,
@@ -6074,7 +5812,7 @@ def bbm_update_status():
         
         # Emit status change to user's own room (NOT broadcast to all)
         # User's contacts will see status when they poll/fetch contacts
-        socketio.emit('status_change', {
+        broadcast_event('status_change', {
             'user_id': user_id,
             'status_state': status_state,
             'status_message': status_message,
@@ -6295,7 +6033,7 @@ def bbm_send_ping():
         
         ping_delivered = False
         try:
-            socketio.emit('ping_incoming', ping_data, room=room)
+            broadcast_event('ping_incoming', ping_data, room=room)
             print(f"✅ [PING-WebSocket] PING delivered via Socket.IO to {receiver_pin}")
             ping_delivered = True
         except Exception as emit_error:
@@ -6363,7 +6101,7 @@ def update_now_playing():
                 ''', (user_id,))
             
             # Emit clear to user's own room (NOT broadcast to all)
-            socketio.emit('now_playing_update', {
+            broadcast_event('now_playing_update', {
                 'user_id': user_id,
                 'track': None,
                 'artist': None,
@@ -6384,7 +6122,7 @@ def update_now_playing():
             ''', (track, artist, user_id))
         
         # Emit update to user's own room (NOT broadcast to all)
-        socketio.emit('now_playing_update', {
+        broadcast_event('now_playing_update', {
             'user_id': user_id,
             'track': track,
             'artist': artist,
@@ -6539,7 +6277,7 @@ def log_activity():
             ''', (user_id, activity_type, json.dumps(activity_data)))
         
         # Emit to user's own room (NOT broadcast to all)
-        socketio.emit('new_activity', {
+        broadcast_event('new_activity', {
             'user_id': user_id,
             'activity_type': activity_type,
             'activity_data': activity_data,
@@ -6702,7 +6440,7 @@ def add_group_todo():
             todo_id = cursor.lastrowid
         
         # Broadcast to group members via Socket.IO
-        socketio.emit('group_todo_added', {
+        broadcast_event('group_todo_added', {
             'group_id': group_id,
             'todo_id': todo_id,
             'task_title': task_title,
@@ -6823,7 +6561,7 @@ def complete_group_todo():
         
         if group_id:
             # Broadcast to group
-            socketio.emit('group_todo_updated', {
+            broadcast_event('group_todo_updated', {
                 'group_id': group_id,
                 'todo_id': todo_id,
                 'is_completed': is_completed,
@@ -6887,7 +6625,7 @@ def add_group_event():
             event_id = cursor.lastrowid
         
         # Broadcast to group
-        socketio.emit('group_event_added', {
+        broadcast_event('group_event_added', {
             'group_id': group_id,
             'event_id': event_id,
             'event_title': event_title,
@@ -7705,13 +7443,13 @@ def unblock_from_settings():
             
             # Emit Socket.IO event (NOT broadcast to all)
             # Only notify the user and the unblocked user
-            socketio.emit('contact_unblocked', {
+            broadcast_event('contact_unblocked', {
                 'user_id': user_id,
                 'unblocked_user_id': contact_id,
                 'unblocked_user_name': contact_name,
                 'timestamp': datetime.now().isoformat()
             }, room=f"user:{user_id}")
-            socketio.emit('contact_unblocked', {
+            broadcast_event('contact_unblocked', {
                 'user_id': user_id,
                 'unblocked_user_id': contact_id,
                 'unblocked_user_name': contact_name,
@@ -7767,7 +7505,7 @@ def submit_feedback():
             ''', (user_id, feedback_type, message, contact_email))
             conn.commit()
 
-        socketio.emit('new_feedback', {
+        broadcast_event('new_feedback', {
             'user_id': user_id,
             'type': feedback_type,
             'message': message[:100]
@@ -9163,7 +8901,7 @@ def apply_ghost_market_seller():
         ''', (user_id, store_name, store_description))
         conn.commit()
 
-        socketio.emit('new_seller_application', {
+        broadcast_event('new_seller_application', {
             'user_id': user_id,
             'store_name': store_name
         }, room='admins')
@@ -9245,7 +8983,7 @@ def submit_ghost_market_item():
         ))
         conn.commit()
 
-        socketio.emit('new_item_submission', {
+        broadcast_event('new_item_submission', {
             'seller_id': user_id,
             'title': title
         }, room='admins')

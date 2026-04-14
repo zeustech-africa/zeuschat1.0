@@ -5662,24 +5662,9 @@ def remove_contact():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/health', methods=['GET'])
-@retry_on_locked(max_retries=3, delay=0.5)
 def health():
-    """Health check endpoint"""
-    try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('SELECT 1')
-        
-        return jsonify({
-            'status': 'healthy',
-            'database': 'connected',
-            'timestamp': datetime.now().isoformat()
-        }), 200
-    except Exception as e:
-        return jsonify({
-            'status': 'unhealthy',
-            'error': str(e)
-        }), 500
+    """Fast health check endpoint for platform port scans and liveness probes."""
+    return jsonify({'status': 'ok'}), 200
 
 
 @app.route('/offline.html', methods=['GET'])
@@ -9541,4 +9526,4 @@ def static_files(path):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     print(f"🚀 ZeusChat server starting on port {port}...")
-    socketio.run(app, host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.0.0', port=port, debug=False)

@@ -1,10 +1,14 @@
 services:
   - type: web
-    name: zeuschat
+    name: zeuschat1.0
     runtime: python
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn -w 4 -b 0.0.0.0:$PORT app:app --timeout 120
     envVars:
+      - key: PORT
+        value: 10000
+      - key: PYTHON_VERSION
+        value: 3.13.4
       - key: RENDER
         value: "true"
       - key: SECRET_KEY

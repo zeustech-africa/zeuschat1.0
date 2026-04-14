@@ -120,6 +120,34 @@
             min-height: 100vh;
         }
 
+        .breadcrumb {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 10px 14px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            color: #475569;
+        }
+
+        .breadcrumb a {
+            color: #334155;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .breadcrumb .sep {
+            margin: 0 8px;
+            color: #94a3b8;
+        }
+
+        .page-actions {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
         /* ========== PAGE HEADER ========== */
         .page-header {
             background: white;
@@ -308,6 +336,29 @@
             border-radius: 10px;
             cursor: pointer;
             font-size: 13px;
+        }
+
+        .pagination {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .setting-card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .broadcast-panel {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 12px;
         }
 
         /* ========== STATUS BADGES ========== */
@@ -689,16 +740,24 @@
             <div class="nav-item" data-tab="subscriptions">📅 Subscriptions</div>
             <div class="nav-item" data-tab="ghostMarket">🏪 Ghost Market <span class="nav-badge" id="ghostMarketBadge" style="display:none">0</span></div>
             <div class="nav-item" data-tab="ghostModeration">👻 Ghost Moderation <span class="nav-badge" id="ghostPendingBadge" style="display:none">0</span></div>
+            <div class="nav-item" data-tab="settings">⚙️ Settings</div>
+            <div class="nav-item" data-tab="auditLogs">📜 Audit Logs</div>
         </div>
         <button class="logout-btn" onclick="logout()">🚪 Logout</button>
     </div>
 
     <div class="main-content">
+        <div class="breadcrumb" id="breadcrumbNav">
+            <a href="#" data-target-tab="dashboard">Dashboard</a><span class="sep">/</span><span id="breadcrumbCurrent">Dashboard</span>
+        </div>
         <!-- Dashboard Tab -->
         <div id="tab-dashboard" class="tab-content active">
             <div class="page-header">
                 <h1>📊 System Overview</h1>
                 <p>Real-time platform statistics and activity</p>
+                <div class="page-actions">
+                    <button class="btn-refresh" onclick="refreshDashboardTab()">🔄 Refresh Dashboard</button>
+                </div>
             </div>
             <div class="stats-grid" id="statsGrid">
                 <div class="stat-card"><div class="stat-number" id="statPending">-</div><div class="stat-label">Pending Approvals</div></div>
@@ -727,6 +786,7 @@
                 </div>
             </div>
             <div id="usersTableContainer"><div class="loading">Loading users...</div></div>
+            <div class="pagination" id="usersPagination" style="display:none;"></div>
         </div>
 
         <!-- Approvals Tab -->
@@ -762,6 +822,17 @@
                 <h1>💬 Admin Messaging</h1>
                 <p>Communicate with users and send broadcasts</p>
             </div>
+            <div class="broadcast-panel">
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+                    <select id="broadcastTarget">
+                        <option value="all">All Users</option>
+                        <option value="approved">Approved Users</option>
+                        <option value="pending">Pending Users</option>
+                    </select>
+                    <button class="btn-approve" onclick="sendBroadcastMessage()">📣 Send Broadcast</button>
+                </div>
+                <textarea id="broadcastMessage" rows="2" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;" placeholder="Broadcast message to selected audience..."></textarea>
+            </div>
             <div class="message-interface">
                 <div class="user-list" id="userList"><div class="loading">Loading users...</div></div>
                 <div class="chat-window">
@@ -788,6 +859,9 @@
             <div class="page-header">
                 <h1>🏪 Ghost Market Admin</h1>
                 <p>Review seller applications and item listings before they go live</p>
+                <div class="page-actions">
+                    <button class="btn-refresh" onclick="refreshGhostMarketTab()">🔄 Refresh Ghost Market</button>
+                </div>
             </div>
 
             <h3 style="margin: 20px 0 10px;">Pending Seller Applications</h3>
@@ -831,12 +905,70 @@
                 <div id="bannedList"><div class="loading">Loading...</div></div>
             </div>
         </div>
+
+        <div id="tab-settings" class="tab-content">
+            <div class="page-header">
+                <h1>⚙️ Admin Settings</h1>
+                <p>High-impact controls and account-level overrides.</p>
+            </div>
+
+            <div class="setting-card">
+                <h3 style="margin-bottom:8px;">Emergency Controls</h3>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <button class="btn-warning" onclick="runSettingAction('/admin/api/override/extend-pins', 'Extend all expired PINs by 7 days?')">Extend All Expired PINs</button>
+                    <button class="btn-warning" onclick="runSettingAction('/admin/api/override/pause-registrations', 'Pause registrations?')">Pause Registrations</button>
+                    <button class="btn-warning" onclick="runSettingAction('/admin/api/override/resume-registrations', 'Resume registrations?')">Resume Registrations</button>
+                    <button class="btn-warning" onclick="runSettingAction('/admin/api/override/clear-message-queue', 'Clear message queue?')">Clear Message Queue</button>
+                    <button class="btn-reject" onclick="runSettingAction('/admin/api/override/maintenance-mode', 'Enable maintenance mode?')">Enable Maintenance</button>
+                    <button class="btn-approve" onclick="runSettingAction('/admin/api/override/disable-maintenance-mode', 'Disable maintenance mode?')">Disable Maintenance</button>
+                </div>
+                <p id="settingsResult" style="margin-top:10px;color:#475569;font-size:13px;"></p>
+            </div>
+        </div>
+
+        <div id="tab-auditLogs" class="tab-content">
+            <div class="page-header">
+                <h1>📜 Audit Logs</h1>
+                <p>Trace every admin action with filters and exports.</p>
+                <div class="page-actions">
+                    <select id="auditActionFilter" onchange="loadAuditLogs()">
+                        <option value="">All Actions</option>
+                        <option value="user_approved">user_approved</option>
+                        <option value="user_rejected">user_rejected</option>
+                        <option value="user_suspended">user_suspended</option>
+                        <option value="user_banned">user_banned</option>
+                        <option value="payment_approved">payment_approved</option>
+                        <option value="payment_rejected">payment_rejected</option>
+                        <option value="broadcast_message">broadcast_message</option>
+                    </select>
+                    <button class="btn-refresh" onclick="loadAuditLogs()">🔄 Refresh Logs</button>
+                    <button class="btn-view" onclick="exportAuditLogs('csv')">⬇️ Export CSV</button>
+                    <button class="btn-view" onclick="exportAuditLogs('json')">⬇️ Export JSON</button>
+                </div>
+            </div>
+            <div id="auditLogsTable"><div class="loading">Loading audit logs...</div></div>
+        </div>
     </div>
 
     <script>
         let currentUser = null;
         let refreshInterval = null;
         let adminCsrfToken = null;
+        let currentUsersPage = 1;
+        const TAB_LABELS = {
+            dashboard: 'Dashboard',
+            users: 'Users',
+            approvals: 'Approvals',
+            kyc: 'KYC Review',
+            payments: 'Payments',
+            messages: 'Messages',
+            zeuswatch: 'ZeusWatch',
+            subscriptions: 'Subscriptions',
+            ghostMarket: 'Ghost Market',
+            ghostModeration: 'Ghost Moderation',
+            settings: 'Settings',
+            auditLogs: 'Audit Logs'
+        };
 
         async function ensureAdminCsrfToken(forceRefresh = false) {
             if (adminCsrfToken && !forceRefresh) return adminCsrfToken;
@@ -960,11 +1092,12 @@
         }
 
         // Load users
-        async function loadUsers() {
+        async function loadUsers(page = currentUsersPage) {
+            currentUsersPage = page;
             const status = document.getElementById('userStatusFilter').value;
             const search = document.getElementById('userSearch').value;
             try {
-                const response = await fetch(`/admin/api/users?status=${status}&search=${encodeURIComponent(search)}`);
+                const response = await fetch(`/admin/api/users?status=${status}&search=${encodeURIComponent(search)}&page=${page}`);
                 const data = await response.json();
                 if (data.success) {
                     const usersHtml = `
@@ -981,7 +1114,10 @@
                                     <td>
                                         <button class="btn-view" onclick="viewUserDetails(${user.id})">View</button>
                                         <button class="btn-view" style="background:#6366f1;" onclick="openUserMessaging(${user.id})">Message</button>
-                                        <button class="btn-view" style="background:#059669;" onclick="viewUserActivity(${user.id})">📋 Activity</button>
+                                        <button class="btn-view" style="background:#059669;" onclick="viewUserActivity(${user.id})">📋 Full Activity</button>
+                                        <button class="btn-warning" onclick="manualUpgradeUser(${user.id})">Upgrade</button>
+                                        <button class="btn-warning" onclick="extendPinForUser(${user.id})">Extend PIN</button>
+                                        <button class="btn-warning" onclick="overrideUserFeature(${user.id})">Feature Override</button>
                                         ${user.approval_status === 'pending' ? `<button class="btn-approve" onclick="approveUser(${user.id})">Approve</button>` : ''}
                                         ${user.approval_status !== 'banned' ? `<button class="btn-reject" style="background:#f97316;" onclick="suspendUser(${user.id})">Suspend</button>` : ''}
                                         ${user.approval_status !== 'banned' ? `<button class="btn-reject" onclick="banUser(${user.id})">Ban</button>` : ''}
@@ -989,8 +1125,77 @@
                                 </tr>`).join('')}</tbody>
                         </table>`;
                     document.getElementById('usersTableContainer').innerHTML = usersHtml;
+
+                    const pagination = data.pagination || {};
+                    const totalPages = Number(pagination.pages || 1);
+                    const pagEl = document.getElementById('usersPagination');
+                    if (pagEl && totalPages > 1) {
+                        pagEl.style.display = 'flex';
+                        pagEl.innerHTML = `
+                            <button class="btn-view" ${page <= 1 ? 'disabled' : ''} onclick="loadUsers(${page - 1})">Prev</button>
+                            <span>Page ${page} of ${totalPages} (${pagination.total || 0} users)</span>
+                            <button class="btn-view" ${page >= totalPages ? 'disabled' : ''} onclick="loadUsers(${page + 1})">Next</button>
+                        `;
+                    } else if (pagEl) {
+                        pagEl.style.display = 'none';
+                        pagEl.innerHTML = '';
+                    }
                 }
             } catch (error) { document.getElementById('usersTableContainer').innerHTML = '<div class="loading">Error loading users</div>'; }
+        }
+
+        async function manualUpgradeUser(userId) {
+            const tier = (prompt('Upgrade tier (pro/teams):', 'pro') || '').trim().toLowerCase();
+            if (!tier) return;
+            const durationDays = Number(prompt('Duration in days (30 or 365):', '30') || 30);
+            try {
+                const response = await adminJsonFetch(`/admin/api/users/${userId}/upgrade`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tier, duration_days: durationDays })
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.error || 'Failed to upgrade user');
+                alert(data.message || 'User upgraded');
+                loadUsers();
+            } catch (error) {
+                alert(error.message || 'Upgrade failed');
+            }
+        }
+
+        async function extendPinForUser(userId) {
+            const extensionDays = Number(prompt('Extend PIN by days (7 / 14 / 30):', '7') || 7);
+            try {
+                const response = await adminJsonFetch(`/admin/api/users/${userId}/extend-pin`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ extension_days: extensionDays })
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.error || 'Failed to extend PIN');
+                alert(data.message || 'PIN extended');
+                loadUsers();
+            } catch (error) {
+                alert(error.message || 'PIN extension failed');
+            }
+        }
+
+        async function overrideUserFeature(userId) {
+            const featureName = (prompt('Feature name to override (e.g. ghost_market, file_sharing, custom_ttl):', 'ghost_market') || '').trim();
+            if (!featureName) return;
+            const enabled = confirm('Enable this feature override? Click Cancel to remove it.');
+            try {
+                const response = await adminJsonFetch(`/admin/api/users/${userId}/feature-override`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ feature_name: featureName, enabled })
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.error || 'Failed to update override');
+                alert(`Feature override ${enabled ? 'enabled' : 'removed'}: ${featureName}`);
+            } catch (error) {
+                alert(error.message || 'Feature override failed');
+            }
         }
 
         // Load pending approvals
@@ -1232,6 +1437,29 @@
             } catch (error) { alert('Failed to send message'); }
         }
 
+        async function sendBroadcastMessage() {
+            const message = document.getElementById('broadcastMessage').value.trim();
+            const target = document.getElementById('broadcastTarget').value;
+            if (!message) {
+                alert('Broadcast message is required');
+                return;
+            }
+            if (!confirm('Send broadcast message now?')) return;
+            try {
+                const response = await adminJsonFetch('/admin/api/messages/broadcast', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message, target })
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.error || 'Broadcast failed');
+                document.getElementById('broadcastMessage').value = '';
+                alert(data.message || 'Broadcast sent');
+            } catch (error) {
+                alert(error.message || 'Broadcast failed');
+            }
+        }
+
         // Approve user
         async function approveUser(userId) {
             if (!confirm('Approve this user?')) return;
@@ -1325,6 +1553,7 @@
                 if (data.success) {
                     const unlocks = data.unlocks.map(u => `${u.feature} (${u.type})`).join(', ') || 'None';
                     const payments = data.payments.length;
+                    const sub = data.subscription || { tier: 'free', status: 'none' };
                     const notes = data.user.notes || 'None';
                     const rejectionReason = data.user.rejection_reason || 'None';
                     alert(
@@ -1333,6 +1562,9 @@ PIN: ${data.user.zeus_pin}
 Email: ${data.user.email}
 Status: ${data.user.approval_status}
 Registered: ${new Date(data.user.registered_at).toLocaleString()}
+Subscription: ${sub.tier} (${sub.status})
+Next Billing: ${sub.current_period_end || '-'}
+PIN Expiry: ${data.user.pin_expires_at || '-'}
 Notes: ${notes}
 Rejection Reason: ${rejectionReason}
 Unlocks: ${unlocks}
@@ -1361,6 +1593,94 @@ Message Stats: ${data.message_stats.total} total / ${data.message_stats.user_mes
             } catch (error) {
                 alert('Failed to open messaging for user');
             }
+        }
+
+        async function runSettingAction(url, confirmText) {
+            if (!confirm(confirmText)) return;
+            try {
+                const response = await adminJsonFetch(url, { method: 'POST' });
+                const data = await response.json().catch(() => ({}));
+                const msg = data.message || (response.ok ? 'Action completed' : 'Action failed');
+                const target = document.getElementById('settingsResult');
+                if (target) target.textContent = msg;
+            } catch (error) {
+                const target = document.getElementById('settingsResult');
+                if (target) target.textContent = 'Action failed';
+            }
+        }
+
+        async function loadAuditLogs() {
+            const action = document.getElementById('auditActionFilter')?.value || '';
+            const q = action ? `?action=${encodeURIComponent(action)}` : '';
+            try {
+                const response = await fetch(`/admin/api/audit/logs${q}`);
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.error || 'Failed to load logs');
+                const rows = (data.logs || []).map(log => `
+                    <tr>
+                        <td>${new Date(log.created_at).toLocaleString()}</td>
+                        <td>${escapeHtml(log.admin || '-')}</td>
+                        <td>${escapeHtml(log.action || '-')}</td>
+                        <td>${escapeHtml(log.target_user_pin || '-')}</td>
+                        <td>${escapeHtml(log.ip_address || '-')}</td>
+                        <td><pre style="white-space:pre-wrap;max-width:360px;overflow:auto;">${escapeHtml(JSON.stringify(log.details || {}))}</pre></td>
+                    </tr>
+                `).join('');
+                document.getElementById('auditLogsTable').innerHTML = `
+                    <table class="admin-table">
+                        <thead><tr><th>Timestamp</th><th>Admin</th><th>Action</th><th>Target</th><th>IP</th><th>Details</th></tr></thead>
+                        <tbody>${rows || '<tr><td colspan="6">No logs found</td></tr>'}</tbody>
+                    </table>
+                `;
+            } catch (error) {
+                document.getElementById('auditLogsTable').innerHTML = '<div class="loading">Error loading audit logs</div>';
+            }
+        }
+
+        function exportAuditLogs(format) {
+            const action = document.getElementById('auditActionFilter')?.value || '';
+            const params = new URLSearchParams({ format });
+            if (action) params.set('action', action);
+            window.open(`/admin/api/audit/logs/export?${params.toString()}`, '_blank');
+        }
+
+        function refreshDashboardTab() {
+            loadStats();
+        }
+
+        function refreshGhostMarketTab() {
+            loadGhostMarketPending();
+            loadGhostMarketSellers();
+        }
+
+        function updateBreadcrumb(tab) {
+            const current = document.getElementById('breadcrumbCurrent');
+            if (current) current.textContent = TAB_LABELS[tab] || 'Dashboard';
+        }
+
+        function switchTab(tab) {
+            const targetId = `tab-${tab}`;
+            const target = document.getElementById(targetId);
+            if (!target) return;
+
+            document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            const navItem = document.querySelector(`.nav-item[data-tab="${tab}"]`);
+            if (navItem) navItem.classList.add('active');
+            target.classList.add('active');
+            updateBreadcrumb(tab);
+
+            if (tab === 'dashboard') loadStats();
+            else if (tab === 'users') loadUsers();
+            else if (tab === 'approvals') loadPendingApprovals();
+            else if (tab === 'kyc') loadPendingKYC();
+            else if (tab === 'payments') loadPendingPayments();
+            else if (tab === 'messages') loadMessagingUsers();
+            else if (tab === 'subscriptions') loadSubscriptions();
+            else if (tab === 'ghostMarket') { loadGhostMarketPending(); loadGhostMarketSellers(); }
+            else if (tab === 'ghostModeration') loadPendingPosts();
+            else if (tab === 'auditLogs') loadAuditLogs();
         }
 
         // Logout
@@ -1690,20 +2010,17 @@ Message Stats: ${data.message_stats.total} total / ${data.message_stats.user_mes
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', () => {
                 const tab = item.dataset.tab;
-                document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-                item.classList.add('active');
-                document.getElementById(`tab-${tab}`).classList.add('active');
-                if (tab === 'dashboard') loadStats();
-                else if (tab === 'users') loadUsers();
-                else if (tab === 'approvals') loadPendingApprovals();
-                else if (tab === 'kyc') loadPendingKYC();
-                else if (tab === 'payments') loadPendingPayments();
-                else if (tab === 'messages') loadMessagingUsers();
-                else if (tab === 'subscriptions') loadSubscriptions();
-                else if (tab === 'ghostMarket') { loadGhostMarketPending(); loadGhostMarketSellers(); }
-                else if (tab === 'ghostModeration') { loadPendingPosts(); }
+                if (tab === 'zeuswatch') return;
+                switchTab(tab);
             });
+        });
+
+        // Breadcrumb switching
+        document.getElementById('breadcrumbNav')?.addEventListener('click', (event) => {
+            const targetTab = event.target?.getAttribute('data-target-tab');
+            if (!targetTab) return;
+            event.preventDefault();
+            switchTab(targetTab);
         });
 
         // Ghost Market Admin Functions
@@ -1733,6 +2050,7 @@ Message Stats: ${data.message_stats.total} total / ${data.message_stats.user_mes
                             + '<textarea id="itemNotes_' + item.id + '" placeholder="Admin notes (optional)" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;"></textarea>'
                             + '<button class="btn-approve" onclick="approveGhostItem(' + item.id + ')">✓ Approve &amp; Post</button>'
                             + '<button class="btn-reject" onclick="rejectGhostItem(' + item.id + ')">✗ Reject</button>'
+                                + '<button class="btn-warning" onclick="flagProhibitedItem(' + item.id + ')">🚫 Flag Prohibited</button>'
                             + '<button class="btn-reject" style="background:#dc2626;" onclick="deleteMarketItem(' + item.id + ')">🗑️ Delete</button>'
                             + '</div></div>';
                     }).join('');
@@ -1844,6 +2162,26 @@ Message Stats: ${data.message_stats.total} total / ${data.message_stats.user_mes
             } catch (err) { alert('Network error.'); }
         }
 
+        async function flagProhibitedItem(itemId) {
+            const reason = prompt('Enter prohibited reason:');
+            if (!reason) return;
+            try {
+                const response = await adminJsonFetch('/admin/api/ghost-market/items/' + itemId + '/flag-prohibited', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason })
+                });
+                const data = await response.json().catch(() => ({}));
+                if (response.ok && data.success) {
+                    loadGhostMarketPending();
+                } else {
+                    alert(data.error || 'Failed to flag item.');
+                }
+            } catch (err) {
+                alert('Network error.');
+            }
+        }
+
         // ── Delete Ghost Community Post ──────────────────────────────
         async function deleteGhostPost(postId) {
             if (!confirm('Delete this post permanently? This cannot be undone.')) return;
@@ -1873,28 +2211,55 @@ Message Stats: ${data.message_stats.total} total / ${data.message_stats.user_mes
             document.getElementById('userActivityModal').style.display = 'flex';
             document.getElementById('userActivityContent').innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;">Loading...</div>';
             try {
-                const response = await fetch('/admin/api/users/' + userId + '/activity');
+                const response = await fetch('/admin/api/users/' + userId + '/full-activity');
                 const data = await response.json();
                 if (!data.success) { document.getElementById('userActivityContent').innerHTML = '<p style="color:red;">Error: ' + (data.error || 'Unknown error') + '</p>'; return; }
                 const u = data.user;
+                const sub = u.subscription || { tier: 'free', status: 'none', current_period_end: null };
                 const listings = data.market_listings.map(i =>
                     '<li><strong>' + escapeHtml(i.title) + '</strong> — R' + Number(i.price).toFixed(2) + ' <span style="color:#94a3b8;">(' + escapeHtml(i.status) + ')</span></li>'
                 ).join('') || '<li style="color:#94a3b8;">None</li>';
                 const posts = data.ghost_posts.map(p =>
-                    '<li><strong>' + escapeHtml(p.title) + '</strong> — ' + (p.is_paid ? 'Paid R' + Number(p.price).toFixed(2) : 'Free') + ' (' + Number(p.view_count || 0) + ' views)</li>'
+                    '<li><strong>' + escapeHtml(p.title || '') + '</strong> — ' + (p.is_paid ? 'Paid R' + Number(p.price || 0).toFixed(2) : 'Free') + ' <span style="color:#94a3b8;">(' + escapeHtml(p.status || 'unknown') + ')</span></li>'
                 ).join('') || '<li style="color:#94a3b8;">None</li>';
-                const comments = data.comments.map(c =>
-                    '<li>' + escapeHtml((c.content || '').substring(0, 80)) + (c.content && c.content.length > 80 ? '…' : '') + '</li>'
+                const purchases = (data.purchases || []).map(p =>
+                    '<li>Purchase #' + escapeHtml(String(p.id || '')) + ' — R' + Number(p.amount || 0).toFixed(2) + ' <span style="color:#94a3b8;">(' + escapeHtml(p.status || 'unknown') + ')</span></li>'
+                ).join('') || '<li style="color:#94a3b8;">None</li>';
+                const payments = (data.payments || []).map(p =>
+                    '<li>' + escapeHtml(String(p.payment_type || p.type || 'payment')) + ' — R' + Number(p.amount || 0).toFixed(2) + ' <span style="color:#94a3b8;">(' + escapeHtml(p.status || 'unknown') + ')</span></li>'
+                ).join('') || '<li style="color:#94a3b8;">None</li>';
+                const messages = (data.messages || []).slice(0, 10).map(m =>
+                    '<li><strong>' + escapeHtml(m.sender_pin || '') + ' → ' + escapeHtml(m.receiver_pin || '') + '</strong>: ' + escapeHtml((m.content || '').substring(0, 80)) + '</li>'
+                ).join('') || '<li style="color:#94a3b8;">None</li>';
+                const kyc = (data.kyc_documents || []).map(k =>
+                    '<li>' + escapeHtml(k.document_type || 'ID') + ' — <span style="color:#94a3b8;">' + escapeHtml(k.admin_review_status || 'pending') + '</span></li>'
+                ).join('') || '<li style="color:#94a3b8;">None</li>';
+                const logins = (data.login_history || []).map(l =>
+                    '<li>' + escapeHtml(String(l.timestamp || 'unknown')) + ' — IP: ' + escapeHtml(String(l.ip_address || 'n/a')) + ' — Device: ' + escapeHtml(String(l.device || 'unknown')) + '</li>'
+                ).join('') || '<li style="color:#94a3b8;">None</li>';
+                const unlocks = (data.unlocks || []).map(x =>
+                    '<li>' + escapeHtml(x.feature_name || x.feature || '') + ' (' + escapeHtml(x.unlock_type || x.type || '') + ')</li>'
                 ).join('') || '<li style="color:#94a3b8;">None</li>';
                 document.getElementById('userActivityContent').innerHTML = `
                     <h4 style="margin:0 0 4px;color:#1e293b;">${escapeHtml(u.full_name)}</h4>
                     <p style="margin:0 0 16px;color:#64748b;">PIN: ${escapeHtml(u.zeus_pin)} &nbsp;|&nbsp; ${escapeHtml(u.email)}</p>
+                    <p style="margin:0 0 16px;color:#334155;">Tier: <strong>${escapeHtml(sub.tier || 'free')}</strong> (${escapeHtml(sub.status || 'none')}) &nbsp;|&nbsp; Next Billing: ${escapeHtml(String(sub.current_period_end || '-'))} &nbsp;|&nbsp; PIN Expiry: ${escapeHtml(String(u.pin_expires_at || '-'))}</p>
+                    <h5 style="color:#0f172a;margin:0 0 6px;">🪪 KYC Documents (${(data.kyc_documents || []).length})</h5>
+                    <ul style="margin:0 0 16px;padding-left:20px;color:#334155;">${kyc}</ul>
                     <h5 style="color:#0f172a;margin:0 0 6px;">🛍 Ghost Market Listings (${data.market_listings.length})</h5>
                     <ul style="margin:0 0 16px;padding-left:20px;color:#334155;">${listings}</ul>
                     <h5 style="color:#0f172a;margin:0 0 6px;">👻 Ghost Community Posts (${data.ghost_posts.length})</h5>
                     <ul style="margin:0 0 16px;padding-left:20px;color:#334155;">${posts}</ul>
-                    <h5 style="color:#0f172a;margin:0 0 6px;">💬 Comments (${data.comments.length})</h5>
-                    <ul style="margin:0 0 8px;padding-left:20px;color:#334155;">${comments}</ul>
+                    <h5 style="color:#0f172a;margin:0 0 6px;">🧾 Purchases (${(data.purchases || []).length})</h5>
+                    <ul style="margin:0 0 16px;padding-left:20px;color:#334155;">${purchases}</ul>
+                    <h5 style="color:#0f172a;margin:0 0 6px;">💳 Transactions (${(data.payments || []).length})</h5>
+                    <ul style="margin:0 0 16px;padding-left:20px;color:#334155;">${payments}</ul>
+                    <h5 style="color:#0f172a;margin:0 0 6px;">🔓 Feature Overrides (${(data.unlocks || []).length})</h5>
+                    <ul style="margin:0 0 16px;padding-left:20px;color:#334155;">${unlocks}</ul>
+                    <h5 style="color:#0f172a;margin:0 0 6px;">🧭 Login History (${(data.login_history || []).length})</h5>
+                    <ul style="margin:0 0 16px;padding-left:20px;color:#334155;">${logins}</ul>
+                    <h5 style="color:#0f172a;margin:0 0 6px;">💬 Recent Messages (${(data.messages || []).length})</h5>
+                    <ul style="margin:0 0 8px;padding-left:20px;color:#334155;">${messages}</ul>
                 `;
             } catch (err) {
                 document.getElementById('userActivityContent').innerHTML = '<p style="color:red;">Network error loading activity.</p>';
@@ -1919,6 +2284,7 @@ Message Stats: ${data.message_stats.total} total / ${data.message_stats.user_mes
                 ensureAdminCsrfToken().catch((error) => console.error('Failed to initialize admin CSRF token:', error));
                 loadStats();
                 loadGhostPendingBadge();
+                updateBreadcrumb('dashboard');
                 refreshInterval = setInterval(loadStats, 30000);
             }
         }

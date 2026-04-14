@@ -1,6 +1,7 @@
 import io
+import csv
 
-from flask import Blueprint, request, jsonify, session, render_template, redirect, url_for, current_app
+from flask import Blueprint, request, jsonify, session, render_template, redirect, url_for, current_app, Response
 import bcrypt
 import hashlib
 import json
@@ -133,6 +134,27 @@ def zeuswatch_page():
     return render_template('admin/zeuswatch.html')
 
 
+@admin_bp.route('/reports')
+def reports_page():
+    if 'admin_id' not in session:
+        return redirect(url_for('admin.login_page'))
+    return redirect('/admin/dashboard#tab-ghostModeration')
+
+
+@admin_bp.route('/ghost-moderation')
+def ghost_moderation_page():
+    if 'admin_id' not in session:
+        return redirect(url_for('admin.login_page'))
+    return redirect('/admin/dashboard#tab-ghostModeration')
+
+
+@admin_bp.route('/ghost-market')
+def ghost_market_page():
+    if 'admin_id' not in session:
+        return redirect(url_for('admin.login_page'))
+    return redirect('/admin/dashboard#tab-ghostMarket')
+
+
 @admin_bp.route('/api/login', methods=['POST'])
 def admin_login():
     data = request.get_json() or {}
@@ -235,6 +257,17 @@ def zeuswatch_data():
         pending_kyc = _fetch_scalar(cursor, "SELECT COUNT(*) FROM user_approvals WHERE status = 'pending'")
         new_users_today = _fetch_scalar(cursor, 'SELECT COUNT(*) FROM users WHERE date(created_at) = date("now")')
 
+        # Real uptime: calculated from admin_audit_log error actions in last 24h
+        total_log_24h = _fetch_scalar(cursor, "SELECT COUNT(*) FROM admin_audit_log WHERE created_at > datetime('now', '-24 hours')")
+        error_log_24h = _fetch_scalar(cursor, "SELECT COUNT(*) FROM admin_audit_log WHERE action = 'error' AND created_at > datetime('now', '-24 hours')")
+        error_rate = round((error_log_24h / max(total_log_24h, 1)) * 100, 2)
+        uptime = round(max(99.0, 100 - error_rate), 2)
+
+        # Real user growth: last 7 days vs previous 7 days
+        last_week_users = _fetch_scalar(cursor, "SELECT COUNT(*) FROM users WHERE created_at > datetime('now', '-7 days')")
+        prev_week_users = _fetch_scalar(cursor, "SELECT COUNT(*) FROM users WHERE created_at BETWEEN datetime('now', '-14 days') AND datetime('now', '-7 days')")
+        growth_rate = round(((last_week_users - prev_week_users) / max(prev_week_users, 1)) * 100, 1)
+
         pending_approval = _fetch_scalar(cursor, "SELECT COUNT(*) FROM one_off_payments WHERE status = 'pending_approval'")
         pending_amount = float(_fetch_scalar(cursor, "SELECT COALESCE(SUM(amount), 0) FROM one_off_payments WHERE status = 'pending_approval'", default=0.0))
         revenue_today = float(_fetch_scalar(cursor, "SELECT COALESCE(SUM(amount), 0) FROM one_off_payments WHERE date(created_at) = date('now') AND status IN ('approved', 'pending_approval')", default=0.0))
@@ -260,6 +293,11 @@ def zeuswatch_data():
         escrow_total_held = float(_fetch_scalar(cursor, "SELECT COALESCE(SUM(amount), 0) FROM ghost_market_orders WHERE status IN ('pending', 'shipped')", default=0.0))
         pending_delivery = _fetch_scalar(cursor, "SELECT COUNT(*) FROM ghost_market_orders WHERE status = 'shipped'")
 
+        # Alert-specific real-time queries
+        kyc_pending_over_24h = _fetch_scalar(cursor, "SELECT COUNT(*) FROM user_approvals WHERE status = 'pending' AND created_at < datetime('now', '-24 hours')")
+        payment_failures_last_hour = _fetch_scalar(cursor, "SELECT COUNT(*) FROM one_off_payments WHERE status = 'failed' AND created_at > datetime('now', '-1 hour')")
+        server_errors_last_hour = _fetch_scalar(cursor, "SELECT COUNT(*) FROM admin_audit_log WHERE action = 'error' AND created_at > datetime('now', '-1 hour')")
+
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS system_flags (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -282,6 +320,7 @@ def zeuswatch_data():
         )
         cursor.execute('SELECT flag_name, flag_value FROM system_flags')
         flags = {row['flag_name']: int(row['flag_value']) for row in cursor.fetchall()}
+
     db_path = os.environ.get('DATABASE_PATH', 'zeuschat.db')
     db_size_bytes = os.path.getsize(db_path) if os.path.exists(db_path) else 0
     db_size_mb = round(db_size_bytes / (1024 * 1024), 2)
@@ -292,6 +331,25 @@ def zeuswatch_data():
     critical_alerts = []
     warning_alerts = []
     info_alerts = []
+
+    # Real alert: server errors in last hour
+    if server_errors_last_hour > 0:
+        critical_alerts.append({
+            'message': f'Server: {server_errors_last_hour} error(s) logged in the last hour.',
+            'actions': [
+                {'label': 'View Logs', 'action': 'view_scaling_playbook'},
+            ]
+        })
+
+    # Real alert: payment failures in last hour
+    if payment_failures_last_hour > 0:
+        critical_alerts.append({
+            'message': f'Payments: {payment_failures_last_hour} failure(s) in the last hour.',
+            'actions': [
+                {'label': 'View Failures', 'action': 'test_payfast'},
+                {'label': 'Retry Renewals', 'action': 'retry_renewals'},
+            ]
+        })
 
     if failed_renewals >= 3:
         critical_alerts.append({
@@ -313,9 +371,18 @@ def zeuswatch_data():
             ]
         })
 
-    if pending_kyc > 10:
+    # Real warning: KYC pending > 24 hours
+    if kyc_pending_over_24h > 0:
         warning_alerts.append({
-            'message': f'KYC backlog: {pending_kyc} users waiting > 24 hours.',
+            'message': f'KYC: {kyc_pending_over_24h} user(s) pending approval for more than 24 hours.',
+            'actions': [
+                {'label': 'Review Now', 'action': 'review_kyc'},
+                {'label': 'Assign Moderator', 'action': 'assign_kyc'},
+            ]
+        })
+    elif pending_kyc > 10:
+        warning_alerts.append({
+            'message': f'KYC backlog: {pending_kyc} users waiting.',
             'actions': [
                 {'label': 'Review Now', 'action': 'review_kyc'},
                 {'label': 'Assign Moderator', 'action': 'assign_kyc'},
@@ -346,18 +413,20 @@ def zeuswatch_data():
                 {'label': 'Acknowledge', 'action': 'ignore_predictive'},
             ]
         })
-    info_alerts.append({'message': 'Server load: 45% capacity (normal).', 'actions': []})
-    info_alerts.append({'message': f'Active users: {total_users} (peak reference: 2,100).', 'actions': []})
-    info_alerts.append({'message': f'New registrations today: {new_users_today}.', 'actions': []})
+
+    info_alerts.append({'message': f'System uptime: {uptime}% (error rate: {error_rate}%).', 'actions': []})
+    info_alerts.append({'message': f'Active users: {total_users}. New registrations today: {new_users_today}.', 'actions': []})
+    info_alerts.append({'message': f'User growth: {growth_rate:+.1f}% week-over-week.', 'actions': []})
 
     return jsonify({
         'system': {
-            'status': 'Healthy',
+            'status': 'Degraded' if error_rate > 1 else 'Healthy',
             'total_users': total_users,
             'pending_kyc': pending_kyc,
             'new_users_today': new_users_today,
             'server_load': 45,
-            'uptime': 99.8,
+            'uptime': uptime,
+            'error_rate': error_rate,
             'revenue_today': revenue_today,
             'monthly_recurring': monthly_recurring,
             'flags': {
@@ -399,7 +468,9 @@ def zeuswatch_data():
             'days_to_limit': days_to_limit,
             'server_load_pct': 45,
             'projected_load_7d': 80,
-            'user_growth_weekly_pct': 45,
+            'user_growth_weekly_pct': growth_rate,
+            'growth_rate': growth_rate,
+            'error_rate': error_rate,
         }
     })
 
@@ -597,7 +668,7 @@ def test_registration_flow():
             cursor.execute('SELECT COUNT(*) AS count FROM admin_messages WHERE user_id = ?', (user_id,))
             notification_count = cursor.fetchone()['count']
 
-        unlock_response = user_client.post('/api/unlock', json={'zeus_pin': user['zeus_pin']})
+        unlock_response = user_client.post('/api/unlock', json={'zeus_pin': zeus_pin})
         with user_client.session_transaction() as sess:
             unlocked = bool(sess.get('password_unlocked'))
 
@@ -1143,7 +1214,7 @@ def get_user_details(user_id):
 
         cursor.execute(
             '''
-            SELECT u.id, u.zeus_pin, u.email, u.full_name, u.created_at,
+            SELECT u.id, u.zeus_pin, u.email, u.full_name, u.created_at, u.pin_expires_at,
                    COALESCE(ua.status, 'pending') AS approval_status,
                    ua.reviewed_at, ua.rejection_reason, ua.notes
             FROM users u
@@ -1188,6 +1259,18 @@ def get_user_details(user_id):
         )
         message_stats = cursor.fetchone()
 
+        cursor.execute(
+            '''
+            SELECT tier, status, current_period_start, current_period_end
+            FROM subscriptions
+            WHERE user_id = ?
+            ORDER BY id DESC
+            LIMIT 1
+            ''',
+            (user_id,),
+        )
+        sub = cursor.fetchone()
+
     return jsonify(
         {
             'success': True,
@@ -1200,6 +1283,13 @@ def get_user_details(user_id):
                 'approval_status': user['approval_status'],
                 'rejection_reason': user['rejection_reason'],
                 'notes': user['notes'],
+                'pin_expires_at': user['pin_expires_at'],
+            },
+            'subscription': {
+                'tier': (sub['tier'] if sub else 'free'),
+                'status': (sub['status'] if sub else 'none'),
+                'current_period_start': (sub['current_period_start'] if sub else None),
+                'current_period_end': (sub['current_period_end'] if sub else None),
             },
             'unlocks': [
                 {
@@ -1358,6 +1448,24 @@ def ban_user(user_id):
             ''',
             (user_id, admin_id, f'Banned: {reason}'),
         )
+
+        # Hide user-generated content after ban.
+        cursor.execute(
+            '''
+            UPDATE ghost_posts
+            SET status = 'rejected', ai_approved = 0
+            WHERE user_id = ?
+            ''',
+            (user_id,),
+        )
+        cursor.execute(
+            '''
+            UPDATE ghost_market_items
+            SET status = 'rejected'
+            WHERE seller_id = ?
+            ''',
+            (user_id,),
+        )
         conn.commit()
 
     log_admin_action(
@@ -1369,6 +1477,178 @@ def ban_user(user_id):
     )
 
     return jsonify({'success': True, 'message': 'User banned', 'user_id': user_id}), 200
+
+
+@admin_bp.route('/api/users/<int:user_id>/upgrade', methods=['PUT'])
+@admin_required
+def admin_upgrade_user(user_id):
+    """Manually upgrade a user tier without payment flow."""
+    admin_id = session['admin_id']
+    data = request.get_json() or {}
+    tier = (data.get('tier') or '').strip().lower()
+    duration_days = int(data.get('duration_days') or 30)
+
+    if tier not in {'pro', 'teams'}:
+        return jsonify({'error': 'Invalid tier. Use pro or teams.'}), 400
+    if duration_days <= 0:
+        return jsonify({'error': 'duration_days must be positive'}), 400
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT id FROM users WHERE id = ?', (user_id,))
+        if not cursor.fetchone():
+            return jsonify({'error': 'User not found'}), 404
+
+        cursor.execute(
+            '''
+            INSERT INTO subscriptions (user_id, tier, status, current_period_start, current_period_end)
+            VALUES (?, ?, 'active', CURRENT_TIMESTAMP, datetime('now', ?))
+            ON CONFLICT(user_id) DO UPDATE SET
+                tier = excluded.tier,
+                status = 'active',
+                current_period_start = CURRENT_TIMESTAMP,
+                current_period_end = datetime('now', ?),
+                updated_at = CURRENT_TIMESTAMP
+            ''',
+            (user_id, tier, f'+{duration_days} days', f'+{duration_days} days'),
+        )
+
+        badge_text = '👑 Gold badge activated.'
+        msg = f'✅ Your account was manually upgraded to {tier.upper()} for {duration_days} days by admin. {badge_text}'
+        cursor.execute(
+            '''
+            INSERT INTO admin_messages (user_id, message, is_from_admin, admin_id)
+            VALUES (?, ?, 1, ?)
+            ''',
+            (user_id, msg, admin_id),
+        )
+        conn.commit()
+
+    log_admin_action(
+        admin_id,
+        'user_upgraded_manual',
+        target_user_id=user_id,
+        details={'tier': tier, 'duration_days': duration_days},
+        ip_address=request.remote_addr,
+    )
+
+    return jsonify({'success': True, 'message': f'User upgraded to {tier}', 'tier': tier}), 200
+
+
+@admin_bp.route('/api/users/<int:user_id>/extend-pin', methods=['PUT'])
+@admin_required
+def admin_extend_user_pin(user_id):
+    """Extend a user's PIN expiry by 7/14/30 days."""
+    admin_id = session['admin_id']
+    data = request.get_json() or {}
+    extension_days = int(data.get('extension_days') or 7)
+    if extension_days not in {7, 14, 30}:
+        return jsonify({'error': 'extension_days must be 7, 14, or 30'}), 400
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT id FROM users WHERE id = ?', (user_id,))
+        if not cursor.fetchone():
+            return jsonify({'error': 'User not found'}), 404
+
+        cursor.execute(
+            '''
+            INSERT INTO pin_extensions (user_id, payment_id, extension_days, expires_at)
+            VALUES (?, NULL, ?, datetime(COALESCE((SELECT pin_expires_at FROM users WHERE id = ?), CURRENT_TIMESTAMP), ?))
+            ''',
+            (user_id, extension_days, user_id, f'+{extension_days} days'),
+        )
+        cursor.execute(
+            '''
+            UPDATE users
+            SET pin_extension_count = COALESCE(pin_extension_count, 0) + 1
+            WHERE id = ?
+            ''',
+            (user_id,),
+        )
+        refresh_pin_expiry_cache(user_id, conn=conn)
+
+        cursor.execute(
+            '''
+            INSERT INTO admin_messages (user_id, message, is_from_admin, admin_id)
+            VALUES (?, ?, 1, ?)
+            ''',
+            (user_id, f'✅ Admin extended your Zeus-PIN by {extension_days} days.', admin_id),
+        )
+        conn.commit()
+
+    log_admin_action(
+        admin_id,
+        'user_pin_extended_manual',
+        target_user_id=user_id,
+        details={'extension_days': extension_days},
+        ip_address=request.remote_addr,
+    )
+
+    return jsonify({'success': True, 'message': f'PIN extended by {extension_days} days'}), 200
+
+
+@admin_bp.route('/api/users/<int:user_id>/feature-override', methods=['PUT'])
+@admin_required
+def admin_feature_override(user_id):
+    """Enable/disable a specific feature for a user without tier upgrade."""
+    admin_id = session['admin_id']
+    data = request.get_json() or {}
+    feature_name = (data.get('feature_name') or '').strip()
+    enabled = bool(data.get('enabled', True))
+
+    if not feature_name:
+        return jsonify({'error': 'feature_name is required'}), 400
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT id FROM users WHERE id = ?', (user_id,))
+        if not cursor.fetchone():
+            return jsonify({'error': 'User not found'}), 404
+
+        if enabled:
+            cursor.execute(
+                '''
+                INSERT INTO user_unlocks (user_id, feature_name, unlock_type, granted_by)
+                VALUES (?, ?, 'admin_override', ?)
+                ON CONFLICT(user_id, feature_name) DO UPDATE SET
+                    unlock_type = 'admin_override',
+                    granted_by = excluded.granted_by,
+                    created_at = CURRENT_TIMESTAMP
+                ''',
+                (user_id, feature_name, admin_id),
+            )
+        else:
+            cursor.execute(
+                '''
+                DELETE FROM user_unlocks
+                WHERE user_id = ? AND feature_name = ?
+                ''',
+                (user_id, feature_name),
+            )
+
+        cursor.execute(
+            '''
+            INSERT INTO admin_messages (user_id, message, is_from_admin, admin_id)
+            VALUES (?, ?, 1, ?)
+            ''',
+            (
+                user_id,
+                f"{'✅ Enabled' if enabled else '❌ Removed'} feature override: {feature_name}.",
+                admin_id,
+            ),
+        )
+        conn.commit()
+
+    log_admin_action(
+        admin_id,
+        'user_feature_override',
+        target_user_id=user_id,
+        details={'feature_name': feature_name, 'enabled': enabled},
+        ip_address=request.remote_addr,
+    )
+
+    return jsonify({'success': True, 'feature_name': feature_name, 'enabled': enabled}), 200
 
 
 @admin_bp.route('/api/payments/pending', methods=['GET'])
@@ -1864,6 +2144,143 @@ def get_system_stats():
             ],
         }
     ), 200
+
+
+@admin_bp.route('/api/audit/logs', methods=['GET'])
+@admin_required
+def admin_audit_logs():
+    """Get admin audit logs with optional action filtering."""
+    action_filter = (request.args.get('action') or '').strip()
+    page = request.args.get('page', 1, type=int)
+    per_page = min(request.args.get('per_page', 50, type=int), 200)
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        base_where = 'WHERE 1=1'
+        params = []
+        if action_filter:
+            base_where += ' AND aal.action = ?'
+            params.append(action_filter)
+
+        cursor.execute(
+            f'''
+            SELECT aal.id, aal.action, aal.target_user_id, aal.target_payment_id,
+                   aal.details, aal.ip_address, aal.created_at,
+                   au.username AS admin_username,
+                   u.zeus_pin AS target_user_pin
+            FROM admin_audit_log aal
+            LEFT JOIN admin_users au ON au.id = aal.admin_id
+            LEFT JOIN users u ON u.id = aal.target_user_id
+            {base_where}
+            ORDER BY aal.created_at DESC
+            LIMIT ? OFFSET ?
+            ''',
+            [*params, per_page, (page - 1) * per_page],
+        )
+        rows = cursor.fetchall()
+
+        cursor.execute(
+            f'SELECT COUNT(*) AS total FROM admin_audit_log aal {base_where}',
+            params,
+        )
+        total = cursor.fetchone()['total']
+
+    return jsonify({
+        'success': True,
+        'logs': [
+            {
+                'id': row['id'],
+                'action': row['action'],
+                'admin': row['admin_username'],
+                'target_user_id': row['target_user_id'],
+                'target_user_pin': row['target_user_pin'],
+                'target_payment_id': row['target_payment_id'],
+                'details': json.loads(row['details']) if row['details'] else {},
+                'ip_address': row['ip_address'],
+                'created_at': row['created_at'],
+            }
+            for row in rows
+        ],
+        'pagination': {
+            'page': page,
+            'per_page': per_page,
+            'total': total,
+            'pages': (total + per_page - 1) // per_page,
+        },
+    }), 200
+
+
+@admin_bp.route('/api/audit/logs/export', methods=['GET'])
+@admin_required
+def admin_audit_logs_export():
+    """Export admin audit logs as CSV or JSON."""
+    export_format = (request.args.get('format') or 'csv').strip().lower()
+    action_filter = (request.args.get('action') or '').strip()
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        where = 'WHERE 1=1'
+        params = []
+        if action_filter:
+            where += ' AND aal.action = ?'
+            params.append(action_filter)
+
+        cursor.execute(
+            f'''
+            SELECT aal.id, aal.action, aal.target_user_id, aal.target_payment_id,
+                   aal.details, aal.ip_address, aal.created_at,
+                   au.username AS admin_username,
+                   u.zeus_pin AS target_user_pin
+            FROM admin_audit_log aal
+            LEFT JOIN admin_users au ON au.id = aal.admin_id
+            LEFT JOIN users u ON u.id = aal.target_user_id
+            {where}
+            ORDER BY aal.created_at DESC
+            ''',
+            params,
+        )
+        rows = cursor.fetchall()
+
+    normalized = [
+        {
+            'id': row['id'],
+            'action': row['action'],
+            'admin': row['admin_username'],
+            'target_user_id': row['target_user_id'],
+            'target_user_pin': row['target_user_pin'],
+            'target_payment_id': row['target_payment_id'],
+            'details': json.loads(row['details']) if row['details'] else {},
+            'ip_address': row['ip_address'],
+            'created_at': row['created_at'],
+        }
+        for row in rows
+    ]
+
+    if export_format == 'json':
+        payload = json.dumps({'logs': normalized}, indent=2)
+        return Response(
+            payload,
+            mimetype='application/json',
+            headers={'Content-Disposition': 'attachment; filename=admin_audit_logs.json'},
+        )
+
+    if export_format != 'csv':
+        return jsonify({'error': 'format must be csv or json'}), 400
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['id', 'action', 'admin', 'target_user_id', 'target_user_pin', 'target_payment_id', 'details', 'ip_address', 'created_at'])
+    for row in normalized:
+        writer.writerow([
+            row['id'], row['action'], row['admin'], row['target_user_id'], row['target_user_pin'],
+            row['target_payment_id'], json.dumps(row['details']), row['ip_address'], row['created_at']
+        ])
+
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': 'attachment; filename=admin_audit_logs.csv'},
+    )
 
 
 @admin_bp.route('/api/kyc/pending', methods=['GET'])
@@ -2838,6 +3255,7 @@ def admin_ghost_resolve_report(report_id):
 def admin_delete_market_item(item_id):
     """Admin hard-delete a Ghost Market listing and notify the seller."""
     admin_id = session['admin_id']
+    item = None
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('SELECT seller_id, title FROM ghost_market_items WHERE id = ?', (item_id,))
@@ -2850,10 +3268,56 @@ def admin_delete_market_item(item_id):
                VALUES (?, ?, 1, ?)''',
             (item['seller_id'], f'❌ Your listing "{item["title"]}" was deleted by admin.', admin_id),
         )
-        log_admin_action(admin_id, 'deleted_market_item', target_user_id=item['seller_id'],
-                         details={'item_id': item_id, 'title': item['title']})
         conn.commit()
+
+    log_admin_action(
+        admin_id,
+        'deleted_market_item',
+        target_user_id=item['seller_id'],
+        details={'item_id': item_id, 'title': item['title']},
+        ip_address=request.remote_addr,
+    )
     return jsonify({'success': True}), 200
+
+
+@admin_bp.route('/api/ghost-market/items/<int:item_id>/flag-prohibited', methods=['PUT'])
+@admin_required
+def admin_flag_market_item_prohibited(item_id):
+    """Flag an item as prohibited, remove it from listings, and warn seller."""
+    admin_id = session['admin_id']
+    data = request.get_json() or {}
+    reason = (data.get('reason') or 'Prohibited item').strip()
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT seller_id, title FROM ghost_market_items WHERE id = ?', (item_id,))
+        item = cursor.fetchone()
+        if not item:
+            return jsonify({'error': 'Item not found'}), 404
+
+        cursor.execute('DELETE FROM ghost_market_items WHERE id = ?', (item_id,))
+        cursor.execute(
+            '''
+            INSERT INTO admin_messages (user_id, message, is_from_admin, admin_id)
+            VALUES (?, ?, 1, ?)
+            ''',
+            (
+                item['seller_id'],
+                f'🚫 Your listing "{item["title"]}" was removed as prohibited content. Reason: {reason}',
+                admin_id,
+            ),
+        )
+        conn.commit()
+
+    log_admin_action(
+        admin_id,
+        'flagged_market_item_prohibited',
+        target_user_id=item['seller_id'],
+        details={'item_id': item_id, 'title': item['title'], 'reason': reason},
+        ip_address=request.remote_addr,
+    )
+
+    return jsonify({'success': True, 'message': 'Item flagged as prohibited and removed'}), 200
 
 
 @admin_bp.route('/api/ghost/posts/<int:post_id>/delete', methods=['DELETE'])
@@ -2861,6 +3325,7 @@ def admin_delete_market_item(item_id):
 def admin_delete_ghost_post(post_id):
     """Admin hard-delete a Ghost Community post and notify the author."""
     admin_id = session['admin_id']
+    post = None
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('SELECT user_id, title FROM ghost_posts WHERE id = ?', (post_id,))
@@ -2873,9 +3338,15 @@ def admin_delete_ghost_post(post_id):
                VALUES (?, ?, 1, ?)''',
             (post['user_id'], f'❌ Your Ghost post "{post["title"]}" was deleted by admin.', admin_id),
         )
-        log_admin_action(admin_id, 'deleted_ghost_post', target_user_id=post['user_id'],
-                         details={'post_id': post_id, 'title': post['title']})
         conn.commit()
+
+    log_admin_action(
+        admin_id,
+        'deleted_ghost_post',
+        target_user_id=post['user_id'],
+        details={'post_id': post_id, 'title': post['title']},
+        ip_address=request.remote_addr,
+    )
     return jsonify({'success': True}), 200
 
 
@@ -2884,6 +3355,7 @@ def admin_delete_ghost_post(post_id):
 def admin_delete_ghost_comment(comment_id):
     """Admin hard-delete a Ghost Community comment."""
     admin_id = session['admin_id']
+    comment = None
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('SELECT user_id, content, post_id FROM ghost_comments WHERE id = ?', (comment_id,))
@@ -2895,9 +3367,22 @@ def admin_delete_ghost_comment(comment_id):
             'UPDATE ghost_posts SET comment_count = MAX(0, comment_count - 1) WHERE id = ?',
             (comment['post_id'],),
         )
-        log_admin_action(admin_id, 'deleted_ghost_comment', target_user_id=comment['user_id'],
-                         details={'comment_id': comment_id})
+        cursor.execute(
+            '''
+            INSERT INTO admin_messages (user_id, message, is_from_admin, admin_id)
+            VALUES (?, ?, 1, ?)
+            ''',
+            (comment['user_id'], '❌ Your Ghost comment was removed by admin moderation.', admin_id),
+        )
         conn.commit()
+
+    log_admin_action(
+        admin_id,
+        'deleted_ghost_comment',
+        target_user_id=comment['user_id'],
+        details={'comment_id': comment_id},
+        ip_address=request.remote_addr,
+    )
     return jsonify({'success': True}), 200
 
 
@@ -3013,3 +3498,156 @@ def admin_ghost_ban_user(user_id):
     )
 
     return jsonify({'success': True}), 200
+
+
+@admin_bp.route('/api/users/<int:user_id>/full-activity', methods=['GET'])
+@admin_required
+def user_full_activity(user_id):
+    """Get complete user activity for admin review and evidence export."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+
+        # Basic user info + approval status
+        cursor.execute('''
+            SELECT u.id, u.zeus_pin, u.full_name, u.email, u.created_at,
+                   u.profile_pic, u.about,
+                   ua.status as approval_status, ua.reviewed_at, ua.reviewed_by
+            FROM users u
+            LEFT JOIN user_approvals ua ON u.id = ua.user_id
+            WHERE u.id = ?
+        ''', (user_id,))
+        user_row = cursor.fetchone()
+        if not user_row:
+            return jsonify({'error': 'User not found'}), 404
+        user = dict(user_row)
+
+        # Subscription tier
+        cursor.execute('SELECT tier, status, current_period_end FROM subscriptions WHERE user_id = ?', (user_id,))
+        sub_row = cursor.fetchone()
+        user['subscription'] = dict(sub_row) if sub_row else {'tier': 'free', 'status': 'none'}
+
+        # KYC documents
+        cursor.execute(
+            '''
+            SELECT id, id_document_path, selfie_path, document_type, admin_review_status, reviewed_at
+            FROM kyc_documents
+            WHERE user_id = ?
+            ORDER BY created_at DESC
+            LIMIT 5
+            ''',
+            (user_id,),
+        )
+        kyc_documents = [dict(r) for r in cursor.fetchall()]
+
+        # Feature unlocks / overrides
+        cursor.execute(
+            '''
+            SELECT feature_name, unlock_type, expires_at, created_at
+            FROM user_unlocks
+            WHERE user_id = ?
+            ORDER BY created_at DESC
+            ''',
+            (user_id,),
+        )
+        unlocks = [dict(r) for r in cursor.fetchall()]
+
+        # Messages sent and received (latest 500)
+        cursor.execute('''
+            SELECT m.id, m.content, m.created_at, m.is_deleted, m.status,
+                   sender.zeus_pin as sender_pin, sender.full_name as sender_name,
+                   receiver.zeus_pin as receiver_pin, receiver.full_name as receiver_name
+            FROM messages m
+            JOIN users sender ON m.sender_id = sender.id
+            JOIN users receiver ON m.receiver_id = receiver.id
+            WHERE m.sender_id = ? OR m.receiver_id = ?
+            ORDER BY m.created_at DESC
+            LIMIT 500
+        ''', (user_id, user_id))
+        messages = [dict(r) for r in cursor.fetchall()]
+
+        # Ghost Market listings
+        try:
+            cursor.execute('''
+                SELECT gmi.id, gmi.title, gmi.description, gmi.price, gmi.status,
+                       gmi.created_at, gms.store_name
+                FROM ghost_market_items gmi
+                LEFT JOIN ghost_market_sellers gms ON gmi.seller_id = gms.user_id
+                WHERE gmi.seller_id = ?
+                ORDER BY gmi.created_at DESC
+            ''', (user_id,))
+            market_listings = [dict(r) for r in cursor.fetchall()]
+        except Exception:
+            market_listings = []
+
+        # Ghost Community posts
+        try:
+            cursor.execute('''
+                SELECT id, title, content, is_paid, price, status, is_flagged, created_at
+                FROM ghost_posts WHERE user_id = ?
+                ORDER BY created_at DESC
+            ''', (user_id,))
+            ghost_posts = [dict(r) for r in cursor.fetchall()]
+        except Exception:
+            ghost_posts = []
+
+        # Purchases / transactions
+        try:
+            cursor.execute('''
+                SELECT id, item_id, amount, status, created_at
+                FROM ghost_purchases WHERE buyer_id = ?
+                ORDER BY created_at DESC
+            ''', (user_id,))
+            purchases = [dict(r) for r in cursor.fetchall()]
+        except Exception:
+            purchases = []
+
+        # One-off payment history
+        try:
+            cursor.execute('''
+                SELECT id, payment_type, amount, status, created_at
+                FROM one_off_payments WHERE user_id = ?
+                ORDER BY created_at DESC
+            ''', (user_id,))
+            payments = [dict(r) for r in cursor.fetchall()]
+        except Exception:
+            payments = []
+
+        # Admin audit log for this user (latest 100 events)
+        cursor.execute('''
+            SELECT id, action, details, ip_address, created_at
+            FROM admin_audit_log
+            WHERE target_user_id = ?
+            ORDER BY created_at DESC
+            LIMIT 100
+        ''', (user_id,))
+        activity_log = [dict(r) for r in cursor.fetchall()]
+
+        login_history = [
+            {
+                'timestamp': user.get('last_seen') or user.get('created_at'),
+                'ip_address': None,
+                'device': 'unknown',
+                'source': 'derived',
+            }
+        ]
+
+    return jsonify({
+        'success': True,
+        'user': user,
+        'messages': messages,
+        'market_listings': market_listings,
+        'ghost_posts': ghost_posts,
+        'kyc_documents': kyc_documents,
+        'unlocks': unlocks,
+        'login_history': login_history,
+        'purchases': purchases,
+        'payments': payments,
+        'activity_log': activity_log,
+        'summary': {
+            'total_messages': len(messages),
+            'total_listings': len(market_listings),
+            'total_posts': len(ghost_posts),
+            'total_purchases': len(purchases),
+            'total_payments': len(payments),
+        }
+    })

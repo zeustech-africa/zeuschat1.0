@@ -478,7 +478,10 @@
         </div>
         <h2 id="profileName">User Name</h2>
         <p class="profile-pin" id="profilePin">ZT-XXXX-XXXX</p>
-        <div class="plan-badge-mobile" id="planBadge">Free Plan</div>
+        <div class="subscription-badge" id="subscriptionBadge" style="display:inline-flex;align-items:center;gap:8px;margin-top:8px;">
+          <span class="plan-badge-mobile" id="planBadge">Free Plan</span>
+          <button id="upgradeBtn" onclick="window.location.href='/mobile/subscription'" style="background:linear-gradient(135deg,#D4AF37,#B8960C);color:#0a0a0a;border:none;border-radius:20px;padding:6px 16px;font-size:12px;font-weight:bold;cursor:pointer;">Upgrade</button>
+        </div>
       </div>
 
       <div class="box-title">Profile</div>
@@ -511,6 +514,12 @@
       <div class="stat-box">
         <span>Your Zeus-PIN:</span>
         <span id="zeusPinDisplay">Loading...</span>
+      </div>
+
+      <!-- Member Since -->
+      <div class="stat-box">
+        <span>Member Since:</span>
+        <span id="memberSinceDisplay">Loading...</span>
       </div>
 
       <!-- Action Buttons -->
@@ -652,24 +661,25 @@
       if (!isLoggedIn || !userPin) {
         console.log('Not logged in, redirecting to login');
         sessionStorage.setItem('return_url', 'mobile-profile.html');
-        window.location.href = 'login.html';
+        window.location.href = '/mobile/login';
         return;
       }
 
       console.log('Session valid, loading profile');
       loadUserProfile();
       loadProfileFromBackend();
+      loadSubscriptionBadge();
       setupPhotoUpload();
 
       document.querySelectorAll('.mobile-bottom-nav .nav-item').forEach((item) => {
         item.addEventListener('click', () => {
           const page = item.dataset.page;
           const pages = {
-            chat: '/mobile-chat.html',
-            market: '/mobile-market.html',
-            community: '/mobile-community.html',
-            profile: '/mobile-profile.html',
-            settings: '/mobile-settings.html',
+            chat: '/mobile/chat',
+            market: '/mobile/market',
+            community: '/mobile/community',
+            profile: '/mobile/profile',
+            settings: '/mobile/settings',
           };
           if (pages[page]) window.location.href = pages[page];
         });
@@ -723,6 +733,13 @@
           
           if (user.profile_pic) {
             displayProfilePic(user.profile_pic);
+          }
+
+          // Member since date
+          if (user.created_at) {
+            const d = new Date(user.created_at);
+            const memberSince = document.getElementById('memberSinceDisplay');
+            if (memberSince) memberSince.textContent = d.toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' });
           }
 
           // Sync with sessionStorage
@@ -790,13 +807,42 @@
       window.location.href = path;
     }
 
+    async function loadSubscriptionBadge() {
+      try {
+        const resp = await apiFetch('/api/user/subscription');
+        const data = await resp.json();
+        const badge = document.getElementById('planBadge');
+        const upgradeBtn = document.getElementById('upgradeBtn');
+        if (badge) {
+          const tier = (data.tier || 'free').toLowerCase();
+          const tierLabels = {
+            'free': 'Free Plan',
+            'pro': '👑 Pro Plan',
+            'pro_annual': '👑 Pro Annual',
+            'teams': '👥 Teams Plan',
+            'enterprise': '🏢 Enterprise'
+          };
+          badge.textContent = tierLabels[tier] || 'Free Plan';
+          if (tier !== 'free') {
+            badge.style.background = 'linear-gradient(135deg, #D4AF37, #B8960C)';
+            badge.style.color = '#0a0a0a';
+            if (upgradeBtn) upgradeBtn.style.display = 'none';
+          } else {
+            badge.style.background = 'rgba(255,255,255,0.1)';
+            badge.style.color = '#fff';
+            if (upgradeBtn) upgradeBtn.style.display = 'inline-block';
+          }
+        }
+      } catch(e) { /* silent */ }
+    }
+
     function logout() {
       sessionStorage.removeItem('user_logged_in');
       sessionStorage.removeItem('user_zeus_pin');
       sessionStorage.removeItem('user_full_name');
       sessionStorage.removeItem('user_profile_pic');
       sessionStorage.removeItem('user_about');
-      window.location.href = '/login.html';
+      window.location.href = '/mobile/login';
     }
 
     async function saveProfile() {
@@ -888,7 +934,7 @@
     }
 
     function goBack() {
-      window.location.href = '/mobile-chat.html';
+      window.location.href = '/mobile/chat';
     }
 
     let currentFeatureForUpgrade = null;

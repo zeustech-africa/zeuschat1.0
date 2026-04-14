@@ -267,6 +267,20 @@
       <button class="back-btn" onclick="window.location.href='/ghost-forums'">Ghost Forums</button>
       <button class="back-btn" onclick="window.location.href='/ghost-ultimate'">Ghost Ultimate</button>
     </div>
+
+    <!-- 💎 SUBSCRIPTION SECTION -->
+    <div class="section">
+      <div class="section-title">💎 Subscription</div>
+      <div class="setting" onclick="window.location.href='/mobile/subscription'" style="cursor:pointer;">
+        <div class="setting-label">Current Plan: <span id="currentPlanDisplay" style="color:#D4AF37;font-weight:bold;">Free</span></div>
+        <div style="font-size: 20px;">→</div>
+      </div>
+      <div class="setting" id="cancelSubscriptionItem" style="display:none;cursor:pointer;" onclick="cancelSubscription()">
+        <div class="setting-label" style="color:#ef4444;">Cancel Subscription</div>
+        <div style="font-size: 20px; color:#ef4444;">→</div>
+      </div>
+    </div>
+
     <div class="section">
       <div class="section-title" data-i18n="privacy">Privacy</div>
       <div class="setting">
@@ -323,6 +337,13 @@
         <div class="setting-label">Cloud backup <span class="pro-badge">PRO</span></div>
         <div style="font-size: 12px; color: #888;">10GB encrypted backup</div>
       </div>
+      <div class="setting" style="flex-direction:column;align-items:flex-start;">
+        <div class="setting-label" style="margin-bottom:8px;">🔑 Change Password</div>
+        <input type="password" id="currentPassword" placeholder="Current password" style="width:100%;padding:10px;border-radius:8px;border:1px solid #333;background:#222;color:#fff;margin-bottom:6px;font-size:14px;">
+        <input type="password" id="newPassword" placeholder="New password (min 8 chars)" style="width:100%;padding:10px;border-radius:8px;border:1px solid #333;background:#222;color:#fff;margin-bottom:6px;font-size:14px;">
+        <input type="password" id="confirmNewPassword" placeholder="Confirm new password" style="width:100%;padding:10px;border-radius:8px;border:1px solid #333;background:#222;color:#fff;margin-bottom:8px;font-size:14px;">
+        <button onclick="changePassword()" style="width:100%;padding:10px;border-radius:8px;background:linear-gradient(135deg,#FFD700,#FFA500);color:#000;border:none;font-weight:bold;font-size:14px;cursor:pointer;">Change Password</button>
+      </div>
     </div>
     
     <!-- 🔔 NOTIFICATION SETTINGS SECTION -->
@@ -344,6 +365,15 @@
         </div>
         <div style="font-size: 0.85em; color: #888; margin-top: 5px;">
           When disabled, you appear offline to contacts
+        </div>
+      </div>
+      <div class="setting">
+        <div class="setting-label">
+          <input type="checkbox" id="push-notifications" onchange="togglePushNotifications()" style="margin-right: 8px;">
+          Push Notifications
+        </div>
+        <div style="font-size: 0.85em; color: #888; margin-top: 5px;">
+          Receive notifications even when the app is closed
         </div>
       </div>
     </div>
@@ -724,7 +754,7 @@
     const userPin = sessionStorage.getItem('user_zeus_pin');
     if (!isLoggedIn || !userPin) {
       sessionStorage.setItem('return_url', 'mobile-settings.html');
-      window.location.href = 'login.html';
+      window.location.href = '/mobile/login';
     }
 
     // Load saved settings on page load
@@ -758,6 +788,11 @@
       
       const onlineStatus = sessionStorage.getItem('show_online_status') !== 'false';
       document.getElementById('online-status').checked = onlineStatus;
+
+      // Load push notification state
+      const pushEnabled = localStorage.getItem('push_enabled') === 'true';
+      const pushToggle = document.getElementById('push-notifications');
+      if (pushToggle) pushToggle.checked = pushEnabled;
       
       // Load PIN-to-view setting
       const pinViewEnabled = sessionStorage.getItem('pin_view_enabled') === 'true';
@@ -775,6 +810,9 @@
       
       // Load blocked contacts list
       loadBlockedContacts();
+
+      // Load subscription info
+      loadSubscriptionSettings();
       
       // Set up character counter for feedback
       const feedbackMessage = document.getElementById('feedback-message');
@@ -827,11 +865,11 @@
         item.addEventListener('click', () => {
           const page = item.dataset.page;
           const pages = {
-            chat: '/mobile-chat.html',
-            market: '/mobile-market.html',
-            community: '/mobile-community.html',
-            profile: '/mobile-profile.html',
-            settings: '/mobile-settings.html',
+            chat: '/mobile/chat',
+            market: '/mobile/market',
+            community: '/mobile/community',
+            profile: '/mobile/profile',
+            settings: '/mobile/settings',
           };
           if (pages[page]) window.location.href = pages[page];
         });
@@ -883,6 +921,33 @@
       settings[key] = value;
       localStorage.setItem('settings', JSON.stringify(settings));
     }
+
+    async function changePassword() {
+      const cur = document.getElementById('currentPassword').value;
+      const np = document.getElementById('newPassword').value;
+      const cnp = document.getElementById('confirmNewPassword').value;
+      if (!cur || !np || !cnp) return alert('Please fill in all password fields');
+      if (np.length < 8) return alert('New password must be at least 8 characters');
+      if (np !== cnp) return alert('New passwords do not match');
+      try {
+        const res = await apiFetch('/api/user/change-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ current_password: cur, new_password: np })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('Password changed successfully ✅');
+          document.getElementById('currentPassword').value = '';
+          document.getElementById('newPassword').value = '';
+          document.getElementById('confirmNewPassword').value = '';
+        } else {
+          alert(data.error || 'Failed to change password');
+        }
+      } catch(e) {
+        alert('Error changing password: ' + e.message);
+      }
+    }
     
     function saveNotificationSetting() {
       const select = document.getElementById('notification-type');
@@ -923,6 +988,75 @@
       }).catch(e => console.error('Update status error:', e));
       
       alert(isOnline ? 'You are now visible as online' : 'You now appear offline');
+    }
+
+    async function togglePushNotifications() {
+      const checkbox = document.getElementById('push-notifications');
+      const enabled = checkbox.checked;
+      if (enabled) {
+        try {
+          if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+            alert('Push notifications are not supported on this device');
+            checkbox.checked = false;
+            return;
+          }
+          const permission = await Notification.requestPermission();
+          if (permission !== 'granted') {
+            alert('Notification permission denied');
+            checkbox.checked = false;
+            return;
+          }
+          const reg = await navigator.serviceWorker.ready;
+          const vapidRes = await apiFetch('/api/push/vapid-public-key');
+          const vapidData = await vapidRes.json();
+          if (!vapidData.public_key) {
+            alert('Push notifications not configured on server');
+            checkbox.checked = false;
+            return;
+          }
+          const sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(vapidData.public_key)
+          });
+          await apiFetch('/api/push/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(sub.toJSON())
+          });
+          localStorage.setItem('push_enabled', 'true');
+          alert('Push notifications enabled ✅');
+        } catch(e) {
+          console.error('Push subscribe error:', e);
+          alert('Failed to enable push notifications');
+          checkbox.checked = false;
+        }
+      } else {
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          const sub = await reg.pushManager.getSubscription();
+          if (sub) {
+            await apiFetch('/api/push/unsubscribe', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ endpoint: sub.endpoint })
+            });
+            await sub.unsubscribe();
+          }
+          localStorage.setItem('push_enabled', 'false');
+          alert('Push notifications disabled');
+        } catch(e) {
+          console.error('Push unsubscribe error:', e);
+        }
+      }
+    }
+
+    function urlBase64ToUint8Array(base64String) {
+      const padding = '='.repeat((4 - base64String.length % 4) % 4);
+      const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+      const raw = atob(base64);
+      const arr = new Uint8Array(raw.length);
+      for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+      return arr;
     }
     
     // Toggle PIN-to-view messages
@@ -983,7 +1117,7 @@
     function logout() {
       if (confirm('Are you sure you want to logout?')) {
         sessionStorage.clear();
-        window.location.href = 'login.html';
+        window.location.href = '/mobile/login';
       }
     }
 
@@ -1149,6 +1283,45 @@
           console.log('SW registration failed:', error);
         });
     });
+  }
+
+  async function loadSubscriptionSettings() {
+    try {
+      const res = await apiFetch('/api/user/subscription');
+      const data = await res.json();
+      const planDisplay = document.getElementById('currentPlanDisplay');
+      const cancelItem = document.getElementById('cancelSubscriptionItem');
+      if (!planDisplay) return;
+      const labels = {
+        'free': 'Free Plan',
+        'pro': 'Pro Plan 👑',
+        'pro_annual': 'Pro Annual 👑',
+        'teams': 'Teams Plan 👥',
+        'enterprise': 'Enterprise 🏢'
+      };
+      planDisplay.textContent = labels[data.tier] || 'Free Plan';
+      if (cancelItem) {
+        cancelItem.style.display = (data.tier && data.tier !== 'free') ? 'flex' : 'none';
+      }
+    } catch(e) {
+      console.error('Load subscription settings error:', e);
+    }
+  }
+
+  async function cancelSubscription() {
+    if (!confirm('Cancel your subscription? You will lose access to Pro features at the end of your billing period.')) return;
+    try {
+      const res = await apiFetch('/api/user/subscription/cancel', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+      const data = await res.json();
+      if (data.success) {
+        alert('Subscription cancelled. You will have access until the end of your billing period.');
+        loadSubscriptionSettings();
+      } else {
+        alert(data.error || 'Failed to cancel subscription');
+      }
+    } catch(e) {
+      alert('Error cancelling subscription: ' + e.message);
+    }
   }
   </script>
   <div style="text-align:center;padding:12px 0 16px;font-size:12px;">

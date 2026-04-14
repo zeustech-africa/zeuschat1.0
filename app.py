@@ -8,7 +8,7 @@ import secrets
 import hashlib
 import re
 import bcrypt
-from collections import defaultdict
+from collections import defaultdict, deque
 from datetime import datetime, timedelta
 import json
 import sys
@@ -31,6 +31,8 @@ from admin_middleware import admin_required, require_approved_user, require_vali
 from admin_routes import admin_bp
 from payment_routes import payment_bp, validate_payment_config
 from pywebpush import webpush, WebPushException
+import smtplib
+from email.mime.text import MIMEText
 try:
     from user_agents import parse as parse_user_agent
 except ImportError:
@@ -164,6 +166,29 @@ socketio = SocketIO(
 
 # Track connected users in Socket.IO
 connected_users = {}  # Maps user_id -> socket_id
+
+# Burst-safe queue for realtime message emits.
+realtime_emit_queue = deque(maxlen=1000)
+realtime_emit_lock = threading.Lock()
+
+
+def _process_realtime_emit_queue():
+    while True:
+        event = None
+        with realtime_emit_lock:
+            if realtime_emit_queue:
+                event = realtime_emit_queue.popleft()
+
+        if event:
+            try:
+                socketio.emit(event['name'], event['payload'], room=event['room'])
+            except Exception as e:
+                print(f"⚠️ realtime emit queue error: {e}")
+        else:
+            time.sleep(0.02)
+
+
+threading.Thread(target=_process_realtime_emit_queue, daemon=True).start()
 
 @socketio.on('connect')
 def handle_socket_connect():
@@ -446,8 +471,13 @@ def emit_new_message(receiver_id, message_data):
     
     if is_online:
         try:
-            print(f"📨 [WebSocket] Emitting new message {message_data.get('id')} to {room}")
-            socketio.emit('new_message', message_data, room=room)
+            print(f"📨 [WebSocket] Queueing new message {message_data.get('id')} to {room}")
+            with realtime_emit_lock:
+                realtime_emit_queue.append({
+                    'name': 'new_message',
+                    'payload': message_data,
+                    'room': room,
+                })
             print(f"✅ [WebSocket] New message delivered instantly to user {receiver_id}")
             return True
         except Exception as e:
@@ -645,6 +675,8 @@ PUBLIC_CSRF_EXEMPT_PATHS = {
     '/api/complete-registration-with-kyc',
     '/api/complete-kyc',
     '/api/login',
+    '/api/translate-text',
+    '/api/detect-language',
 }
 
 REGISTRATION_PATHS = {
@@ -1770,6 +1802,59 @@ def run_admin_migrations():
             ],
         )
 
+        # Additional feature mappings requested by subscription spec
+        cursor.executemany(
+            '''
+            INSERT OR IGNORE INTO subscription_features (tier, feature_name, is_enabled)
+            VALUES (?, ?, ?)
+            ''',
+            [
+                # Free extras
+                ('free', 'basic_ttl', 1),
+                ('free', 'status_indicators', 1),
+                ('free', 'one_language', 1),
+                ('free', 'voice_to_text', 1),
+                ('free', 'data_saver', 1),
+                # Pro extras
+                ('pro', 'permanent_pin', 1),
+                ('pro', 'sell_on_ghost_market', 1),
+                ('pro', 'paid_posts', 1),
+                ('pro', 'all_languages', 1),
+                ('pro', 'auto_translation', 1),
+                ('pro', 'two_factor_auth', 1),
+                ('pro', 'biometric_login', 1),
+                ('pro', 'gold_badge', 1),
+                ('pro', 'unlimited_profile_pictures', 1),
+                # Pro Annual extras
+                ('pro_annual', 'google_cloud_translation', 1),
+                ('pro_annual', 'priority_support', 1),
+                ('pro_annual', 'featured_listings', 1),
+                ('pro_annual', 'decoy_mode', 1),
+                # Teams extras
+                ('teams', 'team_dashboard', 1),
+                ('teams', 'unlimited_listings', 1),
+                ('teams', 'custom_zeus_pin', 1),
+                ('teams', 'strict_mode', 1),
+                ('teams', 'seller_analytics', 1),
+                # Enterprise
+                ('enterprise', 'dedicated_manager', 1),
+                ('enterprise', 'sla_9999', 1),
+                ('enterprise', 'unlimited_storage', 1),
+                ('enterprise', 'on_premise', 1),
+                ('enterprise', 'custom_integrations', 1),
+            ],
+        )
+
+        # Add cancel_at_period_end + payment_method columns if missing
+        for col, coldef in [
+            ('cancel_at_period_end', 'INTEGER DEFAULT 0'),
+            ('payment_method', 'TEXT'),
+        ]:
+            try:
+                cursor.execute(f'ALTER TABLE subscriptions ADD COLUMN {col} {coldef}')
+            except Exception:
+                pass  # column already exists
+
         # Create push subscriptions table
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS push_subscriptions (
@@ -2233,6 +2318,34 @@ def compress_image(image_data, quality='medium'):
         return image_data
 
 
+def send_admin_alert(subject, message):
+    """Send email alert to admin. Falls back to console log if SMTP not configured."""
+    admin_email = os.environ.get('ADMIN_ALERT_EMAIL', 'admin@zeustechafrica.com')
+    smtp_host = os.environ.get('SMTP_HOST', '')
+
+    if not smtp_host:
+        print(f"⚠️ ADMIN ALERT: {subject} — {message}")
+        return
+
+    try:
+        msg = MIMEText(message, 'plain')
+        msg['Subject'] = f'[ZeusChat Alert] {subject}'
+        msg['From'] = os.environ.get('SMTP_USER', 'alerts@zeustechafrica.com')
+        msg['To'] = admin_email
+
+        with smtplib.SMTP(smtp_host, int(os.environ.get('SMTP_PORT', 587))) as server:
+            server.ehlo()
+            server.starttls()
+            smtp_user = os.environ.get('SMTP_USER', '')
+            smtp_pass = os.environ.get('SMTP_PASSWORD', '')
+            if smtp_user and smtp_pass:
+                server.login(smtp_user, smtp_pass)
+            server.send_message(msg)
+        print(f"📧 Admin alert email sent: {subject}")
+    except Exception as e:
+        print(f"❌ Failed to send admin alert email: {e}")
+
+
 def compress_base64_image_data_url(data_url, quality='medium'):
     """Compress base64 image data-url and return JPEG data-url."""
     if not isinstance(data_url, str) or not data_url.startswith('data:image') or ',' not in data_url:
@@ -2670,8 +2783,8 @@ def complete_registration_with_kyc():
 
             welcome_message = (
                 "Welcome to ZeusChat!\n\n"
-                "Your registration is pending admin approval while we review your KYC documents.\n"
-                "We will notify you as soon as your account is approved."
+                "Your registration and KYC documents were received successfully.\n"
+                "An admin will review and approve your account shortly."
             )
             cursor.execute(
                 '''
@@ -2808,9 +2921,30 @@ def complete_kyc():
                 ''',
                 (user_id,),
             )
+
+            # AUTO-APPROVE FOR LOCAL TESTING (remove before production)
+            # This bypasses admin approval for testing purposes.
+            # TODO: Remove auto-approval before production deployment
+            cursor.execute(
+                '''
+                INSERT OR REPLACE INTO user_approvals (user_id, status, reviewed_by, reviewed_at, notes)
+                VALUES (?, 'approved', 1, CURRENT_TIMESTAMP, 'Auto-approved for local testing')
+                ''',
+                (user_id,),
+            )
+
+            # Also mark KYC as approved for local testing.
+            cursor.execute(
+                '''
+                UPDATE kyc_documents
+                SET admin_review_status = 'approved', reviewed_by = 1, reviewed_at = CURRENT_TIMESTAMP
+                WHERE user_id = ?
+                ''',
+                (user_id,),
+            )
             conn.commit()
 
-        return jsonify({'success': True, 'message': 'KYC submitted for review'}), 200
+        return jsonify({'success': True, 'message': 'KYC submitted and auto-approved for local testing', 'approved': True}), 200
     except Exception as e:
         print(f"❌ complete-kyc error: {str(e)}")
         return jsonify({'error': str(e)}), 500
@@ -2891,6 +3025,14 @@ def login():
             send_pin_warning_if_needed(user[0])
         except Exception as _warn_err:
             print(f"⚠️ send_pin_warning_if_needed error: {_warn_err}")
+
+        if approval_status in ('suspended', 'banned'):
+            session.clear()
+            return jsonify({
+                'error': f'Account {approval_status}. Contact support.',
+                'approved': False,
+                'approval_status': approval_status,
+            }), 403
 
         if approval_status != 'approved':
             session['is_approved'] = False
@@ -3145,7 +3287,7 @@ def get_user_subscription():
         cursor = conn.cursor()
         cursor.execute(
             '''
-            SELECT tier, status, current_period_start, current_period_end
+            SELECT tier, status, current_period_start, current_period_end, cancel_at_period_end
             FROM subscriptions
             WHERE user_id = ?
             ''',
@@ -3154,7 +3296,7 @@ def get_user_subscription():
         sub = cursor.fetchone()
 
     if not sub:
-        return jsonify({'success': True, 'tier': 'free', 'status': 'active'}), 200
+        return jsonify({'success': True, 'tier': 'free', 'status': 'active', 'current_period_end': None, 'cancel_at_period_end': False}), 200
 
     return jsonify(
         {
@@ -3163,13 +3305,14 @@ def get_user_subscription():
             'status': sub['status'],
             'current_period_start': sub['current_period_start'],
             'current_period_end': sub['current_period_end'],
+            'cancel_at_period_end': bool(sub['cancel_at_period_end']),
         }
     ), 200
 
 
 @app.route('/api/user/subscription/cancel', methods=['POST'])
 def cancel_subscription():
-    """Cancel user's subscription"""
+    """Cancel user's subscription at end of period"""
     user_id = session.get('user_id')
     if not user_id:
         return jsonify({'error': 'Not authenticated'}), 401
@@ -3179,25 +3322,103 @@ def cancel_subscription():
         cursor.execute(
             '''
             UPDATE subscriptions
-            SET status = 'cancelled', cancelled_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+            SET cancel_at_period_end = 1, updated_at = CURRENT_TIMESTAMP
             WHERE user_id = ? AND status = 'active'
             ''',
             (user_id,),
         )
         conn.commit()
 
-    return jsonify({'success': True, 'message': 'Subscription cancelled'}), 200
+    return jsonify({'success': True, 'message': 'Subscription will cancel at end of billing period'}), 200
 
 
-@app.route('/api/user/has-feature/<feature_name>', methods=['GET'])
-def has_feature(feature_name):
-    """Check if current user has access to a named feature."""
+@app.route('/api/user/subscription/resume', methods=['POST'])
+def resume_subscription():
+    """Resume a subscription that was set to cancel"""
     user_id = session.get('user_id')
     if not user_id:
         return jsonify({'error': 'Not authenticated'}), 401
 
-    has_access = user_has_feature_access(user_id, feature_name)
-    return jsonify({'success': True, 'feature': feature_name, 'has_access': bool(has_access)}), 200
+    with admin_get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            UPDATE subscriptions
+            SET cancel_at_period_end = 0, updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = ?
+            ''',
+            (user_id,),
+        )
+        conn.commit()
+
+    return jsonify({'success': True, 'message': 'Subscription renewed'}), 200
+
+
+@app.route('/api/user/upgrade-checkout', methods=['POST'])
+@csrf_protect
+def upgrade_checkout():
+    """Initiate subscription upgrade process"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    data = request.get_json()
+    tier = data.get('tier')
+    billing = data.get('billing', 'monthly')
+
+    allowed_tiers = ['pro', 'pro_annual', 'teams']
+    if tier not in allowed_tiers:
+        return jsonify({'error': 'Invalid tier'}), 400
+
+    pricing = {
+        'pro': {'monthly': 89, 'yearly': 890},
+        'teams': {'monthly': 179, 'yearly': 1790}
+    }
+
+    if tier == 'pro_annual':
+        amount = 890
+        interval = 'year'
+    elif tier == 'pro':
+        amount = pricing['pro'][billing]
+        interval = 'month' if billing == 'monthly' else 'year'
+    else:
+        amount = pricing['teams'][billing]
+        interval = 'month' if billing == 'monthly' else 'year'
+
+    return jsonify({
+        'success': True,
+        'redirect_url': f'/payment/subscribe/{tier}?amount={amount}&interval={interval}'
+    })
+
+
+@app.route('/api/user/has-feature/<feature_name>', methods=['GET'])
+def has_feature(feature_name):
+    """Check if current user has access to a named feature based on their tier."""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    # Get user tier
+    with admin_get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT tier FROM subscriptions WHERE user_id = ? AND status = ?', (user_id, 'active'))
+        row = cursor.fetchone()
+        tier = row['tier'] if row else 'free'
+
+        # Tier hierarchy: enterprise > teams > pro_annual > pro > free
+        tier_hierarchy = ['free', 'pro', 'pro_annual', 'teams', 'enterprise']
+        user_tier_index = tier_hierarchy.index(tier) if tier in tier_hierarchy else 0
+
+        # Check if feature is in any tier at or below user's tier
+        accessible_tiers = tier_hierarchy[:user_tier_index + 1]
+        placeholders = ','.join('?' * len(accessible_tiers))
+        cursor.execute(
+            f'SELECT is_enabled FROM subscription_features WHERE feature_name = ? AND tier IN ({placeholders}) AND is_enabled = 1',
+            [feature_name] + accessible_tiers,
+        )
+        result = cursor.fetchone()
+
+    return jsonify({'success': True, 'feature': feature_name, 'has_access': result is not None, 'tier': tier}), 200
 
 
 @app.route('/api/schedule-message', methods=['POST'])
@@ -3404,11 +3625,37 @@ def user_admin_messages():
             }), 200
 
     elif request.method == 'POST':
-        data = request.get_json() or {}
-        message = data.get('message', '').strip()
+        message = ''
 
-        if not message:
-            return jsonify({'error': 'Message cannot be empty'}), 400
+        # Support both JSON text messages and multipart file uploads from mobile pending page.
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            uploaded_file = request.files.get('file')
+            if not uploaded_file or not uploaded_file.filename:
+                return jsonify({'error': 'No file provided'}), 400
+
+            original_name = secure_filename(uploaded_file.filename)
+            if not original_name:
+                return jsonify({'error': 'Invalid file name'}), 400
+
+            allowed_exts = {'.jpg', '.jpeg', '.png', '.webp', '.pdf', '.doc', '.docx', '.txt'}
+            ext = os.path.splitext(original_name)[1].lower()
+            if ext not in allowed_exts:
+                return jsonify({'error': 'Unsupported file type'}), 400
+
+            upload_dir = os.path.join(os.path.dirname(__file__), 'uploads', 'admin_messages')
+            os.makedirs(upload_dir, exist_ok=True)
+            stored_name = f"adminmsg_{int(time.time())}_{secrets.token_hex(4)}{ext}"
+            saved_path = os.path.join(upload_dir, stored_name)
+            uploaded_file.save(saved_path)
+
+            file_url = f"/uploads/admin_messages/{stored_name}"
+            message = f'📎 <a href="{file_url}" target="_blank" rel="noopener">{original_name}</a>'
+        else:
+            data = request.get_json() or {}
+            message = (data.get('message') or '').strip()
+
+            if not message:
+                return jsonify({'error': 'Message cannot be empty'}), 400
 
         with admin_get_db() as conn:
             cursor = conn.cursor()
@@ -3679,6 +3926,73 @@ def update_profile():
         return response, 500
 
 
+@app.route('/api/user/change-password', methods=['POST'])
+@csrf_protect
+@retry_on_locked(max_retries=3, delay=0.5)
+def change_password():
+    """Change user password after verifying current password"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Not authenticated'}), 401
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        current_password = data.get('current_password', '')
+        new_password = data.get('new_password', '')
+        if not current_password or not new_password:
+            return jsonify({'error': 'Current and new password required'}), 400
+        if len(new_password) < 8:
+            return jsonify({'error': 'New password must be at least 8 characters'}), 400
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT password FROM users WHERE id = ?', (user_id,))
+            row = cursor.fetchone()
+            if not row:
+                return jsonify({'error': 'User not found'}), 404
+            stored_hash = row[0]
+            if not bcrypt.checkpw(current_password.encode('utf-8'), stored_hash.encode('utf-8') if isinstance(stored_hash, str) else stored_hash):
+                return jsonify({'error': 'Current password is incorrect'}), 403
+            new_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            cursor.execute('UPDATE users SET password = ? WHERE id = ?', (new_hash, user_id))
+            conn.commit()
+        return jsonify({'success': True, 'message': 'Password changed successfully'}), 200
+    except Exception as e:
+        return jsonify({'error': f'Server error: {str(e)}'}), 500
+
+
+@app.route('/api/user/verify-password', methods=['POST'])
+@csrf_protect
+@retry_on_locked(max_retries=3, delay=0.5)
+def verify_user_password():
+    """Verify current authenticated user's password for sensitive UI unlock flows."""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    data = request.get_json(silent=True) or {}
+    password = data.get('password', '')
+    if not password:
+        return jsonify({'error': 'Password required'}), 400
+
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT password FROM users WHERE id = ?', (user_id,))
+            row = cursor.fetchone()
+            if not row:
+                return jsonify({'error': 'User not found'}), 404
+
+            stored_hash = row[0]
+            valid = bcrypt.checkpw(
+                password.encode('utf-8'),
+                stored_hash.encode('utf-8') if isinstance(stored_hash, str) else stored_hash,
+            )
+            return jsonify({'success': bool(valid)}), (200 if valid else 403)
+    except Exception as e:
+        return jsonify({'error': f'Server error: {str(e)}'}), 500
+
+
 @app.route('/api/user/profile-picture', methods=['POST'])
 @require_approved_user
 @retry_on_locked(max_retries=3, delay=0.5)
@@ -3802,6 +4116,23 @@ def send_message():
                 return jsonify({'error': 'Receiver not found'}), 404
             
             receiver_id = receiver[0]
+
+            # Enforce bidirectional blocking immediately for message sends.
+            cursor.execute(
+                '''
+                SELECT 1
+                FROM contacts
+                WHERE (
+                    user_id = ? AND contact_user_id = ? AND status = 'blocked'
+                ) OR (
+                    user_id = ? AND contact_user_id = ? AND status = 'blocked'
+                )
+                LIMIT 1
+                ''',
+                (sender_id, receiver_id, receiver_id, sender_id),
+            )
+            if cursor.fetchone():
+                return jsonify({'error': 'You have blocked this user or been blocked'}), 403
             
             # Check contact handshake (CRITICAL: contacts must be accepted)
             cursor.execute('''
@@ -3878,6 +4209,125 @@ def send_message():
     except Exception as e:
         print(f"❌ send_message error: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+
+ALLOWED_FILE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'mp4', 'mov', 'webm', 'mp3', 'ogg', 'wav', 'pdf', 'doc', 'docx', 'txt', 'zip'}
+MAX_FILE_SIZE = 25 * 1024 * 1024  # 25 MB
+
+@app.route('/api/send-file', methods=['POST', 'OPTIONS'])
+@csrf_protect
+@require_approved_user
+@retry_on_locked(max_retries=3, delay=0.5)
+def send_file_message():
+    """Send a file/voice-note to a contact (requires accepted handshake)"""
+    if request.method == 'OPTIONS':
+        return jsonify({'success': True}), 200
+
+    try:
+        if 'user_id' not in session:
+            return jsonify({'error': 'Not authenticated'}), 401
+
+        sender_id = session['user_id']
+        receiver_pin = request.form.get('receiver_pin', '').strip()
+        uploaded_file = request.files.get('file')
+
+        if not receiver_pin or not uploaded_file or not uploaded_file.filename:
+            return jsonify({'error': 'Missing receiver_pin or file'}), 400
+
+        # Validate file extension
+        original_name = secure_filename(uploaded_file.filename)
+        ext = original_name.rsplit('.', 1)[-1].lower() if '.' in original_name else ''
+        if ext not in ALLOWED_FILE_EXTENSIONS:
+            return jsonify({'error': f'File type .{ext} not allowed'}), 400
+
+        # Validate file size
+        uploaded_file.seek(0, 2)
+        file_size = uploaded_file.tell()
+        uploaded_file.seek(0)
+        if file_size > MAX_FILE_SIZE:
+            return jsonify({'error': 'File too large (max 25 MB)'}), 400
+
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+
+            # Verify sender
+            cursor.execute('SELECT zeus_pin, full_name FROM users WHERE id = ?', (sender_id,))
+            sender_row = cursor.fetchone()
+            if not sender_row:
+                return jsonify({'error': 'Sender not found'}), 404
+            sender_pin = sender_row[0]
+            sender_name = sender_row[1]
+
+            # Find receiver
+            cursor.execute('SELECT id FROM users WHERE zeus_pin = ?', (receiver_pin,))
+            receiver = cursor.fetchone()
+            if not receiver:
+                return jsonify({'error': 'Receiver not found'}), 404
+            receiver_id = receiver[0]
+
+            # Check handshake
+            cursor.execute('''
+                SELECT status FROM contacts
+                WHERE user_id = ? AND contact_user_id = ? AND status = 'accepted'
+            ''', (sender_id, receiver_id))
+            if not cursor.fetchone():
+                return jsonify({'error': 'Contact not accepted. Cannot send file.'}), 403
+
+            # Save file
+            upload_dir = os.path.join('uploads', 'chat_files')
+            os.makedirs(upload_dir, exist_ok=True)
+            unique_name = f"{sender_id}_{int(time.time())}_{secrets.token_hex(4)}.{ext}"
+            file_path = os.path.join(upload_dir, unique_name)
+            uploaded_file.save(file_path)
+            file_url = f'/uploads/chat_files/{unique_name}'
+
+            # Determine content label
+            if ext in ('webm', 'ogg', 'wav', 'mp3'):
+                content = f'🎤 Voice note'
+            elif ext in ('png', 'jpg', 'jpeg', 'gif', 'webp'):
+                content = f'📷 Photo: {original_name}'
+            elif ext in ('mp4', 'mov'):
+                content = f'🎬 Video: {original_name}'
+            else:
+                content = f'📎 File: {original_name}'
+
+            # Insert message with file_url
+            cursor.execute('''
+                INSERT INTO messages (sender_id, receiver_id, content, file_url, ttl_seconds, status)
+                VALUES (?, ?, ?, ?, 3600, 'sent')
+            ''', (sender_id, receiver_id, content, file_url))
+            message_id = cursor.lastrowid
+            created_at = datetime.now().isoformat()
+
+        # Real-time delivery via Socket.IO
+        message_data = {
+            'id': message_id,
+            'sender_id': sender_id,
+            'receiver_id': receiver_id,
+            'content': content,
+            'file_url': file_url,
+            'created_at': created_at,
+            'status': 'sent',
+            'sender_pin': sender_pin,
+            'sender_name': sender_name,
+            'is_unread': True
+        }
+        emit_new_message(receiver_id, message_data)
+        emit_message_status(sender_id, message_id, 'sent')
+
+        print(f"✅ File sent from {sender_id} to {receiver_id}: {original_name}")
+
+        return jsonify({
+            'success': True,
+            'message_id': message_id,
+            'file_url': file_url,
+            'message': 'File sent successfully'
+        }), 200
+
+    except Exception as e:
+        print(f"❌ send_file error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/get-messages', methods=['GET'])
 @require_approved_user
@@ -4476,15 +4926,14 @@ def delete_message():
                     WHERE id = ?
                 ''', (message_id,))
                 
-                # Determine who the other party is
-                other_user_id = receiver_id if user_id == sender_id else sender_id
-                
-                # Sync deletion via Socket.IO to other party (BBM-style)
-                socketio.emit('message_deleted', {
+                # Sync deletion via Socket.IO to BOTH participants (cross-device consistency)
+                payload = {
                     'message_id': message_id,
                     'deleted_by': user_id,
                     'timestamp': datetime.now().isoformat()
-                }, room=f"user:{other_user_id}")
+                }
+                socketio.emit('message_deleted', payload, room=f"user:{sender_id}")
+                socketio.emit('message_deleted', payload, room=f"user:{receiver_id}")
                 
                 print(f"🗑️ Message {message_id} deleted everywhere (BBM Delete feature)")
             else:
@@ -5347,6 +5796,14 @@ def mobile_settings():
     if 'user_id' not in session:
         return redirect('/login')
     return render_template('mobile-settings.html', initial_language=get_session_interface_language())
+
+
+@app.route('/mobile/subscription')
+def mobile_subscription():
+    """Mobile subscription management page."""
+    if 'user_id' not in session:
+        return redirect('/login')
+    return render_template('mobile-subscription.html')
 
 
 def keep_alive():
@@ -6876,6 +7333,7 @@ def translate_message():
 
     valid_languages = {'sw', 'yo', 'zu', 'ha', 'ig', 'am', 'en', 'xh', 'af', 'st', 'tn', 'nso'}
 
+    target_lang = (data.get('target_lang') or '').strip()
     if not target_lang:
         with admin_get_db() as conn:
             cursor = conn.cursor()
@@ -6913,6 +7371,7 @@ def translate_message():
                 params={
                     'q': text,
                     'langpair': f'auto|{target_lang}',
+                    'de': 'info@zeustechafrica.com',
                 },
                 timeout=8,
             )
@@ -6926,6 +7385,88 @@ def translate_message():
         return jsonify({'error': 'Translation service unavailable'}), 502
 
     return jsonify({'success': True, 'translated_text': translated}), 200
+
+
+# ============================================
+# TRANSLATION API ENDPOINTS (Voice-to-Text & Auto-Translate)
+# ============================================
+
+SPEECH_LANG_MAP = {
+    'en': 'en-US', 'xh': 'xh-ZA', 'zu': 'zu-ZA', 'af': 'af-ZA',
+    'sw': 'sw-KE', 'yo': 'yo-NG', 'ha': 'ha-NG', 'ig': 'ig-NG',
+    'am': 'am-ET', 'st': 'st-ZA', 'tn': 'tn-ZA', 'nso': 'nso-ZA'
+}
+
+@app.route('/api/translate-text', methods=['POST'])
+def translate_text():
+    """Translate text from any language to target language using MyMemory API"""
+    data = request.get_json(silent=True) or {}
+    text = (data.get('text') or '').strip()
+    source_lang = (data.get('source_lang') or 'auto').strip()
+    target_lang = (data.get('target_lang') or 'en').strip()
+
+    if not text:
+        return jsonify({'error': 'No text provided'}), 400
+
+    try:
+        response = http_requests.get(
+            'https://api.mymemory.translated.net/get',
+            params={
+                'q': text,
+                'langpair': f'{source_lang}|{target_lang}',
+                'de': 'info@zeustechafrica.com',
+            },
+            timeout=10,
+        )
+        result = response.json()
+        translated_text = (result.get('responseData') or {}).get('translatedText', text)
+
+        import html as html_mod
+        translated_text = html_mod.unescape(translated_text)
+
+        return jsonify({
+            'success': True,
+            'original_text': text,
+            'translated_text': translated_text,
+            'source_lang': source_lang,
+            'target_lang': target_lang,
+        })
+    except Exception as e:
+        print(f"Translation error: {e}")
+        return jsonify({'success': False, 'error': str(e), 'translated_text': text}), 500
+
+
+@app.route('/api/detect-language', methods=['POST'])
+def detect_language():
+    """Detect language of given text"""
+    data = request.get_json(silent=True) or {}
+    text = (data.get('text') or '').strip()
+
+    if not text:
+        return jsonify({'error': 'No text provided'}), 400
+
+    try:
+        response = http_requests.get(
+            'https://api.mymemory.translated.net/get',
+            params={
+                'q': text,
+                'langpair': 'auto|en',
+                'de': 'info@zeustechafrica.com',
+            },
+            timeout=10,
+        )
+        result = response.json()
+        detected = (result.get('responseData') or {}).get('detectedLanguage', {})
+        detected_lang = detected if isinstance(detected, str) else (detected.get('language') or 'en')
+
+        return jsonify({
+            'success': True,
+            'detected_language': detected_lang,
+            'text': text,
+        })
+    except Exception as e:
+        print(f"Language detection error: {e}")
+        return jsonify({'success': False, 'detected_language': 'en'}), 200
 
 # ========================================
 # CONTACT PROFILE ENDPOINT - PRIVACY AWARE

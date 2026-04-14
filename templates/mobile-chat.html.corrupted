@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <title>ZeusChat — Messages</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #0a0a0a;
+            color: #ffffff;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 20% 30%, #1a1a2e, #050508);
+            z-index: -2;
+        }
+
+        .mobile-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: rgba(10, 10, 10, 0.85);
+            backdrop-filter: blur(10px);
+            border-bottom: 0.5px solid rgba(212, 175, 55, 0.2);
+            z-index: 10;
+        }
+        .header-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #D4AF37;
+        }
+        .header-icons {
+            display: flex;
+            gap: 20px;
+        }
+        .header-icons button {
+            background: none;
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            padding: 8px;
+            color: #ffffff;
+            opacity: 0.7;
+        }
+
+        .contacts-view {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+        .contact-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            gap: 12px;
+            border-bottom: 0.5px solid rgba(255, 255, 255, 0.08);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .contact-item:active {
+            background: rgba(212, 175, 55, 0.1);
+        }
+        .contact-avatar {
+            width: 52px;
+            height: 52px;
+            background: linear-gradient(135deg, #D4AF37, #B8960C);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 20px;
+            color: #0a0a0a;
+            flex-shrink: 0;
+        }
+        .contact-info {
+            flex: 1;
+        }
+        .contact-name {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+        .contact-preview {
+            font-size: 13px;
+            color: #aaa;
+        }
+        .no-contacts {
+            text-align: center;
+            padding: 48px 20px;
+            color: #aaa;
+        }
+
+        .chat-view {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+            background: #0a0a0a;
+        }
+        .chat-view.active {
+            display: flex;
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .message-bubble {
+            max-width: 80%;
+            padding: 10px 14px;
+            border-radius: 18px;
+            font-size: 15px;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+        .message-received {
+            background: #2a2a2a;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+        .message-sent {
+            background: #D4AF37;
+            color: #0a0a0a;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+        .message-time {
+            font-size: 10px;
+            color: #aaa;
+            margin-top: 4px;
+            text-align: right;
+        }
+        .chat-input-area {
+            display: flex;
+            gap: 10px;
+            padding: 12px 16px;
+            background: #111;
+            border-top: 0.5px solid #222;
+        }
+        .chat-input-area input {
+            flex: 1;
+            padding: 12px;
+            background: #1e1e1e;
+            border: none;
+            border-radius: 24px;
+            color: white;
+            font-size: 16px;
+        }
+        .chat-input-area button {
+            background: #D4AF37;
+            border: none;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .bottom-nav {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 8px 12px 20px;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            border-top: 0.5px solid rgba(212, 175, 55, 0.2);
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            background: none;
+            border: none;
+            color: #aaa;
+            font-size: 12px;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 8px;
+        }
+        .nav-item.active {
+            color: #D4AF37;
+        }
+        .nav-icon {
+            font-size: 22px;
+        }
+
+        /* Voice-to-Text Translation */
+        .voice-translate-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        .voice-translate-btn.recording {
+            background-color: #ef4444;
+            color: white;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .translation-badge {
+            font-size: 10px;
+            color: #D4AF37;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .original-text-tooltip {
+            font-size: 10px;
+            color: #888;
+            cursor: pointer;
+            text-decoration: underline dotted;
+        }
+
+        /* Voice-to-Text Translation */
+        .voice-translate-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        .voice-translate-btn.recording {
+            background-color: #ef4444;
+            color: white;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .translation-badge {
+            font-size: 10px;
+            color: #D4AF37;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }button id="voiceTranslateBtn" class="voice-translate-btn" title="Speak in your language → English text">🎙️</button>
+            <
+        .original-text-tooltip {
+            font-size: 10px;
+            color: #888;
+            cursor: pointer;
+            text-decoration: underline dotted;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="contactsView" class="contacts-view">
+        <div class="mobile-header">
+            <div class="header-title">Messages</div>
+            <div class="header-icons">
+                <button onclick="window.location.href='/mobile/profile'">👤</button>
+                <button onclick="window.location.href='/mobile/settings'">⚙️</button>
+            </div>
+        </div>
+        <div id="contactsListContainer">
+            <div class="no-contacts">Loading contacts...</div>
+        </div>
+        <div style="padding: 16px;">
+            <button onclick="window.location.href='/mobile/add-contact'" style="width:100%; padding:12px; background:#D4AF37; border:none; border-radius:30px; font-weight:bold;">+ New Chat</button>
+        </div>
+    </div>
+
+    <div id="chatView" class="chat-view">
+        <div class="mobile-header">
+            <button onclick="closeChat()" style="background:none; border:none; color:#D4AF37; font-size:24px;">←</button>
+            <div class="header-title" id="chatHeaderName">Select a contact</div>
+            <div style="width:40px;"></div>
+        </div>
+        <div id="chatMessagesContainer" class="chat-messages"></div>
+        <div class="chat-input-area">
+            <button id="attachFileBtn" style="background:none; border:none; font-size:24px; cursor:pointer; padding:4px;">📎</button>
+            <button id="voiceNoteBtn" style="background:none; border:none; font-size:24px; cursor:pointer; padding:4px;">🎤</button>
+            <input type="text" id="messageInput" placeholder="Type a message...">
+            <button id="sendBtn">➤</button>
+            <button id="voiceTranslateBtn" class="voice-translate-btn" title="Speak in your language → English text">🎙️</button>
+            <input type="file" id="fileInput" style="display:none;" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt,.zip">
+        </div>
+        <div id="voiceRecordingBar" style="display:none; padding:10px 16px; background:#1a1a1a; border-top:0.5px solid #333; align-items:center; gap:10px;">
+            <span style="color:#ff4444; font-size:12px;">● Recording</span>
+            <span id="voiceTimer" style="color:#aaa; font-size:14px; flex:1;">0:00</span>
+            <button id="cancelVoiceBtn" style="background:none; border:none; color:#ff4444; font-size:16px; cursor:pointer;">✕</button>
+            <button id="sendVoiceBtn" style="background:#D4AF37; border:none; border-radius:50%; width:36px; height:36px; font-size:16px; cursor:pointer;">➤</button>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <button class="nav-item active" onclick="window.location.href='/mobile/chat'">
+            <div class="nav-icon">💬</div>
+            <span>Chats</span>
+        </button>
+        <button class="nav-item" onclick="window.location.href='/mobile/market'">
+            <div class="nav-icon">🏪</div>
+            <span>Market</span>
+        </button>
+        <button class="nav-item" onclick="window.location.href='/mobile/community'">
+            <div class="nav-icon">👻</div>
+            <span>Ghost</span>
+        </button>
+        <button class="nav-item" onclick="window.location.href='/mobile/profile'">
+            <div class="nav-icon">👤</div>
+            <span>Profile</span>
+        </button>
+        <button class="nav-item" onclick="window.location.href='/mobile/settings'">
+            <div class="nav-icon">⚙️</div>
+            <span>Settings</span>
+        </button>
+    </div>
+
+    <script>
+        let currentChatContact = null;
+        let currentUserId = sessionStorage.getItem('user_id');
+        let currentUserPin = sessionStorage.getItem('user_zeus_pin');
+
+        async function apiFetch(url, options = {}) {
+            options.credentials = 'include';
+            options.headers = options.headers || {};
+            const response = await fetch(url, options);
+            return response;
+        }
+
+        async function loadContacts() {
+            const container = document.getElementById('contactsListContainer');
+            try {
+                const response = await apiFetch(`/api/get-contacts?user_pin=${currentUserPin}`);
+               st currentUserLang = localStorage.getItem('zeuschat_language') || 'en';
+            container.innerHTML = '<div style="text-align:center; padding:40px;">Loading messages...</div>';
+            try {
+                const response = await apiFetch(`/api/get-messages?contact_pin=${contactPin}`);
+                const data = await response.json();
+                if (data.success && data.messages) {
+                    let html = '';
+                    for (let msg of data.messages) {
+                        const isSent = msg.sender_pin === currentUserPin;
+                        let displayText = msg.content || '';
+                        let translationHtml = '';
+                        let originalTextHtml = '';
+
+                        // Auto-translate received messages if user's language is not English
+                        if (!isSent && currentUserLang !== 'en') {
+                            try {
+                                const trResp = await fetch('/api/translate-text', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    credentials: 'include',
+                                    body: JSON.stringify({ text: msg.content || '', source_lang: 'auto', target_lang: currentUserLang })
+                                });
+                                const trData = await trResp.json();
+                                if (trData.translated_text && trData.translated_text !== msg.content) {
+                                    displayText = trData.translated_text;
+                                    translationHtml = `<div class="translation-badge">🌐 Translated to ${currentUserLang.toUpperCase()}</div>`;
+                                    originalTextHtml = `<span class="original-text-tooltip" onclick="showOriginalMessage(this)" data-original="${escapeHtml(msg.content || '')}">🔍 Original</span>`;
+                                }
+                            } catch (err) { console.error('Auto-translate failed:', err); }
+                        }
+
+                        html += `
+                            <div class="message-bubble ${isSent ? 'message-sent' : 'message-received'}">
+                                ${originalTextHtml}
+                                ${escapeHtml(displayText)}
+                                ${translationHtml}
+                                <div class="message-time">${new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
+                            </div>
+                        `;
+                    }
+                    container.innerHTML = html;
+                    container.scrollTop = container.scrollHeight;
+                } else {
+                    container.innerHTML = '<div style="text-align:center; padding:40px;">No messages yet. Send a message!</div>';
+                }
+            } catch (error) {
+                console.error('Error loading messages:', error);
+                container.innerHTML = '<div style="text-align:center; padding:40px;">Error loading messages.</div>';
+            }
+        }
+
+        function showOriginalMessage(el) {
+            alert('Original message:\n\n' + (el.dataset.original || ''));
+        async function openChat(contactPin, contactName) {
+            currentChatContact = { pin: contactPin, name: contactName };
+            document.getElementById('chatHeaderName').innerText = contactName;
+            document.getElementById('contactsView').style.display = 'none';
+            let message = input.value.trim();
+            if (!message || !currentChatContact) return;
+
+            const userLang = localStorage.getItem('zeuschat_language') || 'en';
+            let finalMessage = message;
+            let originalMessage = null;
+
+            // If user is not English, translate message to English before sending
+            if (userLang !== 'en') {
+                try {
+                    const trResp = await fetch('/api/translate-text', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ text: message, source_lang: userLang, target_lang: 'en' })
+                    });
+                    const trData = await trResp.json();
+                    if (trData.translated_text) {
+                        finalMessage = trData.translated_text;
+                        originalMessage = message;
+                        showToast(`🌐 Translated: "${message.substring(0,30)}" → "${finalMessage.substring(0,30)}"`);
+                    }
+                } catch (err) {
+                    console.error('Pre-send translation error:', err);
+                    finalMessage = message;
+                }
+            }
+
+            const container = document.getElementById('chatMessagesContainer');
+            const tempId = 'temp_' + Date.now();
+            let displayMessage = originalMessage || finalMessage;
+            let translationNote = '';
+            if (originalMessage && userLang !== 'en') {
+                translationNote = `<div class="translation-badge">📤 Sent as: "${escapeHtml(finalMessage.substring(0,40))}${finalMessage.length > 40 ? '...' : ''}"</div>`;
+            }
+
+            container.innerHTML += `
+                <div class="message-bubble message-sent" data-temp-id="${tempId}">
+                    ${escapeHtml(displayMessage)}
+                    ${translationNote}
+                    <div class="message-time">Sending...</div>
+                </div>
+            `;
+            container.scrollTop = container.scrollHeight;
+            input.value = '';
+
+            try {
+                const response = await apiFetch('/api/send-message', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        receiver_pin: currentChatContact.pin,
+                        content: finalMessage,
+                        ttl: 3600,
+                        original_language: userLang,
+                        original_text: originalMessageayText = msg.content || '';
+                        let translationHtml = '';
+                        let originalTextHtml = '';
+
+                        // Auto-translate received messages if user's language is not English
+                        if (!isSent && currentUserLang !== 'en') {
+                            try {
+                                const trResp = await fetch('/api/translate-text', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    credentials: 'include',
+                                    body: JSON.stringify({ text: msg.content || '', source_lang: 'auto', target_lang: currentUserLang })
+                                });
+                                const trData = await trResp.json();
+                                if (trData.translated_text && trData.translated_text !== msg.content) {
+                                    displayText = trData.translated_text;
+                                    translationHtml = `<div class="translation-badge">🌐 Translated to ${currentUserLang.toUpperCase()}</div>`;
+                                    originalTextHtml = `<span class="original-text-tooltip" onclick="showOriginalMessage(this)" data-original="${escapeHtml(msg.content || '')}">🔍 Original</span>`;
+                                }
+                            } catch (err) { console.error('Auto-translate failed:', err); }
+                        }
+
+                        html += `
+                            <div class="message-bubble ${isSent ? 'message-sent' : 'message-received'}">
+                                ${originalTextHtml}
+                                ${escapeHtml(displayText)}
+                                ${translationHtml}
+                                <div class="message-time">${new Date(msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
+                            </div>
+                        `;
+                    }
+                    container.innerHTML = html;
+                    container.scrollTop = container.scrollHeight;
+                } else {
+                    container.innerHTML = '<div style="text-align:center; padding:40px;">No messages yet. Send a message!</div>';
+                }
+            } catch (error) {
+                console.error('Error loading messages:', error);
+                container.innerHTML = '<div style="text-align:center; padding:40px;">Error loading messages.</div>';
+            }
+        }
+
+        function showOriginalMessage(el) {
+            alert('Original message:\n\n' + (el.dataset.original || ''));
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            let message = input.value.trim();
+            if (!message || !currentChatContact) return;
+
+            const userLang = localStorage.getItem('zeuschat_language') || 'en';
+            let finalMessage = message;
+            let originalMessage = null;
+
+            // If user is not English, translate message to English before sending
+            if (userLang !== 'en') {
+                try {
+                    const trResp = await fetch('/api/translate-text', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ text: message, source_lang: userLang, target_lang: 'en' })
+                    });
+                    const trData = await trResp.json();
+                    if (trData.translated_text) {
+                        finalMessage = trData.translated_text;
+                        originalMessage = message;
+                        showToast(`🌐 Translated: "${message.substring(0,30)}" → "${finalMessage.substring(0,30)}"`);
+                    }
+                } catch (err) {
+                    console.error('Pre-send translation error:', err);
+                    finalMessage = message;
+                }
+            }
+
+            const container = document.getElementById('chatMessagesContainer');
+            const tempId = 'temp_' + Date.now();
+            let displayMessage = originalMessage || finalMessage;
+            let translationNote = '';
+            if (originalMessage && userLang !== 'en') {
+                translationNote = `<div class="translation-badge">📤 Sent as: "${escapeHtml(finalMessage.substring(0,40))}${finalMessage.length > 40 ? '...' : ''}"</div>`;
+            }
+
+            container.innerHTML += `
+                <div class="message-bubble message-sent" data-temp-id="${tempId}">
+                    ${escapeHtml(displayMessage)}
+                    ${translationNote}
+                    <div class="message-time">Sending...</div>
+                </div>
+            `;
+            container.scrollTop = container.scrollHeight;
+            input.value = '';
+
+            try {
+                const response = await apiFetch('/api/send-message', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        receiver_pin: currentChatContact.pin,
+                        content: finalMessage,
+                        ttl: 3600,
+                        original_language: userLang,
+                        original_text: originalMessage
+                    })
+                });
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    const tempMsg = document.querySelector(`[data-temp-id="${tempId}"] .message-time`);
+                    if (tempMsg) tempMsg.innerText = 'Sent';
+                } else {
+                    alert('Failed to send message.');
+                    document.querySelector(`[data-temp-id="${tempId}"]`)?.remove();
+                }
+            } catch (error) {
+                console.error('Send error:', error);
+                alert('Network error. Message not sent.');
+                document.querySelector(`[data-temp-id="${tempId}"]`)?.remove();
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ── File sharing ──
+        document.getElementById('attachFileBtn')?.addEventListener('click', () => {
+            document.getElementById('fileInput').click();
+        });
+
+        document.getElementById('fileInput')?.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file || !currentChatContact) return;
+
+            const maxSize = 25 * 1024 * 1024; // 25 MB
+            if (file.size > maxSize) {
+                alert('File too large. Maximum size is 25 MB.');
+                e.target.value = '';
+                return;
+            }
+
+            const container = document.getElementById('chatMessagesContainer');
+            const tempId = 'temp_file_' + Date.now();
+            container.innerHTML += `<div class="message-bubble message-sent" data-temp-id="${tempId}">📎 ${escapeHtml(file.name)}<div class="message-time">Uploading...</div></div>`;
+            container.scrollTop = container.scrollHeight;
+
+            const formData = new FormData();
+        // ============================================
+        // VOICE-TO-TEXT TRANSLATION (Speak → English Text)
+        // ============================================
+        const voiceTranslateBtn = document.getElementById('voiceTranslateBtn');
+        let vtRecognition = null;
+
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
+            vtRecognition = new SpeechRecognition();
+            vtRecognition.continuous = false;
+            vtRecognition.interimResults = true;
+            vtRecognition.maxAlternatives = 1;
+
+            function setRecognitionLanguage() {
+                const userLang = localStorage.getItem('zeuschat_language') || 'en';
+                const speechMap = {
+                    'en':'en-US','xh':'xh-ZA','zu':'zu-ZA','af':'af-ZA','sw':'sw-KE',
+                    'yo':'yo-NG','ha':'ha-NG','ig':'ig-NG','am':'am-ET','st':'st-ZA','tn':'tn-ZA','nso':'nso-ZA'
+                };
+                vtRecognition.lang = speechMap[userLang] || 'en-US';
+            }
+            setRecognitionLanguage();
+            window.addEventListener('languageChanged', setRecognitionLanguage);
+
+            vtRecognition.onstart = () => {
+                voiceTranslateBtn.classList.add('recording');
+                voiceTranslateBtn.innerHTML = '⏺️';
+            };
+            vtRecognition.onend = () => {
+                voiceTranslateBtn.classList.remove('recording');
+                voiceTranslateBtn.innerHTML = '🎙️';
+            };
+            vtRecognition.onresult = async (event) => {
+                const spokenText = event.results[0][0].transcript;
+                voiceTranslateBtn.innerHTML = '🔄';
+                try {
+                    const trResp = await fetch('/api/translate-text', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ text: spokenText, source_lang: 'auto', target_lang: 'en' })
+                    });
+                    const trData = await trResp.json();
+                    const englishText = trData.translated_text || spokenText;
+                    document.getElementById('messageInput').value = englishText;
+                    document.getElementById('messageInput').focus();
+                    showToast('🎤 Voice translated to English');
+                } catch (err) {
+                    console.error('Translation error:', err);
+                    document.getElementById('messageInput').value = spokenText;
+                    showToast('🎤 Voice recognized (translation failed)');
+                } finally {
+                    voiceTranslateBtn.innerHTML = '🎙️';
+                }
+            };
+            vtRecognition.onerror = (event) => {
+                voiceTranslateBtn.classList.remove('recording');
+                voiceTranslateBtn.innerHTML = '🎙️';
+                let msg = 'Could not recognize speech. ';
+                if (event.error === 'no-speech') msg += 'No speech detected.';
+                else if (event.error === 'audio-capture') msg += 'Microphone access denied.';
+                else if (event.error === 'not-allowed') msg += 'Microphone permission denied.';
+                else msg += 'Please try again.';
+                alert(msg);
+            };
+            voiceTranslateBtn.addEventListener('click', () => {
+                try { vtRecognition.start(); } catch (e) { /* already started */ }
+            });
+        } else {
+            voiceTranslateBtn.style.display = 'none';
+        }
+
+        // Toast notification helper
+        function showToast(message) {
+            const existing = document.querySelector('.translation-toast');
+            if (existing) existing.remove();
+            const toast = document.createElement('div');
+            toast.className = 'translation-toast';
+            toast.textContent = message;
+            toast.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#D4AF37;color:#0a0a0a;padding:8px 16px;border-radius:20px;font-size:12px;z-index:1000;';
+            document.body.appendChild(toast);
+            setTimeout(() => { if (toast.parentNode) toast.remove(); }, 2500);
+        }
+
+            formData.append('file', file);
+            formData.append('receiver_pin', currentChatContact.pin);
+
+            try {
+                const response = await apiFetch('/api/send-file', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                if (data.success) {
+                    const tempMsg = document.querySelector(`[data-temp-id="${tempId}"] .message-time`);
+                    if (tempMsg) tempMsg.innerText = 'Sent';
+                } else {
+                    alert('Failed to send file.');
+                    document.querySelector(`[data-temp-id="${tempId}"]`)?.remove();
+                }
+            } catch (error) {
+                console.error('File upload error:', error);
+                alert('Network error. File not sent.');
+                document.querySelector(`[data-temp-id="${tempId}"]`)?.remove();
+            }
+            e.target.value = '';
+        });
+
+        // ── Voice notes ──
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let voiceTimerInterval = null;
+        let voiceSeconds = 0;
+
+        document.getElementById('voiceNoteBtn')?.addEventListener('click', async () => {
+            if (mediaRecorder && mediaRecorder.state === 'recording') return;
+            if (!currentChatContact) { alert('Select a contact first.'); return; }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                voiceSeconds = 0;
+
+                mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
+                mediaRecorder.onstop = () => { stream.getTracks().forEach(t => t.stop()); };
+
+                mediaRecorder.start();
+                document.getElementById('voiceRecordingBar').style.display = 'flex';
+                voiceTimerInterval = setInterval(() => {
+                    voiceSeconds++;
+                    const m = Math.floor(voiceSeconds / 60);
+                    const s = voiceSeconds % 60;
+                    document.getElementById('voiceTimer').innerText = `${m}:${s.toString().padStart(2, '0')}`;
+                }, 1000);
+            } catch (err) {
+                alert('Microphone access denied.');
+            }
+        });
+
+        document.getElementById('cancelVoiceBtn')?.addEventListener('click', () => {
+            if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+            clearInterval(voiceTimerInterval);
+            document.getElementById('voiceRecordingBar').style.display = 'none';
+            audioChunks = [];
+        });
+
+        document.getElementById('sendVoiceBtn')?.addEventListener('click', () => {
+            if (!mediaRecorder || mediaRecorder.state !== 'recording') return;
+            mediaRecorder.stop();
+            clearInterval(voiceTimerInterval);
+            document.getElementById('voiceRecordingBar').style.display = 'none';
+
+            setTimeout(async () => {
+                if (audioChunks.length === 0) return;
+                const blob = new Blob(audioChunks, { type: 'audio/webm' });
+                const file = new File([blob], `voice_${Date.now()}.webm`, { type: 'audio/webm' });
+
+                const container = document.getElementById('chatMessagesContainer');
+                const tempId = 'temp_voice_' + Date.now();
+                const dur = `${Math.floor(voiceSeconds/60)}:${(voiceSeconds%60).toString().padStart(2,'0')}`;
+                container.innerHTML += `<div class="message-bubble message-sent" data-temp-id="${tempId}">🎤 Voice note (${dur})<div class="message-time">Sending...</div></div>`;
+                container.scrollTop = container.scrollHeight;
+
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('receiver_pin', currentChatContact.pin);
+
+                try {
+                    const response = await apiFetch('/api/send-file', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        const tempMsg = document.querySelector(`[data-temp-id="${tempId}"] .message-time`);
+                        if (tempMsg) tempMsg.innerText = 'Sent';
+                    } else {
+                        document.querySelector(`[data-temp-id="${tempId}"]`)?.remove();
+                    }
+                } catch (err) {
+                    console.error('Voice send error:', err);
+                    document.querySelector(`[data-temp-id="${tempId}"]`)?.remove();
+                }
+            }, 300);
+        });
+
+        // ============================================
+        // VOICE-TO-TEXT TRANSLATION (Speak → English Text)
+        // ============================================
+        const voiceTranslateBtn = document.getElementById('voiceTranslateBtn');
+        let vtRecognition = null;
+
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
+            vtRecognition = new SpeechRecognition();
+            vtRecognition.continuous = false;
+            vtRecognition.interimResults = true;
+            vtRecognition.maxAlternatives = 1;
+
+            function setRecognitionLanguage() {
+                const userLang = localStorage.getItem('zeuschat_language') || 'en';
+                const speechMap = {
+                    'en':'en-US','xh':'xh-ZA','zu':'zu-ZA','af':'af-ZA','sw':'sw-KE',
+                    'yo':'yo-NG','ha':'ha-NG','ig':'ig-NG','am':'am-ET','st':'st-ZA','tn':'tn-ZA','nso':'nso-ZA'
+                };
+                vtRecognition.lang = speechMap[userLang] || 'en-US';
+            }
+            setRecognitionLanguage();
+            window.addEventListener('languageChanged', setRecognitionLanguage);
+
+            vtRecognition.onstart = () => {
+                voiceTranslateBtn.classList.add('recording');
+                voiceTranslateBtn.innerHTML = '⏺️';
+            };
+            vtRecognition.onend = () => {
+                voiceTranslateBtn.classList.remove('recording');
+                voiceTranslateBtn.innerHTML = '🎙️';
+            };
+            vtRecognition.onresult = async (event) => {
+                const spokenText = event.results[0][0].transcript;
+                voiceTranslateBtn.innerHTML = '🔄';
+                try {
+                    const trResp = await fetch('/api/translate-text', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ text: spokenText, source_lang: 'auto', target_lang: 'en' })
+                    });
+                    const trData = await trResp.json();
+                    const englishText = trData.translated_text || spokenText;
+                    document.getElementById('messageInput').value = englishText;
+                    document.getElementById('messageInput').focus();
+                    showToast('🎤 Voice translated to English');
+                } catch (err) {
+                    console.error('Translation error:', err);
+                    document.getElementById('messageInput').value = spokenText;
+                    showToast('🎤 Voice recognized (translation failed)');
+                } finally {
+                    voiceTranslateBtn.innerHTML = '🎙️';
+                }
+            };
+            vtRecognition.onerror = (event) => {
+                voiceTranslateBtn.classList.remove('recording');
+                voiceTranslateBtn.innerHTML = '🎙️';
+                let msg = 'Could not recognize speech. ';
+                if (event.error === 'no-speech') msg += 'No speech detected.';
+                else if (event.error === 'audio-capture') msg += 'Microphone access denied.';
+                else if (event.error === 'not-allowed') msg += 'Microphone permission denied.';
+                else msg += 'Please try again.';
+                alert(msg);
+            };
+            voiceTranslateBtn.addEventListener('click', () => {
+                try { vtRecognition.start(); } catch (e) { /* already started */ }
+            });
+        } else {
+            voiceTranslateBtn.style.display = 'none';
+        }
+
+        // Toast notification helper
+        function showToast(message) {
+            const existing = document.querySelector('.translation-toast');
+            if (existing) existing.remove();
+            const toast = document.createElement('div');
+            toast.className = 'translation-toast';
+            toast.textContent = message;
+            toast.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#D4AF37;color:#0a0a0a;padding:8px 16px;border-radius:20px;font-size:12px;z-index:1000;';
+            document.body.appendChild(toast);
+            setTimeout(() => { if (toast.parentNode) toast.remove(); }, 2500);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!currentUserPin) {
+                window.location.href = '/login.html';
+                return;
+            }
+            loadContacts();
+            document.getElementById('sendBtn').addEventListener('click', sendMessage);
+            document.getElementById('messageInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendMessage();
+            });
+        });
+    </script>
+</body>
+</html>

@@ -302,6 +302,62 @@ def payfast_itn():
 
     payment_status = pf_data.get('payment_status')
     payment_ref = pf_data.get('m_payment_id', '')
+
+    # Support subscription ITN payloads on this endpoint as a fallback path.
+    if payment_ref.startswith('sub_'):
+        parts = payment_ref.split('_')
+        if len(parts) < 3:
+            return 'Invalid payment reference', 400
+
+        try:
+            sub_id = int(parts[1])
+            user_id = int(parts[2])
+        except ValueError:
+            return 'Invalid payment reference', 400
+
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            if payment_status == 'COMPLETE':
+                # +30 days recurring default for monthly subscriptions
+                from datetime import timedelta
+                period_end = (datetime.utcnow() + timedelta(days=30)).isoformat()
+
+                cursor.execute(
+                    '''
+                    UPDATE subscriptions
+                    SET status = 'active',
+                        payfast_subscription_id = ?,
+                        current_period_start = CURRENT_TIMESTAMP,
+                        current_period_end = ?,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                    ''',
+                    (pf_data.get('subscription_id', ''), period_end, sub_id),
+                )
+
+                cursor.execute(
+                    '''
+                    INSERT INTO subscription_payments (user_id, subscription_id, amount, payfast_payment_id)
+                    VALUES (?, ?, ?, ?)
+                    ''',
+                    (user_id, sub_id, float(pf_data.get('amount') or 0), pf_data.get('pf_payment_id')),
+                )
+                refresh_pin_expiry_cache(user_id, conn=conn)
+            elif payment_status in ['FAILED', 'CANCELLED']:
+                cursor.execute(
+                    '''
+                    UPDATE subscriptions
+                    SET status = 'cancelled', cancelled_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                    ''',
+                    (sub_id,),
+                )
+                refresh_pin_expiry_cache(user_id, conn=conn)
+
+            conn.commit()
+
+        return 'OK', 200
+
     parts = payment_ref.split('_')
     if len(parts) < 3:
         return 'Invalid payment reference', 400

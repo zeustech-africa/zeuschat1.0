@@ -140,6 +140,27 @@
 
     <script>
         let selectedFiles = [];
+        let csrfToken = null;
+
+        async function ensureCsrfToken(forceRefresh = false) {
+            if (csrfToken && !forceRefresh) return csrfToken;
+            const response = await fetch('/api/csrf-token', { method: 'GET', credentials: 'include' });
+            const data = await response.json();
+            csrfToken = data.csrf_token || '';
+            return csrfToken;
+        }
+
+        async function apiFetch(url, options = {}) {
+            const requestOptions = { ...options };
+            requestOptions.credentials = 'include';
+            requestOptions.headers = { ...(requestOptions.headers || {}) };
+            const method = (requestOptions.method || 'GET').toUpperCase();
+            if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+                const token = await ensureCsrfToken();
+                if (token) requestOptions.headers['X-CSRF-Token'] = token;
+            }
+            return fetch(url, requestOptions);
+        }
 
         document.getElementById('itemPhotos').addEventListener('change', function (e) {
             selectedFiles = Array.from(e.target.files).slice(0, 5);
@@ -190,7 +211,7 @@
                     formData.append('images', file);
                 });
 
-                const response = await fetch('/api/ghost-market/submit-item', {
+                const response = await apiFetch('/api/ghost-market/submit-item', {
                     method: 'POST',
                     body: formData
                 });

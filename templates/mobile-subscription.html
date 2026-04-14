@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Subscription - ZeusChat</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: radial-gradient(circle at 20% 30%, #0f0f1a, #050508);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: white;
+            padding: 20px;
+            padding-bottom: 100px;
+        }
+        .container { max-width: 500px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { color: #D4AF37; font-size: 28px; }
+        .header p { color: #aaa; margin-top: 8px; }
+        .pricing-card {
+            background: rgba(20, 20, 30, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            border-radius: 24px;
+            padding: 24px;
+            margin-bottom: 16px;
+            transition: all 0.3s;
+        }
+        .pricing-card.featured {
+            border: 2px solid #D4AF37;
+            background: rgba(212, 175, 55, 0.1);
+        }
+        .popular-badge {
+            background: #D4AF37;
+            color: #0a0a0a;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 12px;
+        }
+        .current-plan-badge {
+            background: #10b981;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 12px;
+        }
+        .plan-name { font-size: 22px; font-weight: bold; margin-bottom: 8px; }
+        .price { font-size: 32px; font-weight: bold; color: #D4AF37; margin-bottom: 4px; }
+        .price small { font-size: 14px; font-weight: normal; color: #aaa; }
+        .price-note { font-size: 13px; color: #10b981; margin-bottom: 12px; }
+        .features { list-style: none; margin: 16px 0; }
+        .features li { padding: 8px 0; display: flex; align-items: center; gap: 8px; font-size: 14px; }
+        .features li::before { content: "✓"; color: #D4AF37; font-weight: bold; min-width: 16px; }
+        .btn-subscribe {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #D4AF37, #B8960C);
+            color: #0a0a0a;
+            border: none;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 16px;
+            transition: opacity 0.3s;
+        }
+        .btn-subscribe:active { opacity: 0.8; }
+        .btn-subscribe:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-subscribe.btn-outline {
+            background: transparent;
+            border: 1px solid #D4AF37;
+            color: #D4AF37;
+        }
+        .btn-subscribe.btn-current {
+            background: #10b981;
+            color: white;
+        }
+        .btn-cancel {
+            width: 100%;
+            padding: 12px;
+            background: transparent;
+            border: 1px solid #ef4444;
+            color: #ef4444;
+            border-radius: 30px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+        .btn-resume {
+            width: 100%;
+            padding: 12px;
+            background: transparent;
+            border: 1px solid #10b981;
+            color: #10b981;
+            border-radius: 30px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+        .back-link {
+            color: #D4AF37;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 20px;
+            font-size: 15px;
+        }
+        .period-info {
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 8px;
+            text-align: center;
+        }
+        .cancelling-notice {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 12px;
+            padding: 12px;
+            margin-top: 12px;
+            font-size: 13px;
+            color: #fca5a5;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/mobile/settings" class="back-link">← Back to Settings</a>
+
+        <div class="header">
+            <h1>💎 Choose Your Plan</h1>
+            <p>Upgrade to unlock premium features</p>
+        </div>
+
+        <!-- Free Plan -->
+        <div class="pricing-card" id="freeCard">
+            <div class="plan-name">Free</div>
+            <div class="price">R0 <small>/month</small></div>
+            <ul class="features">
+                <li>Basic encrypted messaging</li>
+                <li>1-hour auto-delete timer</li>
+                <li>PIN-to-view protection</li>
+                <li>Bidirectional blocking</li>
+                <li>1 African language</li>
+                <li>Voice-to-text (with edit)</li>
+            </ul>
+            <button class="btn-subscribe btn-current" id="btnFree" disabled>Current Plan</button>
+        </div>
+
+        <!-- Pro Monthly -->
+        <div class="pricing-card featured" id="proCard">
+            <div class="popular-badge">🔥 MOST POPULAR</div>
+            <div class="plan-name">Pro</div>
+            <div class="price">R89 <small>/month</small></div>
+            <ul class="features">
+                <li>Everything in Free</li>
+                <li>Permanent Zeus-PIN (never expires)</li>
+                <li>Custom TTL timers (5s/30s/5m/24h/7d)</li>
+                <li>Sell on Ghost Market (20 items)</li>
+                <li>Create paid posts (80% earnings)</li>
+                <li>All 12 African languages</li>
+                <li>Auto-translation of messages</li>
+                <li>10GB cloud backup</li>
+                <li>Two-factor authentication (2FA)</li>
+                <li>👑 Gold badge on your PIN</li>
+            </ul>
+            <button class="btn-subscribe" id="btnProMonthly" onclick="subscribe('pro', 'monthly')">Upgrade to Pro →</button>
+        </div>
+
+        <!-- Pro Annual -->
+        <div class="pricing-card" id="proAnnualCard">
+            <div class="plan-name">Pro Annual</div>
+            <div class="price">R890 <small>/year</small></div>
+            <div class="price-note">Save R178 — 2 months free!</div>
+            <ul class="features">
+                <li>Everything in Pro</li>
+                <li>Google Cloud Translation (90%+ accuracy)</li>
+                <li>Priority support (24h response)</li>
+                <li>Featured listings on Ghost Market</li>
+                <li>Decoy Mode (duress PIN protection)</li>
+            </ul>
+            <button class="btn-subscribe" id="btnProAnnual" onclick="subscribe('pro_annual', 'yearly')">Upgrade to Pro Annual →</button>
+        </div>
+
+        <!-- Teams -->
+        <div class="pricing-card" id="teamsCard">
+            <div class="plan-name">Teams</div>
+            <div class="price">R179 <small>/user/month</small></div>
+            <ul class="features">
+                <li>Everything in Pro Annual</li>
+                <li>Team management dashboard</li>
+                <li>Unlimited Ghost Market listings</li>
+                <li>Custom Zeus-PIN (ZT-0000-0001 style)</li>
+                <li>Audit logs</li>
+                <li>Strict Mode (lockdown security)</li>
+                <li>100GB team cloud storage</li>
+                <li>Seller analytics dashboard</li>
+            </ul>
+            <button class="btn-subscribe" id="btnTeams" onclick="subscribe('teams', 'monthly')">Start Teams Plan →</button>
+        </div>
+    </div>
+
+    <script>
+        let currentTier = 'free';
+        let cancelAtPeriodEnd = false;
+
+        async function ensureCsrfToken() {
+            let token = sessionStorage.getItem('csrf_token');
+            if (!token) {
+                const resp = await fetch('/api/csrf-token', { credentials: 'include' });
+                const data = await resp.json();
+                token = data.csrf_token;
+                sessionStorage.setItem('csrf_token', token);
+            }
+            return token;
+        }
+
+        async function apiFetch(url, options = {}) {
+            const csrfToken = await ensureCsrfToken();
+            options.credentials = 'include';
+            options.headers = options.headers || {};
+            options.headers['X-CSRF-Token'] = csrfToken;
+            let resp = await fetch(url, options);
+            if (resp.status === 403) {
+                sessionStorage.removeItem('csrf_token');
+                const newToken = await ensureCsrfToken();
+                options.headers['X-CSRF-Token'] = newToken;
+                resp = await fetch(url, options);
+            }
+            return resp;
+        }
+
+        async function loadCurrentSubscription() {
+            try {
+                const resp = await apiFetch('/api/user/subscription');
+                const data = await resp.json();
+                currentTier = data.tier || 'free';
+                cancelAtPeriodEnd = data.cancel_at_period_end || false;
+
+                // Reset all buttons
+                const tiers = {
+                    'free': { btn: 'btnFree', card: 'freeCard' },
+                    'pro': { btn: 'btnProMonthly', card: 'proCard' },
+                    'pro_annual': { btn: 'btnProAnnual', card: 'proAnnualCard' },
+                    'teams': { btn: 'btnTeams', card: 'teamsCard' }
+                };
+
+                // Reset all
+                for (const [tier, ids] of Object.entries(tiers)) {
+                    const btn = document.getElementById(ids.btn);
+                    const card = document.getElementById(ids.card);
+                    if (tier === 'free') {
+                        if (currentTier === 'free') {
+                            btn.textContent = 'Current Plan';
+                            btn.disabled = true;
+                            btn.className = 'btn-subscribe btn-current';
+                        } else {
+                            btn.textContent = 'Free Plan';
+                            btn.disabled = true;
+                            btn.className = 'btn-subscribe btn-outline';
+                        }
+                    } else if (tier === currentTier) {
+                        btn.textContent = '✓ Current Plan';
+                        btn.disabled = true;
+                        btn.className = 'btn-subscribe btn-current';
+                        // Show cancel/resume buttons
+                        let extra = '';
+                        if (cancelAtPeriodEnd) {
+                            extra = `<div class="cancelling-notice">Your plan will cancel at the end of the billing period</div>
+                                     <button class="btn-resume" onclick="resumeSubscription()">Resume Subscription</button>`;
+                        } else {
+                            extra = `<button class="btn-cancel" onclick="cancelSubscription()">Cancel Subscription</button>`;
+                        }
+                        if (data.current_period_end) {
+                            extra += `<div class="period-info">Current period ends: ${new Date(data.current_period_end).toLocaleDateString('en-ZA', { year: 'numeric', month: 'long', day: 'numeric' })}</div>`;
+                        }
+                        btn.insertAdjacentHTML('afterend', extra);
+                    } else {
+                        // Not current tier — show upgrade/downgrade
+                        const tierOrder = ['free', 'pro', 'pro_annual', 'teams'];
+                        const currentIdx = tierOrder.indexOf(currentTier);
+                        const thisIdx = tierOrder.indexOf(tier);
+                        if (thisIdx > currentIdx) {
+                            btn.disabled = false;
+                            btn.className = 'btn-subscribe';
+                        } else {
+                            btn.textContent = 'Included in your plan';
+                            btn.disabled = true;
+                            btn.className = 'btn-subscribe btn-outline';
+                        }
+                    }
+                }
+            } catch(e) {
+                console.error('Failed to load subscription:', e);
+            }
+        }
+
+        async function subscribe(tier, billing) {
+            try {
+                const resp = await apiFetch('/api/user/upgrade-checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tier, billing })
+                });
+                const data = await resp.json();
+                if (data.redirect_url) {
+                    window.location.href = data.redirect_url;
+                } else {
+                    alert(data.error || 'Upgrade failed');
+                }
+            } catch(e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function cancelSubscription() {
+            if (!confirm('Cancel your subscription? You will keep access until the end of your billing period.')) return;
+            try {
+                const resp = await apiFetch('/api/user/subscription/cancel', { method: 'POST' });
+                const data = await resp.json();
+                if (data.success) {
+                    alert('Subscription will cancel at end of billing period.');
+                    location.reload();
+                } else {
+                    alert(data.error || 'Cancel failed');
+                }
+            } catch(e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function resumeSubscription() {
+            try {
+                const resp = await apiFetch('/api/user/subscription/resume', { method: 'POST' });
+                const data = await resp.json();
+                if (data.success) {
+                    alert('Subscription renewed!');
+                    location.reload();
+                } else {
+                    alert(data.error || 'Resume failed');
+                }
+            } catch(e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        ensureCsrfToken().then(() => loadCurrentSubscription());
+    </script>
+</body>
+</html>

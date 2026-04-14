@@ -79,6 +79,16 @@
     </div>
 
     <script>
+        let csrfToken = null;
+
+        async function ensureCsrfToken() {
+            if (csrfToken) return csrfToken;
+            const response = await fetch('/api/csrf-token', { credentials: 'include' });
+            const data = await response.json();
+            csrfToken = data.csrf_token;
+            return csrfToken;
+        }
+
         document.getElementById('submitBtn').addEventListener('click', async function () {
             const storeName = document.getElementById('storeName').value.trim();
             const storeDescription = document.getElementById('storeDescription').value.trim();
@@ -89,9 +99,14 @@
             }
 
             try {
+                const token = await ensureCsrfToken();
+                const headers = { 'Content-Type': 'application/json' };
+                if (token) headers['X-CSRF-Token'] = token;
+
                 const response = await fetch('/api/ghost-market/apply-seller', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    headers,
                     body: JSON.stringify({ store_name: storeName, store_description: storeDescription })
                 });
 

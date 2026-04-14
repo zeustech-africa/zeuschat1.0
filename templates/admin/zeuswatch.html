@@ -245,6 +245,24 @@
             color: var(--zw-muted);
         }
 
+        .quick-nav {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+
+        .quick-nav a {
+            text-decoration: none;
+            color: #d9e4ff;
+            border: 1px solid rgba(212, 175, 55, 0.35);
+            background: rgba(7, 12, 22, 0.55);
+            border-radius: 999px;
+            padding: 7px 12px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
         @media (max-width: 1080px) {
             .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .split-grid { grid-template-columns: 1fr; }
@@ -265,6 +283,14 @@
                 <p>Live oversight, predictive alerts, and one-click controls.</p>
             </div>
             <div class="status-live" id="liveStatus">LIVE</div>
+        </div>
+
+        <div class="quick-nav">
+            <a href="/admin/dashboard">📊 Dashboard</a>
+            <a href="/admin/dashboard#tab-users">👥 Users</a>
+            <a href="/admin/dashboard#tab-ghostMarket">🏪 Ghost Market</a>
+            <a href="/admin/dashboard#tab-ghostModeration">👻 Ghost Moderation</a>
+            <a href="/admin/dashboard#tab-auditLogs">📜 Audit Logs</a>
         </div>
 
         <div class="stats-grid" id="systemHealth"></div>
@@ -302,7 +328,7 @@
             <p class="small" id="overrideResult" style="margin-top:10px;"></p>
         </div>
 
-        <button class="action-btn refresh-btn" onclick="manualRefresh()">🔄 Refresh Now</button>
+        <button class="action-btn refresh-btn" id="refreshZeusWatchBtn">🔄 Refresh Now</button>
     </div>
 
     <script>
@@ -344,12 +370,31 @@
             return `R${n.toLocaleString('en-ZA', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
         }
 
+        function showToast(message) {
+            const el = document.createElement('div');
+            el.textContent = message;
+            el.style.position = 'fixed';
+            el.style.bottom = '24px';
+            el.style.left = '50%';
+            el.style.transform = 'translateX(-50%)';
+            el.style.padding = '10px 14px';
+            el.style.borderRadius = '10px';
+            el.style.background = 'rgba(15, 20, 30, 0.95)';
+            el.style.border = '1px solid rgba(212,175,55,0.4)';
+            el.style.color = '#d9e4ff';
+            el.style.zIndex = '9999';
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 1800);
+        }
+
         function renderSystemHealth(system, alertsCount) {
+            const statusColor = system.status === 'Healthy' ? '#22c55e' : '#ef4444';
+            const errorInfo = system.error_rate !== undefined ? ` | Error rate: ${system.error_rate}%` : '';
             const cards = [
                 {
                     label: '🟢 System',
-                    value: system.status || 'Healthy',
-                    sub: `${system.uptime || 99.8}% uptime`
+                    value: `<span style="color:${statusColor}">${system.status || 'Healthy'}</span>`,
+                    sub: `${system.uptime || 99.8}% uptime${errorInfo}`
                 },
                 {
                     label: '👥 Users',
@@ -436,8 +481,8 @@
                     <div class="kpi-line"><span>Flagged Posts</span><strong>${formatNumber(content.flagged_posts)}</strong></div>
                     <div class="kpi-line"><span>User Reports (open)</span><strong>${formatNumber(content.open_reports)}</strong></div>
                     <div class="action-row" style="margin-top:8px;">
-                        <button class="action-btn" onclick="triggerAction('review_reports')">Review Reports</button>
-                        <button class="action-btn secondary" onclick="triggerAction('review_pending_posts')">Review Pending Posts</button>
+                        <button class="action-btn" id="reviewReportsBtn">Review Reports</button>
+                        <button class="action-btn secondary" id="reviewPendingPostsBtn">Review Pending Posts</button>
                     </div>
                 </div>
                 <div class="kpi-box">
@@ -445,38 +490,82 @@
                     <div class="kpi-line"><span>Pending Listings</span><strong>${formatNumber(content.pending_market_items)}</strong></div>
                     <div class="kpi-line"><span>Pending > 48 hours</span><strong>${formatNumber(content.pending_market_over_48h)}</strong></div>
                     <div class="action-row" style="margin-top:8px;">
-                        <button class="action-btn" onclick="triggerAction('review_market_queue')">Review Queue</button>
-                        <button class="action-btn secondary" onclick="triggerAction('view_ghost_market')">Open Ghost Market Tab</button>
+                        <button class="action-btn" id="reviewQueueBtn">Review Queue</button>
+                        <button class="action-btn secondary" id="openGhostMarketTabBtn">Open Ghost Market Tab</button>
                     </div>
                 </div>
             `;
+            bindReviewButtons();
         }
 
         function renderPredictiveAlerts(predictive) {
+            const growthRate = predictive.growth_rate !== undefined ? predictive.growth_rate : predictive.user_growth_weekly_pct;
+            const growthSign = growthRate >= 0 ? '+' : '';
+            const ignored = JSON.parse(localStorage.getItem('ignored_suggestions') || '[]');
             const rows = [
                 {
+                    key: 'database',
                     icon: '⚠️',
                     text: `Database usage ${predictive.db_size_mb}MB/${predictive.db_limit_mb}MB. Estimated ${predictive.days_to_limit} days to limit.`
                 },
                 {
+                    key: 'server',
                     icon: '⚠️',
                     text: `Server load ${predictive.server_load_pct}% with projected peak ${predictive.projected_load_7d}% in 7 days.`
                 },
                 {
+                    key: 'growth',
                     icon: '📈',
-                    text: `User growth ${predictive.user_growth_weekly_pct}% week-over-week.`
+                    text: `User growth ${growthSign}${growthRate}% week-over-week (real-time calculation).`
                 }
-            ];
+            ].filter(row => !ignored.includes(row.key));
 
             document.getElementById('predictiveAlerts').innerHTML = rows.map(row => `
                 <div class="predictive-card">
                     <p style="margin:0 0 8px;">${row.icon} ${row.text}</p>
                     <div class="action-row">
-                        <button class="action-btn secondary" onclick="triggerAction('view_scaling_playbook')">Plan</button>
-                        <button class="action-btn secondary" onclick="triggerAction('ignore_predictive')">Ignore</button>
+                        <button class="action-btn secondary" onclick="handlePlan('${row.key}')">Plan</button>
+                        <button class="action-btn secondary" onclick="handleIgnore('${row.key}')">Ignore</button>
                     </div>
                 </div>
             `).join('');
+        }
+
+        function bindReviewButtons() {
+            document.getElementById('reviewReportsBtn')?.addEventListener('click', () => {
+                window.location.href = '/admin/reports';
+            });
+
+            document.getElementById('reviewPendingPostsBtn')?.addEventListener('click', () => {
+                window.location.href = '/admin/ghost-moderation';
+            });
+
+            document.getElementById('reviewQueueBtn')?.addEventListener('click', () => {
+                window.location.href = '/admin/ghost-market';
+            });
+
+            document.getElementById('openGhostMarketTabBtn')?.addEventListener('click', () => {
+                window.location.href = '/admin/dashboard?tab=ghostMarket';
+            });
+        }
+
+        function handlePlan(suggestionType) {
+            if (suggestionType === 'database') {
+                window.open('https://render.com/docs/upgrade', '_blank');
+            } else if (suggestionType === 'server') {
+                alert('Contact support to upgrade your Render instance.');
+            } else {
+                window.location.href = '/admin/dashboard';
+            }
+        }
+
+        function handleIgnore(suggestionType) {
+            const ignored = JSON.parse(localStorage.getItem('ignored_suggestions') || '[]');
+            if (!ignored.includes(suggestionType)) {
+                ignored.push(suggestionType);
+                localStorage.setItem('ignored_suggestions', JSON.stringify(ignored));
+            }
+            loadZeusWatch();
         }
 
         function updateStatusTime() {
@@ -591,10 +680,14 @@
 
         async function manualRefresh() {
             await loadZeusWatch();
+            showToast('Dashboard refreshed');
         }
 
         async function init() {
             await ensureAdminCsrfToken();
+            document.getElementById('refreshZeusWatchBtn')?.addEventListener('click', () => {
+                manualRefresh();
+            });
             await loadZeusWatch();
             refreshInterval = setInterval(loadZeusWatch, 30000);
         }

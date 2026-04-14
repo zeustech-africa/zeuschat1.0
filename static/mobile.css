@@ -338,4 +338,27 @@
     .mobile-bottom-nav {
         display: flex !important;
     }
+
+    .contacts-view,
+    .chat-view,
+    .bottom-nav {
+        display: block !important;
+        visibility: visible !important;
+    }
+}
+
+@media (orientation: landscape) {
+    .chat-messages {
+        max-height: 60vh;
+    }
+
+    .bottom-nav,
+    .mobile-bottom-nav {
+        padding: 4px 12px 12px !important;
+    }
+
+    .contacts-view,
+    .chat-view {
+        visibility: visible !important;
+    }
 }

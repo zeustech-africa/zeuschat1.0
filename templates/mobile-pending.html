@@ -83,6 +83,35 @@
       font-family: inherit; margin-bottom: 10px; transition: border-color 0.2s;
     }
     textarea:focus { border-color: #D4AF37; }
+    .msg-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .btn-secondary {
+      width: 100%; padding: 12px;
+      background: transparent;
+      color: #D4AF37;
+      border: 1px solid rgba(212,175,55,0.35);
+      border-radius: 40px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+    }
+    .btn-secondary:hover { background: rgba(212,175,55,0.08); }
+    .file-pill {
+      margin-bottom: 10px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(212,175,55,0.25);
+      background: rgba(212,175,55,0.08);
+      color: rgba(255,255,255,0.85);
+      font-size: 12px;
+      display: none;
+    }
     .btn {
       width: 100%; padding: 14px;
       background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%);
@@ -163,6 +192,12 @@
       <div class="section-title">Message Admin</div>
       <div class="msg-log" id="msgLog"><div class="msg-empty">No messages yet.</div></div>
       <textarea id="msgInput" rows="2" placeholder="Type a message to admin..."></textarea>
+      <input id="msgFileInput" type="file" accept="image/*,.pdf,.doc,.docx,.txt" style="display:none;">
+      <div class="file-pill" id="selectedFilePill"></div>
+      <div class="msg-actions">
+        <button class="btn-secondary" id="attachBtn">Attach File</button>
+        <button class="btn-secondary" id="sendFileBtn">Send Attachment</button>
+      </div>
       <button class="btn" id="msgSend">Send Message</button>
     </div>
 
@@ -190,6 +225,19 @@
   </div>
 
   <script>
+    let csrfToken = null;
+
+    async function ensureCsrfToken() {
+      if (!csrfToken) {
+        try {
+          const resp = await fetch('/api/csrf-token', { credentials: 'include' });
+          const data = await resp.json();
+          csrfToken = data.csrf_token;
+        } catch (err) { console.error('CSRF fetch failed:', err); }
+      }
+      return csrfToken;
+    }
+
     function esc(text) {
       const div = document.createElement('div');
       div.textContent = text;
@@ -198,14 +246,14 @@
 
     async function loadMessages() {
       try {
-        const response = await fetch('/api/user/admin-messages');
+        const response = await fetch('/api/user/admin-messages', { credentials: 'include' });
         if (!response.ok) return;
         const data = await response.json();
         const log = document.getElementById('msgLog');
         if (data.messages && data.messages.length > 0) {
           log.innerHTML = data.messages.map(m => {
-            const cls = m.from_admin ? 'from-admin' : 'from-user';
-            const prefix = m.from_admin ? '👤 Admin: ' : 'You: ';
+            const cls = m.is_from_admin ? 'from-admin' : 'from-user';
+            const prefix = m.is_from_admin ? '👤 Admin: ' : 'You: ';
             return `<div class="msg-row ${cls}">${prefix}${esc(m.message)}</div>`;
           }).join('');
           log.scrollTop = log.scrollHeight;
@@ -218,21 +266,73 @@
       const message = input.value.trim();
       if (!message) return;
 
+      const token = await ensureCsrfToken();
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['X-CSRF-Token'] = token;
+
       const response = await fetch('/api/user/admin-messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: headers,
+        credentials: 'include',
         body: JSON.stringify({ message }),
       });
 
-      if (response.ok) {
+      if (response.status === 403) {
+        csrfToken = null;
+        const newToken = await ensureCsrfToken();
+        const retryHeaders = { 'Content-Type': 'application/json' };
+        if (newToken) retryHeaders['X-CSRF-Token'] = newToken;
+        const retry = await fetch('/api/user/admin-messages', {
+          method: 'POST',
+          headers: retryHeaders,
+          credentials: 'include',
+          body: JSON.stringify({ message }),
+        });
+        if (retry.ok) { input.value = ''; loadMessages(); }
+      } else if (response.ok) {
         input.value = '';
         loadMessages();
       }
     }
 
+    async function sendAttachment() {
+      const input = document.getElementById('msgFileInput');
+      const file = input.files && input.files[0];
+      if (!file) {
+        alert('Select a file first.');
+        return;
+      }
+
+      const token = await ensureCsrfToken();
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const headers = {};
+      if (token) headers['X-CSRF-Token'] = token;
+
+      const response = await fetch('/api/user/admin-messages', {
+        method: 'POST',
+        credentials: 'include',
+        headers,
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        alert(data.error || 'Failed to send attachment.');
+        return;
+      }
+
+      input.value = '';
+      const pill = document.getElementById('selectedFilePill');
+      pill.style.display = 'none';
+      pill.textContent = '';
+      await loadMessages();
+    }
+
     async function checkStatus() {
       try {
-        const response = await fetch('/api/user/approval-status');
+        const response = await fetch('/api/user/approval-status', { credentials: 'include' });
         if (!response.ok) return;
         const data = await response.json();
         if (data.success && data.is_approved) {
@@ -255,8 +355,26 @@
     }
 
     document.getElementById('msgSend').addEventListener('click', sendMessage);
+    document.getElementById('attachBtn').addEventListener('click', () => {
+      document.getElementById('msgFileInput').click();
+    });
+    document.getElementById('msgFileInput').addEventListener('change', (event) => {
+      const file = event.target.files && event.target.files[0];
+      const pill = document.getElementById('selectedFilePill');
+      if (file) {
+        pill.style.display = 'block';
+        pill.textContent = `Selected: ${file.name}`;
+      } else {
+        pill.style.display = 'none';
+        pill.textContent = '';
+      }
+    });
+    document.getElementById('sendFileBtn').addEventListener('click', sendAttachment);
     document.getElementById('logoutBtn').addEventListener('click', async () => {
-      await fetch('/api/logout', { method: 'POST' });
+      const token = await ensureCsrfToken();
+      const headers = {};
+      if (token) headers['X-CSRF-Token'] = token;
+      await fetch('/api/logout', { method: 'POST', headers: headers, credentials: 'include' });
       window.location.href = '/mobile/login';
     });
 

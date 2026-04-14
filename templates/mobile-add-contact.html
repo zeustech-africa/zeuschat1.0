@@ -187,11 +187,11 @@
 
     function initMobileNav() {
       const pages = {
-        chat: '/mobile-chat.html',
-        market: '/mobile-market.html',
-        community: '/mobile-community.html',
-        profile: '/mobile-profile.html',
-        settings: '/mobile-settings.html'
+        chat: '/mobile/chat',
+        market: '/mobile/market',
+        community: '/mobile/community',
+        profile: '/mobile/profile',
+        settings: '/mobile/settings'
       };
 
       document.querySelectorAll('.mobile-bottom-nav .nav-item').forEach((item) => {
@@ -214,7 +214,7 @@
       if (!isLoggedIn || !userPin) {
         console.log('Not logged in, redirecting to login');
         sessionStorage.setItem('return_url', 'mobile-add-contact.html');
-        window.location.href = 'login.html';
+        window.location.href = '/mobile/login';
         return;
       }
 
@@ -222,7 +222,7 @@
     });
 
     function goBack() {
-      window.location.href = '/mobile-chat.html';
+      window.location.href = '/mobile/chat';
     }
 
     function validateZeusPIN(pin) {

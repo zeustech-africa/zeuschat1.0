@@ -299,6 +299,29 @@
         let isSeller = false;
         let currentTab = 'browse';
         let allItems = [];
+        let csrfToken = null;
+
+        async function ensureCsrfToken(forceRefresh = false) {
+            if (csrfToken && !forceRefresh) return csrfToken;
+            const response = await fetch('/api/csrf-token', { method: 'GET', credentials: 'include' });
+            const data = await response.json();
+            csrfToken = data.csrf_token || '';
+            return csrfToken;
+        }
+
+        async function apiFetch(url, options = {}) {
+            const requestOptions = { ...options };
+            requestOptions.credentials = 'include';
+            requestOptions.headers = { ...(requestOptions.headers || {}) };
+            const method = (requestOptions.method || 'GET').toUpperCase();
+
+            if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+                const token = await ensureCsrfToken();
+                if (token) requestOptions.headers['X-CSRF-Token'] = token;
+            }
+
+            return fetch(url, requestOptions);
+        }
 
         function escapeHtml(text) {
             const div = document.createElement('div');
@@ -380,7 +403,7 @@
             if (!confirm('Buy this item? Payment will be held in escrow until you confirm receipt.')) return;
 
             try {
-                const response = await fetch('/api/ghost-market/buy/' + itemId, { method: 'POST' });
+                const response = await apiFetch('/api/ghost-market/buy/' + itemId, { method: 'POST' });
                 const data = await response.json();
 
                 if (data.success && data.redirect_url) {
@@ -390,6 +413,35 @@
                 }
             } catch (err) {
                 alert('Network error. Please try again.');
+            }
+        }
+
+        async function applyToSell() {
+            const storeName = prompt('Enter your store name:');
+            if (!storeName || !storeName.trim()) {
+                alert('Store name is required');
+                return;
+            }
+            const storeDescription = prompt('Store description (optional):') || '';
+
+            try {
+                const response = await apiFetch('/api/ghost-market/apply-seller', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        store_name: storeName.trim(),
+                        store_description: storeDescription.trim(),
+                    }),
+                });
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    alert('Application submitted for admin review');
+                    checkSellerAccess();
+                } else {
+                    alert(data.error || 'Failed to submit seller application');
+                }
+            } catch (err) {
+                alert('Unable to submit seller application right now.');
             }
         }
 
@@ -457,7 +509,7 @@
                     const applyBtn = document.getElementById('applySellerBtn');
                     if (applyBtn) {
                         applyBtn.addEventListener('click', function () {
-                            window.location.href = '/ghost-market/apply-seller';
+                            applyToSell();
                         });
                     }
                 }

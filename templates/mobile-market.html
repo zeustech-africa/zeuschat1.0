@@ -234,7 +234,7 @@
 <body>
     <div class="container">
         <div class="market-header">
-            <button class="back-btn" onclick="window.location.href='/mobile-chat.html'">← Back to Chats</button>
+            <button class="back-btn" onclick="window.location.href='/mobile/chat'">← Back to Chats</button>
             <h1>🏪 Ghost Market</h1>
         </div>
         <p class="subtitle">Buy and sell anonymously. No names. No shame. Every item reviewed by admin.</p>
@@ -299,6 +299,36 @@
         let isSeller = false;
         let currentTab = 'browse';
         let allItems = [];
+        let csrfToken = null;
+
+        async function ensureCsrfToken() {
+            if (!csrfToken) {
+                try {
+                    const resp = await fetch('/api/csrf-token', { credentials: 'include' });
+                    const data = await resp.json();
+                    csrfToken = data.csrf_token;
+                } catch (err) { console.error('CSRF fetch failed:', err); }
+            }
+            return csrfToken;
+        }
+
+        async function apiFetch(url, options = {}) {
+            options.credentials = 'include';
+            options.headers = options.headers || {};
+            const method = (options.method || 'GET').toUpperCase();
+            if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
+                const token = await ensureCsrfToken();
+                if (token) options.headers['X-CSRF-Token'] = token;
+            }
+            const response = await fetch(url, options);
+            if (response.status === 403 && method !== 'GET') {
+                csrfToken = null;
+                const newToken = await ensureCsrfToken();
+                if (newToken) options.headers['X-CSRF-Token'] = newToken;
+                return await fetch(url, options);
+            }
+            return response;
+        }
 
         function escapeHtml(text) {
             const div = document.createElement('div');
@@ -361,7 +391,8 @@
             try {
                 const response = await fetch(
                     '/api/ghost-market/items?search=' + encodeURIComponent(search) +
-                    '&category=' + encodeURIComponent(category)
+                    '&category=' + encodeURIComponent(category),
+                    { credentials: 'include' }
                 );
                 const data = await response.json();
 
@@ -380,7 +411,7 @@
             if (!confirm('Buy this item? Payment will be held in escrow until you confirm receipt.')) return;
 
             try {
-                const response = await fetch('/api/ghost-market/buy/' + itemId, { method: 'POST' });
+                const response = await apiFetch('/api/ghost-market/buy/' + itemId, { method: 'POST' });
                 const data = await response.json();
 
                 if (data.success && data.redirect_url) {
@@ -401,7 +432,7 @@
             let tier = 'free';
 
             try {
-                const subResponse = await fetch('/api/user/subscription');
+                const subResponse = await fetch('/api/user/subscription', { credentials: 'include' });
                 if (subResponse.status === 401) {
                     isLoggedIn = false;
                 } else {
@@ -416,7 +447,7 @@
                 sellerSection.innerHTML =
                     '<h3>Become a Ghost Seller</h3>' +
                     '<p>Login to apply to become a seller</p>' +
-                    '<button class="sell-btn" onclick="window.location.href=\'/login.html\'">Login →</button>';
+                    '<button class="sell-btn" onclick="window.location.href=\'/mobile/login\'">Login →</button>';
                 return;
             }
 
@@ -432,7 +463,7 @@
             }
 
             try {
-                const sellerResponse = await fetch('/api/ghost-market/seller-status');
+                const sellerResponse = await fetch('/api/ghost-market/seller-status', { credentials: 'include' });
                 const sellerData = await sellerResponse.json();
 
                 if (sellerData.is_seller) {
@@ -489,11 +520,11 @@
             item.addEventListener('click', function () {
                 const page = item.dataset.page;
                 const pages = {
-                    'chat': '/mobile-chat.html',
-                    'community': '/mobile-community.html',
-                    'profile': '/mobile-profile.html',
-                    'market': '/mobile-market.html',
-                    'settings': '/mobile-settings.html'
+                    'chat': '/mobile/chat',
+                    'community': '/mobile/community',
+                    'profile': '/mobile/profile',
+                    'market': '/mobile/market',
+                    'settings': '/mobile/settings'
                 };
                 if (pages[page]) window.location.href = pages[page];
             });

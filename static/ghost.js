@@ -136,6 +136,14 @@ function showPayModal(postId, price) {
     document.getElementById('payModal').classList.remove('hidden');
 }
 
+function unlockPost(postId, price) {
+    showPayModal(postId, price);
+}
+
+async function createPost() {
+    document.getElementById('submitPostBtn')?.click();
+}
+
 async function votePost(postId, voteType) {
     const response = await apiFetch('/api/ghost/vote', {
         method: 'POST',

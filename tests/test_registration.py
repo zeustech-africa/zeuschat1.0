@@ -3,7 +3,10 @@ test_registration.py — Email signup, OTP verification, and full registration f
 """
 
 import json
+import io
+import uuid
 import pytest
+from app import get_db_connection
 
 
 class TestStartSignup:
@@ -128,3 +131,72 @@ class TestCompleteRegistration:
             content_type="application/json",
         )
         assert r.status_code in (400, 401, 403)
+
+
+def test_full_registration_flow(client):
+    """Full registration flow: start -> verify OTP -> complete with KYC -> pending approval + pending page."""
+    unique = uuid.uuid4().hex[:8]
+    email = f"e2e_{unique}@zeuschat.test"
+
+    # 1) Start signup
+    r1 = client.post(
+        "/api/start-signup",
+        data=json.dumps({"email": email}),
+        content_type="application/json",
+    )
+    assert r1.status_code == 200
+
+    # 2) Verify OTP (test mode)
+    r2 = client.post(
+        "/api/verify-otp",
+        data=json.dumps({"email": email, "otp": "123456"}),
+        content_type="application/json",
+    )
+    assert r2.status_code == 200
+    zeus_pin = r2.get_json().get("zeus_pin")
+    assert zeus_pin
+
+    # 3) Complete registration + KYC upload
+    form = {
+        "full_name": f"E2E User {unique}",
+        "email": email,
+        "zeus_pin": zeus_pin,
+        "password": "Pass@1234",
+        "document_type": "national_id",
+    }
+    files = {
+        "id_document": (io.BytesIO(b"fake-id-doc"), "id_doc.jpg"),
+        "selfie": (io.BytesIO(b"fake-selfie"), "selfie.jpg"),
+    }
+    r3 = client.post(
+        "/api/complete-registration-with-kyc",
+        data={**form, **files},
+        headers={"User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)"},
+        content_type="multipart/form-data",
+    )
+    assert r3.status_code in (200, 201)
+    body = r3.get_json() or {}
+    assert body.get("success") is True
+    assert body.get("redirect") == "/mobile/pending"
+
+    # 4) Verify DB pending approval + KYC rows
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
+        user = cursor.fetchone()
+        assert user is not None
+        user_id = user[0] if not isinstance(user, dict) else user["id"]
+
+        cursor.execute("SELECT status FROM user_approvals WHERE user_id = ?", (user_id,))
+        approval = cursor.fetchone()
+        assert approval is not None
+        status = approval[0] if not isinstance(approval, dict) else approval["status"]
+        assert status == "pending"
+
+        cursor.execute("SELECT COUNT(*) FROM kyc_documents WHERE user_id = ?", (user_id,))
+        kyc_count = cursor.fetchone()[0]
+        assert kyc_count >= 1
+
+    # 5) Pending page should load while awaiting approval
+    r4 = client.get("/mobile/pending")
+    assert r4.status_code == 200

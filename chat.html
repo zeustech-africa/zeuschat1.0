@@ -547,6 +547,37 @@
       padding-top: 4px;
       border-top: 1px solid rgba(212, 175, 55, 0.2);
     }
+    .voice-translate-btn {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s;
+    }
+    .voice-translate-btn.recording {
+      background-color: #ef4444;
+      color: white;
+      animation: vtPulse 1s infinite;
+    }
+    @keyframes vtPulse {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.1); opacity: 0.7; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .translation-badge {
+      font-size: 10px;
+      color: #D4AF37;
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
     .footer {
       height: 64px;
       background: rgba(10, 10, 10, 0.9);
@@ -1215,12 +1246,11 @@
                   <option value="30" selected>30s</option>
                 <option value="45">45s PRO</option>
               </select>
-              <!-- Hidden launch-gated action: remove feature-hidden to re-enable -->
-              <button id="scheduleMsgBtn" class="ttl feature-locked feature-hidden" type="button">⏰<span class="pro-badge" style="margin-left:4px;">PRO</span></button>
               <button id="voiceRecordBtn" class="voice-btn" type="button" title="Record voice message" aria-label="Record voice message">
                 <span class="voice-icon">🎤</span>
               </button>
               <button class="send" id="send-message-btn">➤</button>
+              <button id="voiceTranslateBtn" class="voice-translate-btn" type="button" title="Speak in your language → English text">🎙️</button>
           </div>
       </div>
       <div class="emoji-picker" id="emoji-picker">
@@ -2396,10 +2426,6 @@
       }
     }
 
-    function showSchedulePicker() {
-      alert('Message scheduling coming soon.');
-    }
-
     async function showTTLOptions() {
       const allowed = await hasFeatureAccess('custom_ttl');
       if (!allowed) {
@@ -2481,14 +2507,6 @@
         },
         true,
       );
-
-      document.getElementById('scheduleMsgBtn')?.addEventListener('click', async () => {
-        const allowed = await checkProFeature('message_scheduling', 'Message Scheduling', 'Schedule messages to send at a specific time');
-        if (!allowed) {
-          return;
-        }
-        showSchedulePicker();
-      });
 
       const ttlSelector = document.getElementById('ttlDropdownBtn') || document.getElementById('ttl-selector');
       if (ttlSelector) {
@@ -3478,7 +3496,7 @@
 
     async function sendMessage() {
       const input = document.getElementById('message-input');
-      const message = input.value.trim();
+      let message = input.value.trim();
       if (!message) return;
       
       // CRITICAL CHECK: Must have contact selected (fix for architecture issue)
@@ -3500,6 +3518,27 @@
       
       // Stop typing indicator
       handleTypingStop();
+
+      // AUTO-TRANSLATE: If user is not English, translate message to English before sending
+      const userLang = localStorage.getItem('zeuschat_language') || 'en';
+      let finalMessage = message;
+      if (userLang !== 'en') {
+        try {
+          const trResp = await fetch('/api/translate-text', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ text: message, source_lang: userLang, target_lang: 'en' })
+          });
+          const trData = await trResp.json();
+          if (trData.translated_text) {
+            finalMessage = trData.translated_text;
+            showTranslationToast(`🌐 Translated: "${message.substring(0,30)}" → "${finalMessage.substring(0,30)}"`);
+          }
+        } catch (err) {
+          console.error('Pre-send translation error:', err);
+        }
+      }
       
       console.log('📤 Sending message to:', contactPin);
       
@@ -3509,7 +3548,7 @@
       
       const tempMessage = {
         id: tempId,
-        content: message,
+        content: finalMessage,
         type: 'sent',
         status: 'sending',
         created_at: createdAt,
@@ -3530,7 +3569,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             receiver_pin: contactPin,
-            content: message,
+            content: finalMessage,
             ttl: ttl
           })
         });
@@ -6621,6 +6660,93 @@
     }
 
     checkPinExpiry();
+
+    // ============================================
+    // VOICE-TO-TEXT TRANSLATION (Speak → English Text)
+    // ============================================
+    (function() {
+      const vtBtn = document.getElementById('voiceTranslateBtn');
+      if (!vtBtn) return;
+      let vtRecognition = null;
+
+      if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
+        vtRecognition = new SpeechRecognition();
+        vtRecognition.continuous = false;
+        vtRecognition.interimResults = true;
+        vtRecognition.maxAlternatives = 1;
+
+        function setVTLanguage() {
+          const userLang = localStorage.getItem('zeuschat_language') || 'en';
+          const speechMap = {
+            'en':'en-US','xh':'xh-ZA','zu':'zu-ZA','af':'af-ZA','sw':'sw-KE',
+            'yo':'yo-NG','ha':'ha-NG','ig':'ig-NG','am':'am-ET','st':'st-ZA','tn':'tn-ZA','nso':'nso-ZA'
+          };
+          vtRecognition.lang = speechMap[userLang] || 'en-US';
+        }
+        setVTLanguage();
+        window.addEventListener('languageChanged', setVTLanguage);
+
+        vtRecognition.onstart = () => {
+          vtBtn.classList.add('recording');
+          vtBtn.innerHTML = '⏺️';
+        };
+        vtRecognition.onend = () => {
+          vtBtn.classList.remove('recording');
+          vtBtn.innerHTML = '🎙️';
+        };
+        vtRecognition.onresult = async (event) => {
+          const spokenText = event.results[0][0].transcript;
+          vtBtn.innerHTML = '🔄';
+          try {
+            const trResp = await fetch('/api/translate-text', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ text: spokenText, source_lang: 'auto', target_lang: 'en' })
+            });
+            const trData = await trResp.json();
+            const englishText = trData.translated_text || spokenText;
+            document.getElementById('message-input').value = englishText;
+            document.getElementById('message-input').focus();
+            showTranslationToast('🎤 Voice translated to English');
+          } catch (err) {
+            console.error('Translation error:', err);
+            document.getElementById('message-input').value = spokenText;
+            showTranslationToast('🎤 Voice recognized (translation failed)');
+          } finally {
+            vtBtn.innerHTML = '🎙️';
+          }
+        };
+        vtRecognition.onerror = (event) => {
+          vtBtn.classList.remove('recording');
+          vtBtn.innerHTML = '🎙️';
+          let msg = 'Could not recognize speech. ';
+          if (event.error === 'no-speech') msg += 'No speech detected.';
+          else if (event.error === 'audio-capture') msg += 'Microphone access denied.';
+          else if (event.error === 'not-allowed') msg += 'Microphone permission denied.';
+          else msg += 'Please try again.';
+          alert(msg);
+        };
+        vtBtn.addEventListener('click', () => {
+          try { vtRecognition.start(); } catch (e) { /* already started */ }
+        });
+      } else {
+        vtBtn.style.display = 'none';
+      }
+    })();
+
+    // Translation toast helper
+    function showTranslationToast(message) {
+      const existing = document.querySelector('.translation-toast');
+      if (existing) existing.remove();
+      const toast = document.createElement('div');
+      toast.className = 'translation-toast';
+      toast.textContent = message;
+      toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#D4AF37;color:#0a0a0a;padding:8px 16px;border-radius:20px;font-size:12px;z-index:1000;';
+      document.body.appendChild(toast);
+      setTimeout(() => { if (toast.parentNode) toast.remove(); }, 2500);
+    }
   </script>
 </body>
 </html>

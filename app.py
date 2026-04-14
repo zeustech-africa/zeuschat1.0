@@ -1921,8 +1921,26 @@ else:
 
 # Helper functions
 def generate_zeus_pin():
-    """Generate unique Zeus PIN in format ZT-XXXX-XXXX"""
-    return f"ZT-{secrets.randbelow(9000) + 1000}-{secrets.randbelow(9000) + 1000}"
+    """Generate a unique Zeus PIN in format ZT-XXXX-XXXX."""
+    while True:
+        pin = f"ZT-{secrets.randbelow(9000) + 1000}-{secrets.randbelow(9000) + 1000}"
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT id FROM users WHERE zeus_pin = ?', (pin,))
+            if not cursor.fetchone():
+                return pin
+
+
+def is_user_approved(user_id):
+    """Return True when a user's approval status is approved."""
+    if not user_id:
+        return False
+
+    with admin_get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT status FROM user_approvals WHERE user_id = ?', (user_id,))
+        approval = cursor.fetchone()
+        return bool(approval and approval['status'] == 'approved')
 
 def hash_password(password):
     """Hash password using bcrypt."""
@@ -2653,13 +2671,14 @@ def complete_kyc():
 
             cursor.execute(
                 '''
-                INSERT INTO user_approvals (user_id, status, reviewed_by, reviewed_at, notes)
-                VALUES (?, 'pending', NULL, NULL, 'Awaiting KYC review')
+                INSERT INTO user_approvals (user_id, status, reviewed_by, reviewed_at, notes, created_at)
+                VALUES (?, 'pending', NULL, NULL, 'Awaiting KYC review', CURRENT_TIMESTAMP)
                 ON CONFLICT(user_id) DO UPDATE SET
                     status = 'pending',
                     reviewed_by = NULL,
                     reviewed_at = NULL,
-                    notes = 'Awaiting KYC review'
+                    notes = 'Awaiting KYC review',
+                    created_at = CURRENT_TIMESTAMP
                 ''',
                 (user_id,),
             )
@@ -5437,6 +5456,10 @@ def mobile_kyc():
 @app.route('/mobile/pending')
 def mobile_pending():
     """Mobile pending approval page."""
+    if 'user_id' not in session:
+        return redirect('/login')
+    if is_user_approved(session.get('user_id')):
+        return redirect('/mobile/chat')
     return render_template('mobile-pending.html')
 
 
@@ -5470,6 +5493,8 @@ def mobile_chat():
     """Mobile chat home with contact list and optional conversation panel."""
     if 'user_id' not in session:
         return redirect('/login')
+    if not is_user_approved(session.get('user_id')):
+        return redirect('/mobile/pending')
     return render_template('mobile-chat.html', initial_chat_pin=None, initial_language=get_session_interface_language())
 
 
@@ -5478,6 +5503,8 @@ def mobile_chat_conversation(zeus_pin):
     """Mobile chat view focused on a selected contact."""
     if 'user_id' not in session:
         return redirect('/login')
+    if not is_user_approved(session.get('user_id')):
+        return redirect('/mobile/pending')
     return render_template('mobile-chat.html', initial_chat_pin=(zeus_pin or '').strip().upper(), initial_language=get_session_interface_language())
 
 

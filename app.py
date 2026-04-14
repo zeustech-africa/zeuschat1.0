@@ -1942,6 +1942,17 @@ def is_user_approved(user_id):
         approval = cursor.fetchone()
         return bool(approval and approval['status'] == 'approved')
 
+
+def user_has_kyc(user_id):
+    """Return True if the user has already submitted KYC documents."""
+    if not user_id:
+        return False
+
+    with admin_get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT id FROM kyc_documents WHERE user_id = ?', (user_id,))
+        return cursor.fetchone() is not None
+
 def hash_password(password):
     """Hash password using bcrypt."""
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
@@ -5422,7 +5433,9 @@ def mobile_welcome():
     if uid:
         if is_user_approved(uid):
             return redirect('/mobile/chat')
-        return redirect('/mobile/pending')
+        if user_has_kyc(uid):
+            return redirect('/mobile/pending')
+        return redirect('/mobile/kyc')
     return render_template('mobile-welcome.html')
 
 
@@ -5431,7 +5444,11 @@ def mobile_email():
     """Mobile email input page (step 1 of registration)."""
     uid = session.get('user_id')
     if uid:
-        return redirect('/mobile/chat' if is_user_approved(uid) else '/mobile/pending')
+        if is_user_approved(uid):
+            return redirect('/mobile/chat')
+        if user_has_kyc(uid):
+            return redirect('/mobile/pending')
+        return redirect('/mobile/kyc')
     return render_template('mobile-email.html')
 
 
@@ -5440,7 +5457,11 @@ def mobile_otp():
     """Mobile OTP verification page (step 2 of registration)."""
     uid = session.get('user_id')
     if uid:
-        return redirect('/mobile/chat' if is_user_approved(uid) else '/mobile/pending')
+        if is_user_approved(uid):
+            return redirect('/mobile/chat')
+        if user_has_kyc(uid):
+            return redirect('/mobile/pending')
+        return redirect('/mobile/kyc')
     return render_template('mobile-otp.html')
 
 
@@ -5449,7 +5470,11 @@ def mobile_profile_create():
     """Mobile profile creation page (step 3 of registration)."""
     uid = session.get('user_id')
     if uid:
-        return redirect('/mobile/chat' if is_user_approved(uid) else '/mobile/pending')
+        if is_user_approved(uid):
+            return redirect('/mobile/chat')
+        if user_has_kyc(uid):
+            return redirect('/mobile/pending')
+        return redirect('/mobile/kyc')
     return render_template('mobile-profile-create.html')
 
 
@@ -5458,7 +5483,12 @@ def mobile_kyc():
     """Mobile KYC identity verification page (step 4 of registration)."""
     uid = session.get('user_id')
     if uid:
-        return redirect('/mobile/chat' if is_user_approved(uid) else '/mobile/pending')
+        if is_user_approved(uid):
+            return redirect('/mobile/chat')
+        if user_has_kyc(uid):
+            # Already submitted KYC; wait for admin review
+            return redirect('/mobile/pending')
+        # Pending + no KYC yet → let them complete the step
     return render_template('mobile-kyc.html')
 
 

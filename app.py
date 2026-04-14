@@ -5418,38 +5418,47 @@ def offline_page():
 @app.route('/mobile')
 def mobile_welcome():
     """Mobile-optimized welcome page for PWA installation."""
+    uid = session.get('user_id')
+    if uid:
+        if is_user_approved(uid):
+            return redirect('/mobile/chat')
+        return redirect('/mobile/pending')
     return render_template('mobile-welcome.html')
 
 
 @app.route('/mobile/email')
 def mobile_email():
     """Mobile email input page (step 1 of registration)."""
-    if 'user_id' in session:
-        return redirect('/mobile/chat')
+    uid = session.get('user_id')
+    if uid:
+        return redirect('/mobile/chat' if is_user_approved(uid) else '/mobile/pending')
     return render_template('mobile-email.html')
 
 
 @app.route('/mobile/otp')
 def mobile_otp():
     """Mobile OTP verification page (step 2 of registration)."""
-    if 'user_id' in session:
-        return redirect('/mobile/chat')
+    uid = session.get('user_id')
+    if uid:
+        return redirect('/mobile/chat' if is_user_approved(uid) else '/mobile/pending')
     return render_template('mobile-otp.html')
 
 
 @app.route('/mobile/profile-create')
 def mobile_profile_create():
     """Mobile profile creation page (step 3 of registration)."""
-    if 'user_id' in session:
-        return redirect('/mobile/chat')
+    uid = session.get('user_id')
+    if uid:
+        return redirect('/mobile/chat' if is_user_approved(uid) else '/mobile/pending')
     return render_template('mobile-profile-create.html')
 
 
 @app.route('/mobile/kyc')
 def mobile_kyc():
     """Mobile KYC identity verification page (step 4 of registration)."""
-    if 'user_id' in session:
-        return redirect('/mobile/chat')
+    uid = session.get('user_id')
+    if uid:
+        return redirect('/mobile/chat' if is_user_approved(uid) else '/mobile/pending')
     return render_template('mobile-kyc.html')
 
 

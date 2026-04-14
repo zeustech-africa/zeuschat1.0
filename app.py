@@ -123,17 +123,24 @@ print(f"   - Max retries: {LOW_BANDWIDTH_CONFIG['retry_max_attempts']}")
 print(f"   - Heartbeat: {LOW_BANDWIDTH_CONFIG['heartbeat_interval']}s")
 # ============================================
 
-# Use persistent secret key - generate once and store in .secret_key file
+# Use persistent secret key - prefer SECRET_KEY env var (required on Render/production)
+_env_secret_key = os.environ.get('SECRET_KEY', '').strip()
 SECRET_KEY_FILE = '.secret_key'
-if os.path.exists(SECRET_KEY_FILE):
+if _env_secret_key:
+    app.secret_key = _env_secret_key
+    print(f"🔑 Loaded secret key from SECRET_KEY environment variable")
+elif os.path.exists(SECRET_KEY_FILE):
     with open(SECRET_KEY_FILE, 'r') as f:
         app.secret_key = f.read().strip()
     print(f"🔑 Loaded existing secret key from {SECRET_KEY_FILE}")
 else:
     app.secret_key = secrets.token_hex(32)
-    with open(SECRET_KEY_FILE, 'w') as f:
-        f.write(app.secret_key)
-    print(f"🔑 Generated new secret key and saved to {SECRET_KEY_FILE}")
+    try:
+        with open(SECRET_KEY_FILE, 'w') as f:
+            f.write(app.secret_key)
+        print(f"🔑 Generated new secret key and saved to {SECRET_KEY_FILE}")
+    except OSError:
+        print(f"🔑 Generated new secret key (filesystem read-only, not persisted)")
 
 # CORS Configuration
 CORS(

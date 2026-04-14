@@ -151,18 +151,10 @@ CORS(
 )
 
 # Socket.IO for realtime status updates - OPTIMIZED FOR LOW-BANDWIDTH
-try:
-    import eventlet
-    eventlet.monkey_patch()
-    _async_mode = 'eventlet'
-except ImportError:
-    _async_mode = 'threading'
-print(f"🔌 SocketIO async_mode: {_async_mode}")
-
 socketio = SocketIO(
     app,
     cors_allowed_origins=ALLOWED_ORIGINS,
-    async_mode=_async_mode,
+    async_mode='threading',
     
     # ℹ️ Low-bandwidth network optimization
     ping_interval=60,              # Reduce from 25s to 60s (fewer keepalive packets)

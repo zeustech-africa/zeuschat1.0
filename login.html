@@ -349,8 +349,8 @@
             alert('⏳ Your account is pending admin approval.');
             window.location.href = '/pending-approval';
           } else {
-            console.log('6. Approval flag missing, using fallback redirect to /chat.html...');
-            window.location.href = '/chat.html';
+            console.log('6. Approval flag missing, using safe fallback redirect to /pending-approval...');
+            window.location.href = '/pending-approval';
           }
         } else {
           alert(result.error || 'Login failed');

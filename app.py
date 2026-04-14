@@ -2512,8 +2512,9 @@ def complete_registration_with_kyc():
 
             cursor.execute(
                 '''
-                INSERT OR IGNORE INTO user_approvals (user_id, status)
-                VALUES (?, 'pending')
+                INSERT INTO user_approvals (user_id, status, created_at)
+                VALUES (?, 'pending', CURRENT_TIMESTAMP)
+                ON CONFLICT(user_id) DO UPDATE SET status = 'pending'
                 ''',
                 (user_id,),
             )
@@ -2558,14 +2559,10 @@ def complete_registration_with_kyc():
             },
         )
 
-        user_agent = request.headers.get('User-Agent', '')
-        is_mobile_ua = any(kw in user_agent for kw in ('Mobile', 'Android', 'iPhone', 'iPad'))
-        pending_redirect = '/mobile/pending' if is_mobile_ua else '/pending-approval'
-
         return jsonify({
             'success': True,
             'message': 'Registration successful. Account pending admin approval.',
-            'redirect': pending_redirect,
+            'redirect': '/pending-approval',
             'user_id': user_id,
             'approved': False,
         }), 201
@@ -2666,30 +2663,18 @@ def complete_kyc():
                 ''',
                 (user_id,),
             )
-
-            # AUTO-APPROVE FOR LOCAL TESTING (remove before production)
-            # This bypasses admin approval for testing purposes.
-            # TODO: Remove auto-approval before production deployment
-            cursor.execute(
-                '''
-                INSERT OR REPLACE INTO user_approvals (user_id, status, reviewed_by, reviewed_at, notes)
-                VALUES (?, 'approved', 1, CURRENT_TIMESTAMP, 'Auto-approved for local testing')
-                ''',
-                (user_id,),
-            )
-
-            # Also mark KYC as approved for local testing.
-            cursor.execute(
-                '''
-                UPDATE kyc_documents
-                SET admin_review_status = 'approved', reviewed_by = 1, reviewed_at = CURRENT_TIMESTAMP
-                WHERE user_id = ?
-                ''',
-                (user_id,),
-            )
             conn.commit()
 
-        return jsonify({'success': True, 'message': 'KYC submitted and auto-approved for local testing', 'approved': True}), 200
+        user_agent = request.headers.get('User-Agent', '')
+        is_mobile_ua = any(kw in user_agent for kw in ('Mobile', 'Android', 'iPhone', 'iPad'))
+        pending_redirect = '/mobile/pending' if is_mobile_ua else '/pending-approval'
+
+        return jsonify({
+            'success': True,
+            'message': 'KYC submitted successfully. Account pending admin approval.',
+            'approved': False,
+            'redirect': pending_redirect,
+        }), 200
     except Exception as e:
         print(f"❌ complete-kyc error: {str(e)}")
         return jsonify({'error': str(e)}), 500
@@ -5420,24 +5405,32 @@ def mobile_welcome():
 @app.route('/mobile/email')
 def mobile_email():
     """Mobile email input page (step 1 of registration)."""
+    if 'user_id' in session:
+        return redirect('/mobile/chat')
     return render_template('mobile-email.html')
 
 
 @app.route('/mobile/otp')
 def mobile_otp():
     """Mobile OTP verification page (step 2 of registration)."""
+    if 'user_id' in session:
+        return redirect('/mobile/chat')
     return render_template('mobile-otp.html')
 
 
 @app.route('/mobile/profile-create')
 def mobile_profile_create():
     """Mobile profile creation page (step 3 of registration)."""
+    if 'user_id' in session:
+        return redirect('/mobile/chat')
     return render_template('mobile-profile-create.html')
 
 
 @app.route('/mobile/kyc')
 def mobile_kyc():
     """Mobile KYC identity verification page (step 4 of registration)."""
+    if 'user_id' in session:
+        return redirect('/mobile/chat')
     return render_template('mobile-kyc.html')
 
 

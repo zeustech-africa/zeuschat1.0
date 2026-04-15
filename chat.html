@@ -861,24 +861,6 @@
       font-size: 11px;
     }
 
-    .user-pin-display {
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      z-index: 1000;
-      background: rgba(0, 0, 0, 0.8);
-      backdrop-filter: blur(10px);
-      padding: 8px 14px;
-      border-radius: 40px;
-      border: 1px solid rgba(212, 175, 55, 0.35);
-      color: #fff;
-      font-size: 12px;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
     .gold-badge {
       display: inline-block;
       color: #D4AF37;
@@ -1039,10 +1021,8 @@
   </style>
 </head>
 <body>
-  <!-- ✅ 4K Video Background -->
-  <video class="video-bg" autoplay muted loop playsinline>
-    <source src="zeuschat-chatpage.mp4" type="video/mp4">
-  </video>
+  <!-- Dynamic chat background video source is set by JS based on connection/user preference -->
+  <video class="video-bg chat-background-video" autoplay muted loop playsinline></video>
   <div class="overlay"></div>
 
   <button class="menu-toggle" onclick="toggleContacts()">☰ Contacts</button>
@@ -1063,11 +1043,6 @@
     </div>
   </div>
 
-  <div class="user-pin-display">
-    <span id="userPin">Loading PIN...</span>
-    <span id="userBadge" class="gold-badge" style="display:none;">👑</span>
-  </div>
-
   <div class="app">
     <aside class="sidebar contacts-panel">
       <div class="sidebar-header">
@@ -1078,11 +1053,8 @@
         <button class="requests-btn" id="requests-btn" onclick="window.location.href='contact-requests.html'" style="display:none;">
           📬 <span id="requests-count">0</span>
         </button>
-        <!-- Sound Test Button -->
-        <button id="test-sound-btn" onclick="testNotificationSound()" title="Test Notification Sound" style="background:transparent;border:1px solid #FFD700;color:#FFD700;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:12px;margin-left:8px;">🔊</button>
       </div>
       <input class="search" placeholder="Type a message..." data-i18n-placeholder="type_message"/>
-      <button class="admin-inbox-btn" id="admin-inbox-btn" onclick="openAdminInbox()">ZeusChat Admin Inbox</button>
       <div class="chat-list" id="contactsList">
         <!-- Chats loaded from localStorage -->
       </div>
@@ -1090,55 +1062,6 @@
         + <span data-i18n="chats">Chats</span>
         <span id="badge-new-chat" class="notification-badge" style="display:none;"></span>
       </button>
-      <div class="nav-item" onclick="window.location.href='/ghost-market'" style="margin: 10px 16px; padding: 10px 12px; border-radius: 10px; background: rgba(17,24,39,0.8); border: 1px solid rgba(212,175,55,0.25); cursor: pointer; display: flex; align-items: center; gap: 10px;">
-        <span class="nav-icon">🏪</span>
-        <span class="nav-text">Ghost Market</span>
-      </div>
-      <button class="new-chat" onclick="window.location.href='/subscription'" style="margin-top:0;background:#334155;color:#f8fafc;">Manage Subscription</button>
-
-      <!-- Push Notification Toggle -->
-      <div class="push-setting" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: rgba(30,30,30,0.7); border-radius: 12px; margin: 8px 16px;">
-        <div>
-          <span style="font-size: 14px;">🔔 Push Notifications</span>
-          <p style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Alerts for new messages</p>
-        </div>
-        <label class="push-switch">
-          <input type="checkbox" id="pushToggle">
-          <span class="push-slider round"></span>
-        </label>
-      </div>
-
-      <style>
-      .push-switch {
-        position: relative;
-        display: inline-block;
-        width: 50px;
-        height: 24px;
-        flex-shrink: 0;
-      }
-      .push-switch input { opacity: 0; width: 0; height: 0; }
-      .push-slider {
-        position: absolute;
-        cursor: pointer;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background-color: #4b5563;
-        transition: 0.3s;
-        border-radius: 24px;
-      }
-      .push-slider:before {
-        position: absolute;
-        content: "";
-        height: 18px;
-        width: 18px;
-        left: 3px;
-        bottom: 3px;
-        background-color: white;
-        transition: 0.3s;
-        border-radius: 50%;
-      }
-      input:checked + .push-slider { background-color: #667eea; }
-      input:checked + .push-slider:before { transform: translateX(26px); }
-      </style>
     </aside>
     <main class="main">
       <!-- EMPTY STATE: Shows when no contact selected (WhatsApp-style) -->
@@ -1899,15 +1822,13 @@
       </style>
 
   <div class="footer">
-    <!-- Hidden launch-gated nav item: remove feature-hidden to re-enable -->
-    <div class="feature-hidden" onclick="try { console.log('📡 Updates clicked'); alert('🚀 Coming Soon in ZeusChat 1.1'); } catch(e) { console.error('Error:', e); }">
-      <div class="footer-icon">📡</div>
-      Updates
+    <div onclick="try { console.log('🏪 Ghost Market clicked'); const isLoggedIn = sessionStorage.getItem('user_logged_in') === 'true'; if (!isLoggedIn) { sessionStorage.setItem('return_url', window.location.href); window.location.href = '/login.html'; } else { window.location.href = '/ghost-market'; } } catch(e) { console.error('Error:', e); }">
+      <div class="footer-icon">🏪</div>
+      Ghost Market
     </div>
-    <!-- Hidden launch-gated nav item: remove feature-hidden to re-enable -->
-    <div class="feature-hidden" onclick="try { console.log('📞 Calls clicked'); alert('🚀 Coming Soon in ZeusChat 1.1'); } catch(e) { console.error('Error:', e); }">
-      <div class="footer-icon">📞</div>
-      Calls
+    <div onclick="try { console.log('👻 Ghost Community clicked'); const isLoggedIn = sessionStorage.getItem('user_logged_in') === 'true'; if (!isLoggedIn) { sessionStorage.setItem('return_url', window.location.href); window.location.href = '/login.html'; } else { window.location.href = '/ghost-ultimate'; } } catch(e) { console.error('Error:', e); }">
+      <div class="footer-icon">👻</div>
+      Ghost Community
     </div>
     <div onclick="try { console.log('👤 Profile clicked'); const isLoggedIn = sessionStorage.getItem('user_logged_in') === 'true'; if (!isLoggedIn) { sessionStorage.setItem('return_url', window.location.href); window.location.href = '/login.html'; } else { window.location.href = '/profile.html'; } } catch(e) { console.error('Error:', e); }">
       <div class="footer-icon">👤</div>
@@ -2258,34 +2179,9 @@
     let installButton = null;
 
     function setupInstallPrompt() {
-      const existing = document.getElementById('installContainer');
-      if (existing) {
-        installButton = document.getElementById('installBtn');
-        return;
-      }
-
-      const installContainer = document.createElement('div');
-      installContainer.id = 'installContainer';
-      installContainer.style.position = 'fixed';
-      installContainer.style.bottom = '20px';
-      installContainer.style.left = '20px';
-      installContainer.style.zIndex = '1000';
-      installContainer.innerHTML = '<button id="installBtn" style="background:#667eea; color:white; border:none; border-radius:40px; padding:10px 20px; display:none; cursor:pointer;">📱 Install App</button>';
-      document.body.appendChild(installContainer);
-
-      installButton = document.getElementById('installBtn');
-
-      if (installButton) {
-        installButton.addEventListener('click', async () => {
-          if (deferredPrompt) {
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            console.log(`User response to install: ${outcome}`);
-            deferredPrompt = null;
-            installButton.style.display = 'none';
-          }
-        });
-      }
+      // Audit 1 cleanup: do not render install CTA in chat main screen.
+      installButton = null;
+      return;
     }
 
     window.addEventListener('beforeinstallprompt', (e) => {
@@ -2340,12 +2236,8 @@
     }
 
     async function loadUserBadge() {
-      const pinNode = document.getElementById('userPin');
       const badgeNode = document.getElementById('userBadge');
-      if (!pinNode || !badgeNode) return;
-
-      const localPin = sessionStorage.getItem('user_zeus_pin');
-      pinNode.textContent = localPin ? `PIN: ${localPin}` : 'PIN: Unknown';
+      if (!badgeNode) return;
 
       try {
         const response = await apiFetch('/api/user/subscription', { credentials: 'include' });
@@ -6619,14 +6511,6 @@
     }
   }
   </script>
-  <div style="text-align:center;padding:12px 0 16px;font-size:12px;">
-    <a href="/terms" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">Terms</a> |
-    <a href="/privacy" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">Privacy</a> |
-    <a href="/kyc-policy" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">KYC Policy</a> |
-    <a href="/ghost-market-policy" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">Ghost Market Policy</a> |
-    <a href="/refund-policy" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">Refunds</a>
-  </div>
-
   <!-- PIN Expiry Overlay -->
   <div id="pinExpiryOverlay"></div>
 
@@ -6748,5 +6632,8 @@
       setTimeout(() => { if (toast.parentNode) toast.remove(); }, 2500);
     }
   </script>
+  <script src="/static/js/connection-detector.js"></script>
+  <script src="/static/js/data-warning.js"></script>
+  <script src="/static/js/video-preference.js"></script>
 </body>
 </html>

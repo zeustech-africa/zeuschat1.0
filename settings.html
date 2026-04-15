@@ -346,6 +346,9 @@
           When disabled, you appear offline to contacts
         </div>
       </div>
+      <div class="setting">
+        <button class="btn" id="testSoundBtn" onclick="testNotificationSound()" style="margin-top: 12px; margin-bottom: 0; width: 100%; padding: 10px 16px; font-size: 14px;">🔊 Test Notification Sound</button>
+      </div>
     </div>
 
     <div class="section">
@@ -1135,6 +1138,31 @@
         alert('Failed to submit feedback');
       }
     }
+
+    // Test notification sound
+    function testNotificationSound() {
+      console.log('🔊 Testing notification sound...');
+      try {
+        // Create audio element to test sound
+        const audio = new Audio('/static/notification.wav?v=2.0');
+        audio.volume = 0.8;
+        
+        // Try to play
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(error => {
+            console.warn('🔊 Auto-play failed, trying user interaction:', error);
+            alert('✅ Sound test: Please check your speakers. Your notification sound is set to play.');
+          });
+        }
+        
+        alert('🔊 Testing notification sound... Check your speakers!');
+        console.log('🔊 Sound test initiated');
+      } catch (error) {
+        console.error('🔊 Sound test error:', error);
+        alert('⚠️ Could not play notification sound. Please check your browser settings.');
+      }
+    }
   </script>
 
   <script>
@@ -1158,5 +1186,6 @@
     <a href="/ghost-market-policy" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">Ghost Market Policy</a> |
     <a href="/refund-policy" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">Refunds</a>
   </div>
+  <script src="/static/js/video-preference.js"></script>
 </body>
 </html>

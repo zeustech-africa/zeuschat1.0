@@ -1033,10 +1033,8 @@
   </style>
 </head>
 <body>
-  <!-- ✅ 4K Video Background -->
-  <video class="video-bg" autoplay muted loop playsinline>
-    <source src="zeuschat-chatpage.mp4" type="video/mp4">
-  </video>
+  <!-- Dynamic chat background video source is set by JS based on connection/user preference -->
+  <video class="video-bg chat-background-video" autoplay muted loop playsinline></video>
   <div class="overlay"></div>
 
   <button class="menu-toggle" onclick="toggleContacts()">☰ Contacts</button>
@@ -6726,5 +6724,8 @@
 
     checkPinExpiry();
   </script>
+  <script src="/static/js/connection-detector.js"></script>
+  <script src="/static/js/data-warning.js"></script>
+  <script src="/static/js/video-preference.js"></script>
 </body>
 </html>

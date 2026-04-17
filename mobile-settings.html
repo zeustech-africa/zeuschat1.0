@@ -309,7 +309,70 @@
           <option value="nobody">Nobody</option>
         </select>
       </div>
+      <div class="setting">
+        <div>
+          <div class="setting-label">Read Receipts</div>
+          <div style="font-size: 12px; color: #888;">Show when you've read messages</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="read-receipts-toggle">
+          <span class="slider"></span>
+        </label>
+      </div>
     </div>
+
+    <div class="section">
+      <div class="section-title">🎨 Chat Theme</div>
+      <div class="setting">
+        <div>
+          <div class="setting-label">Theme Style</div>
+          <div style="font-size: 12px; color: #888;">Apply to web and mobile chats</div>
+        </div>
+        <select id="theme-select" class="setting-value" onchange="setTheme(this.value)">
+          <option value="obsidian-gold">Obsidian Gold</option>
+          <option value="ocean-breeze">Ocean Breeze</option>
+          <option value="forest-night">Forest Night</option>
+          <option value="sunset-pop">Sunset Pop</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">🖼️ Chat Wallpaper</div>
+      <div class="setting">
+        <div>
+          <div class="setting-label">Wallpaper Style</div>
+          <div style="font-size: 12px; color: #888;">Pick your chat wallpaper color</div>
+        </div>
+        <select id="wallpaper-color" class="setting-value">
+          <option value="#000000">Black</option>
+          <option value="#1A2A4A">Navy</option>
+          <option value="#1A3A2A">Forest</option>
+          <option value="#4A1A2A">Burgundy</option>
+        </select>
+      </div>
+      <div id="wallpaper-preview" style="height:80px; border-radius:8px; border:1px solid #333; margin: 8px 0; background:#111 center/cover no-repeat;"></div>
+      <input id="wallpaper-upload" type="file" accept="image/*" style="display:none;" onchange="openWallpaperPicker(event)">
+      <button class="btn" id="upload-wallpaper-btn" type="button" onclick="document.getElementById('wallpaper-upload')?.click()">Choose Image Wallpaper</button>
+      <button class="btn" id="save-wallpaper-btn" type="button">Save Wallpaper</button>
+      <button class="btn" id="remove-wallpaper-btn" type="button" style="background:#2a2a2a; color:#fff;">Remove Wallpaper</button>
+    </div>
+
+    <div class="section">
+      <div class="section-title">✈️ Away Message</div>
+      <div class="setting">
+        <div>
+          <div class="setting-label">Enable Away Message</div>
+          <div style="font-size: 12px; color: #888;">Auto-reply when you are unavailable</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="away-message-toggle">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <textarea id="away-message-text" placeholder="I am currently away. Will respond when I return." style="width: 100%; min-height: 70px; margin-top: 8px; background: #111; color: #fff; border: 1px solid #333; border-radius: 6px; padding: 10px; box-sizing: border-box;"></textarea>
+    </div>
+
     <div class="section">
       <div class="section-title" data-i18n="security">Security</div>
       <div class="setting">
@@ -719,6 +782,165 @@
       }
     }
 
+    async function loadWhatsappAdvancedSettings() {
+      loadSavedTheme();
+
+      try {
+        const rr = await apiFetch('/api/whatsapp/settings/read-receipts', { method: 'GET' });
+        const rrData = await rr.json();
+        if (rr.ok && rrData.success) {
+          document.getElementById('read-receipts-toggle').checked = !!rrData.enabled;
+        }
+      } catch (error) {
+        console.error('Failed to load read receipts setting:', error);
+      }
+
+      try {
+        const wp = await apiFetch('/api/whatsapp/wallpapers/global', { method: 'GET' });
+        const wpData = await wp.json();
+        if (wp.ok && wpData.wallpaper && wpData.wallpaper.wallpaper_color) {
+          const picker = document.getElementById('wallpaper-color');
+          if (picker) picker.value = wpData.wallpaper.wallpaper_color;
+          loadSavedWallpaper(wpData.wallpaper.wallpaper_color);
+        }
+      } catch (error) {
+        console.error('Failed to load wallpaper setting:', error);
+        loadSavedWallpaper();
+      }
+
+      try {
+        const away = await apiFetch('/api/whatsapp/away-message', { method: 'GET' });
+        const awayData = await away.json();
+        if (away.ok && awayData.away_message) {
+          const toggle = document.getElementById('away-message-toggle');
+          const text = document.getElementById('away-message-text');
+          if (toggle) toggle.checked = !!awayData.away_message.is_enabled;
+          if (text) text.value = awayData.away_message.message || '';
+        }
+      } catch (error) {
+        console.error('Failed to load away message setting:', error);
+      }
+    }
+
+    async function saveReadReceiptsSetting(enabled) {
+      try {
+        await apiFetch('/api/whatsapp/settings/read-receipts', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: !!enabled }),
+        });
+      } catch (error) {
+        console.error('Failed to save read receipts setting:', error);
+      }
+    }
+
+    async function saveWallpaperSetting() {
+      const picker = document.getElementById('wallpaper-color');
+      const wallpaper_color = picker ? picker.value : '#000000';
+      const uploadedImage = localStorage.getItem('zeuschat_wallpaper_data') || '';
+      try {
+        const response = await apiFetch('/api/whatsapp/wallpapers/global', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            wallpaper_type: uploadedImage ? 'image' : 'solid',
+            wallpaper_color,
+            wallpaper_url: uploadedImage,
+          }),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          alert(data.error || 'Failed to save wallpaper');
+          return;
+        }
+        localStorage.setItem('zeuschat_wallpaper_color', wallpaper_color);
+        sessionStorage.setItem('zeuschat_wallpaper_color', wallpaper_color);
+        loadSavedWallpaper(wallpaper_color);
+        alert('Wallpaper saved ✅');
+      } catch (error) {
+        console.error('Failed to save wallpaper setting:', error);
+      }
+    }
+
+    const THEME_PALETTES = {
+      'obsidian-gold': { '--theme-bg': '#0b0b0b', '--theme-panel': '#121212', '--theme-accent': '#d4af37', '--theme-text': '#ffffff' },
+      'ocean-breeze': { '--theme-bg': '#081425', '--theme-panel': '#10233f', '--theme-accent': '#4cc9f0', '--theme-text': '#eef8ff' },
+      'forest-night': { '--theme-bg': '#081a12', '--theme-panel': '#13291f', '--theme-accent': '#62d4a8', '--theme-text': '#effff7' },
+      'sunset-pop': { '--theme-bg': '#2a1212', '--theme-panel': '#3b1e1e', '--theme-accent': '#ff9f43', '--theme-text': '#fff3e8' },
+    };
+
+    function setTheme(themeName) {
+      const nextTheme = THEME_PALETTES[themeName] ? themeName : 'obsidian-gold';
+      const palette = THEME_PALETTES[nextTheme];
+      document.body.dataset.theme = nextTheme;
+      Object.entries(palette).forEach(([key, value]) => {
+        document.documentElement.style.setProperty(key, value);
+      });
+      localStorage.setItem('zeuschat_theme', nextTheme);
+      sessionStorage.setItem('zeuschat_theme', nextTheme);
+      const themeSelect = document.getElementById('theme-select');
+      if (themeSelect && themeSelect.value !== nextTheme) themeSelect.value = nextTheme;
+    }
+
+    function loadSavedTheme() {
+      const savedTheme = localStorage.getItem('zeuschat_theme') || 'obsidian-gold';
+      setTheme(savedTheme);
+    }
+
+    function openWallpaperPicker(event) {
+      const file = event?.target?.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = typeof reader.result === 'string' ? reader.result : '';
+        if (!dataUrl) return;
+        localStorage.setItem('zeuschat_wallpaper_data', dataUrl);
+        sessionStorage.setItem('zeuschat_wallpaper_data', dataUrl);
+        loadSavedWallpaper();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removeWallpaper() {
+      localStorage.removeItem('zeuschat_wallpaper_data');
+      sessionStorage.removeItem('zeuschat_wallpaper_data');
+      const preview = document.getElementById('wallpaper-preview');
+      if (!preview) return;
+      preview.style.backgroundImage = 'none';
+      preview.style.backgroundColor = localStorage.getItem('zeuschat_wallpaper_color') || '#111';
+    }
+
+    function loadSavedWallpaper(fallbackColor) {
+      const preview = document.getElementById('wallpaper-preview');
+      if (!preview) return;
+      const wallpaperData = localStorage.getItem('zeuschat_wallpaper_data');
+      const wallpaperColor = fallbackColor || localStorage.getItem('zeuschat_wallpaper_color') || '#111';
+      if (wallpaperData) {
+        preview.style.backgroundImage = `url(${wallpaperData})`;
+        preview.style.backgroundColor = '#111';
+      } else {
+        preview.style.backgroundImage = 'none';
+        preview.style.backgroundColor = wallpaperColor;
+      }
+    }
+
+    async function saveAwayMessageSetting() {
+      const toggle = document.getElementById('away-message-toggle');
+      const text = document.getElementById('away-message-text');
+      try {
+        await apiFetch('/api/whatsapp/away-message', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            is_enabled: !!toggle?.checked,
+            message: text?.value || '',
+          }),
+        });
+      } catch (error) {
+        console.error('Failed to save away message setting:', error);
+      }
+    }
+
     // Authentication guard
     const isLoggedIn = sessionStorage.getItem('user_logged_in') === 'true';
     const userPin = sessionStorage.getItem('user_zeus_pin');
@@ -767,11 +989,19 @@
       }
 
       await loadDataSaverSettings();
+      await loadWhatsappAdvancedSettings();
 
       document.getElementById('dataSaverToggle')?.addEventListener('change', saveDataSaverSettings);
       document.getElementById('imageQuality')?.addEventListener('change', saveDataSaverSettings);
       document.getElementById('autoDownloadImages')?.addEventListener('change', saveDataSaverSettings);
       document.getElementById('autoDownloadVideos')?.addEventListener('change', saveDataSaverSettings);
+      document.getElementById('read-receipts-toggle')?.addEventListener('change', (event) => {
+        saveReadReceiptsSetting(event.target.checked);
+      });
+      document.getElementById('save-wallpaper-btn')?.addEventListener('click', saveWallpaperSetting);
+      document.getElementById('remove-wallpaper-btn')?.addEventListener('click', removeWallpaper);
+      document.getElementById('away-message-toggle')?.addEventListener('change', saveAwayMessageSetting);
+      document.getElementById('away-message-text')?.addEventListener('change', saveAwayMessageSetting);
       
       // Load blocked contacts list
       loadBlockedContacts();

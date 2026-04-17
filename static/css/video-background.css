@@ -1,0 +1,59 @@
+/* ============================================
+   ZeusChat 4K Background Video Master CSS
+   Ensures videos cover full screen correctly
+   ============================================ */
+
+/* Reset for full-screen */
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow-x: hidden;
+}
+
+/* Full-screen video background */
+.video-background {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    min-width: 100%;
+    min-height: 100%;
+    width: auto;
+    height: auto;
+    transform: translateX(-50%) translateY(-50%);
+    object-fit: cover;
+    z-index: -2;
+}
+
+/* For browsers that don't support object-fit */
+.video-background-fallback {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -2;
+}
+
+/* Content overlay - ensures content is visible above video */
+.content-overlay {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    background: rgba(0, 0, 0, 0.4);
+}
+
+/* Dark mode adjustment */
+@media (prefers-color-scheme: dark) {
+    .content-overlay {
+        background: rgba(0, 0, 0, 0.6);
+    }
+}
+
+/* Mobile optimization */
+@media (max-width: 768px) {
+    .video-background {
+        object-fit: cover;
+    }
+}

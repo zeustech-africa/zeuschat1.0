@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="stylesheet" href="/static/css/video-background.css">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
   <link rel="manifest" href="/static/manifest.json">
@@ -1021,8 +1022,11 @@
   </style>
 </head>
 <body>
-  <!-- Dynamic chat background video source is set by JS based on connection/user preference -->
-  <video class="video-bg chat-background-video" autoplay muted loop playsinline></video>
+  <!-- 4K chat background video -->
+  <video class="video-bg chat-background-video" autoplay muted loop playsinline poster="/static/videos/zeuschat-chatpage.jpg">
+    <source src="/static/videos/zeuschat-chatpage.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
   <div class="overlay"></div>
 
   <button class="menu-toggle" onclick="toggleContacts()">☰ Contacts</button>
@@ -1054,7 +1058,7 @@
           📬 <span id="requests-count">0</span>
         </button>
       </div>
-      <input class="search" placeholder="Type a message..." data-i18n-placeholder="type_message"/>
+      <input class="search" placeholder="Contacts..." data-i18n-placeholder="contacts"/>
       <div class="chat-list" id="contactsList">
         <!-- Chats loaded from localStorage -->
       </div>
@@ -6631,6 +6635,23 @@
       document.body.appendChild(toast);
       setTimeout(() => { if (toast.parentNode) toast.remove(); }, 2500);
     }
+  </script>
+  <script>
+    (function applyChatAppearance() {
+      const theme = localStorage.getItem('zeuschat_theme') || 'obsidian-gold';
+      const wallpaperData = localStorage.getItem('zeuschat_wallpaper_data');
+      const wallpaperColor = localStorage.getItem('zeuschat_wallpaper_color') || '#0a0a0a';
+
+      document.body.dataset.theme = theme;
+      if (wallpaperData) {
+        document.body.style.backgroundImage = `url(${wallpaperData})`;
+        document.body.style.backgroundSize = 'cover';
+        document.body.style.backgroundPosition = 'center';
+      } else {
+        document.body.style.backgroundImage = 'none';
+        document.body.style.backgroundColor = wallpaperColor;
+      }
+    })();
   </script>
   <script src="/static/js/connection-detector.js"></script>
   <script src="/static/js/data-warning.js"></script>

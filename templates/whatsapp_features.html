@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WhatsApp Features — ZeusChat</title>
+<style>
+/* ============================================================
+   THEME VARIABLES — Light / Dark
+   ============================================================ */
+:root {
+  --bg: #FFFFFF;
+  --surface: #F5F6F8;
+  --surface2: #E4E6EB;
+  --text: #111111;
+  --text2: #667781;
+  --accent: #128C7E;
+  --accent-light: #DCF8C6;
+  --bubble-sent: #DCF8C6;
+  --bubble-recv: #FFFFFF;
+  --shadow: 0 2px 10px rgba(0,0,0,.10);
+  --radius: 12px;
+}
+
+[data-theme="dark"] {
+  --bg: #111B21;
+  --surface: #1F2C34;
+  --surface2: #2A3942;
+  --text: #E9EDF0;
+  --text2: #8696A0;
+  --accent: #00A884;
+  --accent-light: #005C4B;
+  --bubble-sent: #005C4B;
+  --bubble-recv: #1F2C34;
+  --shadow: 0 2px 10px rgba(0,0,0,.40);
+}
+
+/* ============================================================
+   BASE
+   ============================================================ */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+       background: var(--bg); color: var(--text); transition: background .2s, color .2s; }
+
+/* ============================================================
+   WALLPAPER
+   ============================================================ */
+.chat-container {
+  background-image: var(--wallpaper-image, none);
+  background-color: var(--wallpaper-color, var(--surface));
+  background-size: cover;
+  background-position: center;
+}
+
+/* ============================================================
+   MESSAGE REACTIONS
+   ============================================================ */
+.message-reactions { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
+.reaction-badge {
+  background: rgba(0,0,0,.08);
+  border-radius: 10px;
+  padding: 2px 7px;
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+  transition: transform .15s;
+}
+.reaction-badge:hover { transform: scale(1.15); }
+
+/* ============================================================
+   REACTION PICKER
+   ============================================================ */
+.reaction-picker {
+  position: fixed;
+  background: var(--bg);
+  border-radius: 24px;
+  padding: 8px 12px;
+  display: none;
+  gap: 10px;
+  box-shadow: var(--shadow);
+  z-index: 2000;
+  border: 1px solid var(--surface2);
+}
+.reaction-picker.show { display: flex; }
+.reaction-opt { font-size: 26px; cursor: pointer; padding: 4px; transition: transform .15s; }
+.reaction-opt:hover { transform: scale(1.3); }
+
+/* ============================================================
+   LONG-PRESS CONTEXT MENU
+   ============================================================ */
+.msg-ctx-menu {
+  position: fixed;
+  background: var(--bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 6px 0;
+  z-index: 1900;
+  display: none;
+  min-width: 180px;
+  border: 1px solid var(--surface2);
+}
+.msg-ctx-menu.show { display: block; }
+.ctx-item {
+  padding: 10px 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  transition: background .1s;
+}
+.ctx-item:hover { background: var(--surface); }
+.ctx-item.danger { color: #EF4444; }
+
+/* ============================================================
+   STARRED MESSAGE INDICATOR
+   ============================================================ */
+.message.starred { border-left: 3px solid #FFD700; padding-left: 8px; }
+
+/* ============================================================
+   PINNED MESSAGE BANNER
+   ============================================================ */
+.pinned-banner {
+  background: var(--surface);
+  border-left: 4px solid var(--accent);
+  padding: 8px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  display: none;
+}
+.pinned-banner.show { display: block; }
+
+/* ============================================================
+   GIF PICKER
+   ============================================================ */
+.gif-picker {
+  position: fixed;
+  bottom: 68px;
+  left: 0; right: 0;
+  background: var(--bg);
+  border-top: 1px solid var(--surface2);
+  height: 300px;
+  display: none;
+  flex-direction: column;
+  z-index: 1500;
+}
+.gif-picker.show { display: flex; }
+.gif-picker-header { padding: 8px 12px; display: flex; gap: 8px; align-items: center; }
+.gif-picker-header input {
+  flex: 1; padding: 7px 12px; border-radius: 20px;
+  border: 1px solid var(--surface2); background: var(--surface);
+  color: var(--text); font-size: 14px;
+}
+.gif-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; padding: 8px; overflow-y: auto; }
+.gif-item img { width: 100%; border-radius: 8px; cursor: pointer; display: block; }
+.gif-item:hover img { opacity: .85; }
+
+/* ============================================================
+   STICKER PICKER
+   ============================================================ */
+.sticker-picker {
+  position: fixed;
+  bottom: 68px;
+  left: 0; right: 0;
+  background: var(--bg);
+  border-top: 1px solid var(--surface2);
+  height: 280px;
+  display: none;
+  flex-direction: column;
+  z-index: 1500;
+}
+.sticker-picker.show { display: flex; }
+.sticker-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; padding: 12px; overflow-y: auto; }
+.sticker-item { font-size: 40px; cursor: pointer; text-align: center; padding: 8px; border-radius: 8px; transition: background .1s; }
+.sticker-item:hover { background: var(--surface); }
+
+/* ============================================================
+   QUICK-REPLIES PANEL
+   ============================================================ */
+.quick-replies-panel {
+  position: fixed;
+  bottom: 68px;
+  left: 0; right: 0;
+  background: var(--bg);
+  border-top: 1px solid var(--surface2);
+  padding: 10px 12px;
+  display: none;
+  flex-wrap: wrap;
+  gap: 8px;
+  z-index: 1500;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.quick-replies-panel.show { display: flex; }
+.qr-chip {
+  background: var(--surface);
+  border: 1px solid var(--surface2);
+  border-radius: 16px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background .1s;
+}
+.qr-chip:hover { background: var(--surface2); }
+
+/* ============================================================
+   SETTINGS PANELS (shared card style)
+   ============================================================ */
+.wa-settings-card {
+  background: var(--bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  margin: 12px 0;
+}
+.wa-settings-card h3 { font-size: 15px; margin-bottom: 14px; color: var(--accent); }
+.wa-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--surface2); }
+.wa-row:last-child { border-bottom: none; }
+.wa-row label { font-size: 14px; }
+.wa-row select, .wa-row input[type=text], .wa-row input[type=email] {
+  padding: 6px 10px; border-radius: 8px; border: 1px solid var(--surface2);
+  background: var(--surface); color: var(--text); font-size: 14px; min-width: 140px;
+}
+
+/* Toggle switch */
+.toggle { position: relative; display: inline-block; width: 44px; height: 24px; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute; inset: 0; background: var(--surface2);
+  border-radius: 24px; cursor: pointer; transition: background .2s;
+}
+.toggle-slider:before {
+  content: ''; position: absolute;
+  width: 18px; height: 18px; left: 3px; top: 3px;
+  background: white; border-radius: 50%; transition: transform .2s;
+}
+.toggle input:checked + .toggle-slider { background: var(--accent); }
+.toggle input:checked + .toggle-slider:before { transform: translateX(20px); }
+
+/* Buttons */
+.wa-btn {
+  padding: 9px 20px; border-radius: 20px; border: none;
+  background: var(--accent); color: white; font-size: 14px;
+  cursor: pointer; transition: opacity .15s;
+}
+.wa-btn:hover { opacity: .85; }
+.wa-btn.secondary { background: var(--surface2); color: var(--text); }
+</style>
+</head>
+<body>
+
+<!-- ================================================================
+     REACTION PICKER
+     ================================================================ -->
+<div id="wa-reaction-picker" class="reaction-picker">
+  <span class="reaction-opt" onclick="waAddReaction('❤️')">❤️</span>
+  <span class="reaction-opt" onclick="waAddReaction('👍')">👍</span>
+  <span class="reaction-opt" onclick="waAddReaction('😂')">😂</span>
+  <span class="reaction-opt" onclick="waAddReaction('😮')">😮</span>
+  <span class="reaction-opt" onclick="waAddReaction('😢')">😢</span>
+  <span class="reaction-opt" onclick="waAddReaction('🙏')">🙏</span>
+  <span class="reaction-opt" onclick="waAddReaction('🔥')">🔥</span>
+</div>
+
+<!-- ================================================================
+     MESSAGE LONG-PRESS CONTEXT MENU
+     ================================================================ -->
+<div id="wa-ctx-menu" class="msg-ctx-menu">
+  <div class="ctx-item" onclick="waStarMessage()">⭐ Star</div>
+  <div class="ctx-item" onclick="waPinMessage()">📌 Pin</div>
+  <div class="ctx-item" onclick="waShowReactionPicker(event)">😊 React</div>
+  <div class="ctx-item" onclick="waForwardMessage()">↗️ Forward</div>
+  <div class="ctx-item" onclick="waReplyToMessage()">↩️ Reply</div>
+  <div class="ctx-item" onclick="waCopyMessage()">📋 Copy</div>
+  <div class="ctx-item danger" onclick="waDeleteMessage()">🗑️ Delete</div>
+</div>
+
+<!-- ================================================================
+     PINNED MESSAGE BANNER
+     ================================================================ -->
+<div id="wa-pinned-banner" class="pinned-banner" onclick="waScrollToPinned()">
+  📌 <span id="wa-pinned-text">Pinned message</span>
+</div>
+
+<!-- ================================================================
+     GIF PICKER
+     ================================================================ -->
+<div id="wa-gif-picker" class="gif-picker">
+  <div class="gif-picker-header">
+    <input type="text" id="wa-gif-search" placeholder="Search GIFs…" oninput="waSearchGifs(this.value)">
+    <button class="wa-btn secondary" onclick="waCloseGifPicker()">✕</button>
+  </div>
+  <div id="wa-gif-grid" class="gif-grid"></div>
+</div>
+
+<!-- ================================================================
+     STICKER PICKER
+     ================================================================ -->
+<div id="wa-sticker-picker" class="sticker-picker">
+  <div class="gif-picker-header">
+    <strong style="flex:1">Stickers</strong>
+    <button class="wa-btn secondary" onclick="waCloseStickerPicker()">✕</button>
+  </div>
+  <div id="wa-sticker-grid" class="sticker-grid"></div>
+</div>
+
+<!-- ================================================================
+     QUICK-REPLIES PANEL
+     ================================================================ -->
+<div id="wa-qr-panel" class="quick-replies-panel">
+  <div id="wa-qr-chips"></div>
+</div>
+
+<!-- ================================================================
+     SETTINGS PANELS (inject into your settings page as needed)
+     ================================================================ -->
+
+<!-- Theme -->
+<section class="wa-settings-card" id="wa-theme-card" style="display:none">
+  <h3>🎨 Appearance</h3>
+  <div class="wa-row">
+    <label>Theme</label>
+    <select id="wa-theme-sel" onchange="waSaveTheme()">
+      <option value="light">Light</option>
+      <option value="dark">Dark</option>
+      <option value="system">System</option>
+    </select>
+  </div>
+  <div class="wa-row">
+    <label>Font size</label>
+    <input type="range" id="wa-font-scale" min="0.8" max="1.6" step="0.1" value="1.0" oninput="waUpdateFontScale(this.value)">
+    <span id="wa-font-scale-label">1.0×</span>
+  </div>
+</section>
+
+<!-- Read Receipts -->
+<section class="wa-settings-card" id="wa-receipts-card" style="display:none">
+  <h3>✅ Read Receipts</h3>
+  <div class="wa-row">
+    <label>Send read receipts</label>
+    <label class="toggle"><input type="checkbox" id="wa-receipts-toggle" onchange="waSaveReadReceipts()"><span class="toggle-slider"></span></label>
+  </div>
+</section>
+
+<!-- Auto-Download -->
+<section class="wa-settings-card" id="wa-download-card" style="display:none">
+  <h3>📥 Auto-Download</h3>
+  <div class="wa-row">
+    <label>Photos</label>
+    <select id="wa-dl-photos" onchange="waSaveAutoDownload()">
+      <option value="wifi">Wi-Fi only</option>
+      <option value="always">Always</option>
+      <option value="never">Never</option>
+    </select>
+  </div>
+  <div class="wa-row">
+    <label>Videos</label>
+    <select id="wa-dl-videos" onchange="waSaveAutoDownload()">
+      <option value="never">Never</option>
+      <option value="wifi">Wi-Fi only</option>
+      <option value="always">Always</option>
+    </select>
+  </div>
+  <div class="wa-row">
+    <label>Documents</label>
+    <select id="wa-dl-docs" onchange="waSaveAutoDownload()">
+      <option value="wifi">Wi-Fi only</option>
+      <option value="always">Always</option>
+      <option value="never">Never</option>
+    </select>
+  </div>
+  <div class="wa-row">
+    <label>Low data mode</label>
+    <label class="toggle"><input type="checkbox" id="wa-low-data" onchange="waSaveAutoDownload()"><span class="toggle-slider"></span></label>
+  </div>
+</section>
+
+<!-- Notification Tones -->
+<section class="wa-settings-card" id="wa-notif-card" style="display:none">
+  <h3>🔔 Notifications</h3>
+  <div class="wa-row">
+    <label>Message tone</label>
+    <select id="wa-notif-tone" onchange="waSaveNotifications()">
+      <option value="default">Default</option>
+      <option value="chime">Chime</option>
+      <option value="bell">Bell</option>
+      <option value="none">Silent</option>
+    </select>
+  </div>
+  <div class="wa-row">
+    <label>Group tone</label>
+    <select id="wa-group-tone" onchange="waSaveNotifications()">
+      <option value="default">Default</option>
+      <option value="chime">Chime</option>
+      <option value="bell">Bell</option>
+      <option value="none">Silent</option>
+    </select>
+  </div>
+</section>
+
+<!-- Two-Step Verification -->
+<section class="wa-settings-card" id="wa-2step-card" style="display:none">
+  <h3>🔒 Two-Step Verification</h3>
+  <div class="wa-row">
+    <span id="wa-2step-status">Not enabled</span>
+    <button class="wa-btn" onclick="waEnable2Step()">Enable</button>
+  </div>
+</section>
+
+<!-- Quick Replies Management -->
+<section class="wa-settings-card" id="wa-qr-mgmt-card" style="display:none">
+  <h3>⚡ Quick Replies</h3>
+  <div id="wa-qr-list"></div>
+  <div style="margin-top:12px;display:flex;gap:8px">
+    <input type="text" id="wa-qr-title" placeholder="Title" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--surface2);background:var(--surface);color:var(--text)">
+    <input type="text" id="wa-qr-content" placeholder="Message text" style="flex:2;padding:8px;border-radius:8px;border:1px solid var(--surface2);background:var(--surface);color:var(--text)">
+    <button class="wa-btn" onclick="waCreateQuickReply()">Add</button>
+  </div>
+</section>
+
+<script>
+/* ================================================================
+   STATE
+   ================================================================ */
+let _waActiveMsg = null;
+let _waCurrentChatId = null;
+
+/* ================================================================
+   INIT — call once when chat loads
+   ================================================================ */
+function waInit(chatId) {
+  _waCurrentChatId = chatId;
+  _waApplyTheme();
+  _waLoadSettings();
+  _waLoadPinnedMessage(chatId);
+}
+
+/* ================================================================
+   THEME
+   ================================================================ */
+function _waApplyTheme() {
+  const saved = localStorage.getItem('wa_theme') || 'light';
+  const effective = saved === 'system'
+    ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+    : saved;
+  document.documentElement.setAttribute('data-theme', effective);
+  const sel = document.getElementById('wa-theme-sel');
+  if (sel) sel.value = saved;
+}
+
+function waSaveTheme() {
+  const theme = document.getElementById('wa-theme-sel').value;
+  const fontScale = parseFloat(document.getElementById('wa-font-scale')?.value || 1.0);
+  localStorage.setItem('wa_theme', theme);
+  _waApplyTheme();
+  fetch('/api/whatsapp/settings/theme', {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({theme, fontScale}),
+  });
+}
+
+function waUpdateFontScale(val) {
+  document.documentElement.style.setProperty('font-size', `${val}rem`);
+  const lbl = document.getElementById('wa-font-scale-label');
+  if (lbl) lbl.textContent = `${parseFloat(val).toFixed(1)}×`;
+}
+
+/* ================================================================
+   LOAD USER SETTINGS
+   ================================================================ */
+async function _waLoadSettings() {
+  try {
+    const [themeRes, receiptsRes, dlRes, notifRes] = await Promise.all([
+      fetch('/api/whatsapp/settings/theme'),
+      fetch('/api/whatsapp/settings/read-receipts'),
+      fetch('/api/whatsapp/settings/auto-download'),
+      fetch('/api/whatsapp/settings/notifications'),
+    ]);
+    if (themeRes.ok) {
+      const t = await themeRes.json();
+      const sel = document.getElementById('wa-theme-sel');
+      if (sel) sel.value = t.theme;
+      const fs = document.getElementById('wa-font-scale');
+      if (fs) { fs.value = t.fontScale; waUpdateFontScale(t.fontScale); }
+    }
+    if (receiptsRes.ok) {
+      const r = await receiptsRes.json();
+      const tog = document.getElementById('wa-receipts-toggle');
+      if (tog) tog.checked = r.enabled;
+    }
+    if (dlRes.ok) {
+      const d = await dlRes.json();
+      const el = (id, val) => { const e = document.getElementById(id); if (e) e.value = val; };
+      el('wa-dl-photos', d.photos);
+      el('wa-dl-videos', d.videos);
+      el('wa-dl-docs', d.documents);
+      const ld = document.getElementById('wa-low-data');
+      if (ld) ld.checked = d.lowDataMode;
+    }
+    if (notifRes.ok) {
+      const n = await notifRes.json();
+      const el = (id, val) => { const e = document.getElementById(id); if (e) e.value = val; };
+      el('wa-notif-tone', n.tone);
+      el('wa-group-tone', n.groupTone);
+    }
+  } catch (_) {}
+}
+
+/* ================================================================
+   READ RECEIPTS
+   ================================================================ */
+function waSaveReadReceipts() {
+  const enabled = document.getElementById('wa-receipts-toggle').checked;
+  fetch('/api/whatsapp/settings/read-receipts', {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({enabled}),
+  });
+}
+
+/* ================================================================
+   AUTO-DOWNLOAD
+   ================================================================ */
+function waSaveAutoDownload() {
+  fetch('/api/whatsapp/settings/auto-download', {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      photos: document.getElementById('wa-dl-photos')?.value || 'wifi',
+      videos: document.getElementById('wa-dl-videos')?.value || 'never',
+      documents: document.getElementById('wa-dl-docs')?.value || 'wifi',
+      lowDataMode: document.getElementById('wa-low-data')?.checked || false,
+    }),
+  });
+}
+
+/* ================================================================
+   NOTIFICATIONS
+   ================================================================ */
+function waSaveNotifications() {
+  fetch('/api/whatsapp/settings/notifications', {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      tone: document.getElementById('wa-notif-tone')?.value || 'default',
+      groupTone: document.getElementById('wa-group-tone')?.value || 'default',
+    }),
+  });
+}
+
+/* ================================================================
+   WALLPAPER
+   ================================================================ */
+async function waChangeWallpaper(imageUrl, type, color) {
+  const res = await fetch('/api/whatsapp/wallpapers/global', {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({wallpaper_url: imageUrl, wallpaper_type: type, wallpaper_color: color}),
+  });
+  const data = await res.json();
+  if (!res.ok) { alert(data.error || 'Could not update wallpaper'); return; }
+  if (imageUrl) {
+    document.documentElement.style.setProperty('--wallpaper-image', `url(${CSS.escape(imageUrl)})`);
+  } else if (color) {
+    document.documentElement.style.setProperty('--wallpaper-color', color);
+  }
+}
+
+/* ================================================================
+   LONG-PRESS / CONTEXT MENU
+   ================================================================ */
+function waShowContextMenu(event, messageId) {
+  event.preventDefault();
+  _waActiveMsg = messageId;
+  const menu = document.getElementById('wa-ctx-menu');
+  const x = Math.min(event.clientX, window.innerWidth - 200);
+  const y = Math.min(event.clientY, window.innerHeight - 260);
+  menu.style.left = x + 'px';
+  menu.style.top  = y + 'px';
+  menu.classList.add('show');
+  document.addEventListener('click', waCloseContextMenu, {once: true});
+}
+
+function waCloseContextMenu() {
+  document.getElementById('wa-ctx-menu').classList.remove('show');
+}
+
+function waStarMessage() {
+  if (!_waActiveMsg) return;
+  fetch(`/api/whatsapp/messages/${_waActiveMsg}/star`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({chat_id: _waCurrentChatId}),
+  }).then(r => r.json()).then(d => {
+    const el = document.getElementById(`msg-${_waActiveMsg}`);
+    if (el) el.classList.toggle('starred', d.starred);
+  });
+  waCloseContextMenu();
+}
+
+function waPinMessage() {
+  if (!_waActiveMsg) return;
+  fetch(`/api/whatsapp/messages/${_waActiveMsg}/pin`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({chat_id: _waCurrentChatId}),
+  }).then(() => _waLoadPinnedMessage(_waCurrentChatId));
+  waCloseContextMenu();
+}
+
+async function _waLoadPinnedMessage(chatId) {
+  if (!chatId) return;
+  try {
+    const res = await fetch(`/api/whatsapp/messages/${chatId}/pinned`);
+    const data = await res.json();
+    const banner = document.getElementById('wa-pinned-banner');
+    if (data.pinned && banner) {
+      document.getElementById('wa-pinned-text').textContent = `Message #${data.pinned.message_id}`;
+      banner.classList.add('show');
+      banner.dataset.msgId = data.pinned.message_id;
+    } else if (banner) {
+      banner.classList.remove('show');
+    }
+  } catch (_) {}
+}
+
+function waScrollToPinned() {
+  const msgId = document.getElementById('wa-pinned-banner').dataset.msgId;
+  const el = document.getElementById(`msg-${msgId}`);
+  if (el) el.scrollIntoView({behavior: 'smooth', block: 'center'});
+}
+
+function waForwardMessage() { waCloseContextMenu(); /* wire to send-to-chat UI */ }
+function waReplyToMessage() { waCloseContextMenu(); /* wire to reply composer */ }
+function waCopyMessage() {
+  const el = document.getElementById(`msg-${_waActiveMsg}`);
+  if (el) navigator.clipboard?.writeText(el.innerText).catch(() => {});
+  waCloseContextMenu();
+}
+function waDeleteMessage() { waCloseContextMenu(); /* wire to delete endpoint */ }
+
+/* ================================================================
+   REACTION PICKER
+   ================================================================ */
+function waShowReactionPicker(event) {
+  waCloseContextMenu();
+  const picker = document.getElementById('wa-reaction-picker');
+  picker.style.left = Math.min(event.clientX, window.innerWidth - 260) + 'px';
+  picker.style.top  = (event.clientY - 60) + 'px';
+  picker.classList.add('show');
+  setTimeout(() => document.addEventListener('click', _waCloseReactionPicker, {once: true}), 50);
+}
+
+function _waCloseReactionPicker() {
+  document.getElementById('wa-reaction-picker').classList.remove('show');
+}
+
+function waAddReaction(emoji) {
+  if (!_waActiveMsg) return;
+  fetch(`/api/whatsapp/messages/${_waActiveMsg}/react`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({emoji}),
+  }).then(r => r.json()).then(d => _waRenderReactions(_waActiveMsg, d.reactions));
+  _waCloseReactionPicker();
+}
+
+function _waRenderReactions(messageId, reactions) {
+  const el = document.getElementById(`msg-reactions-${messageId}`);
+  if (!el) return;
+  el.innerHTML = reactions.map(r => `<span class="reaction-badge">${r.emoji} ${r.count}</span>`).join('');
+}
+
+/* ================================================================
+   GIF PICKER
+   ================================================================ */
+let _gifDebounce = null;
+
+async function waOpenGifPicker() {
+  const picker = document.getElementById('wa-gif-picker');
+  const isOpen = picker.classList.toggle('show');
+  if (isOpen) {
+    const res = await fetch('/api/whatsapp/gifs/trending');
+    const data = await res.json();
+    _waRenderGifs(data.gifs);
+  }
+}
+
+function waCloseGifPicker() {
+  document.getElementById('wa-gif-picker').classList.remove('show');
+}
+
+function waSearchGifs(query) {
+  clearTimeout(_gifDebounce);
+  _gifDebounce = setTimeout(async () => {
+    const res = await fetch(`/api/whatsapp/gifs/search?q=${encodeURIComponent(query)}`);
+    const data = await res.json();
+    _waRenderGifs(data.gifs);
+  }, 400);
+}
+
+function _waRenderGifs(gifs) {
+  const grid = document.getElementById('wa-gif-grid');
+  if (!grid) return;
+  if (!gifs.length) { grid.innerHTML = '<p style="padding:16px;color:var(--text2)">No GIFs found</p>'; return; }
+  grid.innerHTML = gifs.map(g =>
+    `<div class="gif-item" onclick="waSendGif('${CSS.escape(g.url)}')"><img src="${g.url}" alt="${g.title}" loading="lazy"></div>`
+  ).join('');
+}
+
+function waSendGif(url) {
+  waCloseGifPicker();
+  if (typeof sendMessage === 'function') sendMessage(url, 'gif');
+}
+
+/* ================================================================
+   STICKER PICKER
+   ================================================================ */
+async function waOpenStickerPicker() {
+  const picker = document.getElementById('wa-sticker-picker');
+  const isOpen = picker.classList.toggle('show');
+  if (isOpen) {
+    const res = await fetch('/api/whatsapp/stickers/packs');
+    const data = await res.json();
+    _waRenderStickers(data.packs);
+  }
+}
+
+function waCloseStickerPicker() {
+  document.getElementById('wa-sticker-picker').classList.remove('show');
+}
+
+function _waRenderStickers(packs) {
+  const grid = document.getElementById('wa-sticker-grid');
+  if (!grid) return;
+  const stickers = packs.flatMap(p => p.stickers);
+  if (!stickers.length) { grid.innerHTML = '<p style="padding:16px;color:var(--text2)">No stickers yet</p>'; return; }
+  grid.innerHTML = stickers.map(s =>
+    `<div class="sticker-item" onclick="waSendSticker('${CSS.escape(s.url)}')">${s.emoji || '😊'}</div>`
+  ).join('');
+}
+
+function waSendSticker(url) {
+  waCloseStickerPicker();
+  if (typeof sendMessage === 'function') sendMessage(url, 'sticker');
+}
+
+/* ================================================================
+   QUICK REPLIES
+   ================================================================ */
+async function waOpenQuickReplies() {
+  const panel = document.getElementById('wa-qr-panel');
+  const isOpen = panel.classList.toggle('show');
+  if (!isOpen) return;
+  const res = await fetch('/api/whatsapp/quick-replies');
+  const data = await res.json();
+  const chips = document.getElementById('wa-qr-chips');
+  if (!chips) return;
+  if (!data.quickReplies.length) { chips.innerHTML = '<em style="color:var(--text2);font-size:13px">No quick replies yet</em>'; return; }
+  chips.innerHTML = data.quickReplies.map(r =>
+    `<div class="qr-chip" onclick="waInsertQuickReply(${JSON.stringify(r.content)})">${r.title}</div>`
+  ).join('');
+}
+
+function waInsertQuickReply(text) {
+  const inp = document.getElementById('message-input') || document.querySelector('textarea[name=message]');
+  if (inp) inp.value = text;
+  document.getElementById('wa-qr-panel').classList.remove('show');
+}
+
+async function waCreateQuickReply() {
+  const title = document.getElementById('wa-qr-title')?.value.trim();
+  const content = document.getElementById('wa-qr-content')?.value.trim();
+  if (!title || !content) { alert('Title and message text are required'); return; }
+  const res = await fetch('/api/whatsapp/quick-replies', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({title, content}),
+  });
+  if (res.ok) {
+    document.getElementById('wa-qr-title').value = '';
+    document.getElementById('wa-qr-content').value = '';
+    waLoadQuickRepliesMgmt();
+  }
+}
+
+async function waLoadQuickRepliesMgmt() {
+  const res = await fetch('/api/whatsapp/quick-replies');
+  const data = await res.json();
+  const list = document.getElementById('wa-qr-list');
+  if (!list) return;
+  list.innerHTML = data.quickReplies.map(r =>
+    `<div class="wa-row"><span><strong>${r.title}</strong> — ${r.content}</span>
+     <button class="wa-btn secondary" onclick="waDeleteQuickReply(${r.id})">🗑</button></div>`
+  ).join('');
+}
+
+async function waDeleteQuickReply(id) {
+  await fetch(`/api/whatsapp/quick-replies/${id}`, {method: 'DELETE'});
+  waLoadQuickRepliesMgmt();
+}
+
+/* ================================================================
+   TWO-STEP VERIFICATION
+   ================================================================ */
+async function waEnable2Step() {
+  const pin = prompt('Enter a 6-digit PIN:');
+  if (!pin || !/^\d{6}$/.test(pin)) { alert('PIN must be exactly 6 digits'); return; }
+  const email = prompt('Enter a recovery email:');
+  if (!email || !email.includes('@')) { alert('Valid email required'); return; }
+  const res = await fetch('/api/whatsapp/security/two-step', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({pin, email}),
+  });
+  if (res.ok) {
+    alert('Two-step verification enabled!');
+    const status = document.getElementById('wa-2step-status');
+    if (status) status.textContent = 'Enabled ✓';
+  }
+}
+</script>
+</body>
+</html>

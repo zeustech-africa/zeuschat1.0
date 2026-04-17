@@ -261,24 +261,10 @@
 </head>
 <body>
   <div class="container">
-    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
-      <button class="back-btn" onclick="window.location.href='chat.html'" data-i18n="chats">Chats</button>
-      <button class="back-btn" onclick="window.location.href='/ghost-market'">Ghost Market</button>
-      <button class="back-btn" onclick="window.location.href='/ghost-forums'">Ghost Forums</button>
-      <button class="back-btn" onclick="window.location.href='/ghost-ultimate'">Ghost Ultimate</button>
-    </div>
-
-    <!-- 💎 SUBSCRIPTION SECTION -->
-    <div class="section">
-      <div class="section-title">💎 Subscription</div>
-      <div class="setting" onclick="window.location.href='/mobile/subscription'" style="cursor:pointer;">
-        <div class="setting-label">Current Plan: <span id="currentPlanDisplay" style="color:#D4AF37;font-weight:bold;">Free</span></div>
-        <div style="font-size: 20px;">→</div>
-      </div>
-      <div class="setting" id="cancelSubscriptionItem" style="display:none;cursor:pointer;" onclick="cancelSubscription()">
-        <div class="setting-label" style="color:#ef4444;">Cancel Subscription</div>
-        <div style="font-size: 20px; color:#ef4444;">→</div>
-      </div>
+    <!-- Clean Settings Header -->
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px; padding-bottom:12px; border-bottom:0.5px solid #222;">
+      <button class="back-btn" onclick="window.location.href='/mobile/chat'" style="flex-shrink:0;">← Chats</button>
+      <span style="font-size:20px; font-weight:700; color:#D4AF37;">Settings</span>
     </div>
 
     <div class="section">
@@ -323,7 +309,70 @@
           <option value="nobody">Nobody</option>
         </select>
       </div>
+      <div class="setting">
+        <div>
+          <div class="setting-label">Read Receipts</div>
+          <div style="font-size: 12px; color: #888;">Show when you've read messages</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="read-receipts-toggle">
+          <span class="slider"></span>
+        </label>
+      </div>
     </div>
+
+    <div class="section">
+      <div class="section-title">🎨 Chat Theme</div>
+      <div class="setting">
+        <div>
+          <div class="setting-label">Theme Style</div>
+          <div style="font-size: 12px; color: #888;">Apply to web and mobile chats</div>
+        </div>
+        <select id="theme-select" class="setting-value" onchange="setTheme(this.value)">
+          <option value="obsidian-gold">Obsidian Gold</option>
+          <option value="ocean-breeze">Ocean Breeze</option>
+          <option value="forest-night">Forest Night</option>
+          <option value="sunset-pop">Sunset Pop</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">🖼️ Chat Wallpaper</div>
+      <div class="setting">
+        <div>
+          <div class="setting-label">Wallpaper Style</div>
+          <div style="font-size: 12px; color: #888;">Pick your chat wallpaper color</div>
+        </div>
+        <select id="wallpaper-color" class="setting-value">
+          <option value="#000000">Black</option>
+          <option value="#1A2A4A">Navy</option>
+          <option value="#1A3A2A">Forest</option>
+          <option value="#4A1A2A">Burgundy</option>
+        </select>
+      </div>
+      <div id="wallpaper-preview" style="height:80px; border-radius:8px; border:1px solid #333; margin: 8px 0; background:#111 center/cover no-repeat;"></div>
+      <input id="wallpaper-upload" type="file" accept="image/*" style="display:none;" onchange="openWallpaperPicker(event)">
+      <button class="btn" id="upload-wallpaper-btn" type="button" onclick="document.getElementById('wallpaper-upload')?.click()">Choose Image Wallpaper</button>
+      <button class="btn" id="save-wallpaper-btn" type="button">Save Wallpaper</button>
+      <button class="btn" id="remove-wallpaper-btn" type="button" style="background:#2a2a2a; color:#fff;">Remove Wallpaper</button>
+    </div>
+
+    <div class="section">
+      <div class="section-title">✈️ Away Message</div>
+      <div class="setting">
+        <div>
+          <div class="setting-label">Enable Away Message</div>
+          <div style="font-size: 12px; color: #888;">Auto-reply when you are unavailable</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="away-message-toggle">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <textarea id="away-message-text" placeholder="I am currently away. Will respond when I return." style="width: 100%; min-height: 70px; margin-top: 8px; background: #111; color: #fff; border: 1px solid #333; border-radius: 6px; padding: 10px; box-sizing: border-box;"></textarea>
+    </div>
+
     <div class="section">
       <div class="section-title" data-i18n="security">Security</div>
       <div class="setting">
@@ -376,6 +425,7 @@
           Receive notifications even when the app is closed
         </div>
       </div>
+      <button class="btn" type="button" onclick="testNotificationSound()">🔊 Test Notification Sound</button>
     </div>
 
     <div class="section">
@@ -530,11 +580,11 @@
       </button>
       <button class="nav-item nav-item-mobile" data-page="market">
         <span class="nav-icon">🏪</span>
-        <span>Market</span>
+        <span>Ghost Market</span>
       </button>
       <button class="nav-item nav-item-mobile" data-page="community">
         <span class="nav-icon">👻</span>
-        <span>Ghost</span>
+        <span>Ghost Community</span>
       </button>
       <button class="nav-item nav-item-mobile" data-page="profile">
         <span class="nav-icon">👤</span>
@@ -556,7 +606,7 @@
         <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap;">
           <div style="flex:1; background:#f1f5f9; border-radius:16px; padding:16px; min-width:150px;">
             <div style="font-size:24px; font-weight:800; color:#667eea;">R89<span style="font-size:12px;">/mo</span></div>
-            <div style="font-size:12px; color:#64748b;">Monthly Subscription</div>
+            <div style="font-size:12px; color:#64748b;">Monthly Plan</div>
             <div style="font-size:11px; color:#10b981; margin-top:8px;">✓ All Pro features</div>
             <div style="font-size:11px; color:#10b981;">✓ Cancel anytime</div>
           </div>
@@ -568,7 +618,7 @@
           </div>
         </div>
 
-        <button id="dualSubscribeBtn" style="width:100%; padding:14px; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white; border:none; border-radius:40px; font-size:16px; font-weight:600; cursor:pointer; margin-bottom:12px;">Subscribe Monthly →</button>
+        <button id="dualSubscribeBtn" style="width:100%; padding:14px; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white; border:none; border-radius:40px; font-size:16px; font-weight:600; cursor:pointer; margin-bottom:12px;">Join Monthly →</button>
         <button id="dualOneTimeBtn" style="width:100%; padding:14px; background:#f1f5f9; color:#1e293b; border:none; border-radius:40px; font-size:16px; font-weight:600; cursor:pointer; margin-bottom:12px;">Pay Once (R<span id="oneTimeAmount">39</span>)</button>
         <button id="dualCancelBtn" style="background:none; border:none; color:#94a3b8; cursor:pointer;">Not Now</button>
       </div>
@@ -749,6 +799,165 @@
       }
     }
 
+    async function loadWhatsappAdvancedSettings() {
+      loadSavedTheme();
+
+      try {
+        const rr = await apiFetch('/api/whatsapp/settings/read-receipts', { method: 'GET' });
+        const rrData = await rr.json();
+        if (rr.ok && rrData.success) {
+          document.getElementById('read-receipts-toggle').checked = !!rrData.enabled;
+        }
+      } catch (error) {
+        console.error('Failed to load read receipts setting:', error);
+      }
+
+      try {
+        const wp = await apiFetch('/api/whatsapp/wallpapers/global', { method: 'GET' });
+        const wpData = await wp.json();
+        if (wp.ok && wpData.wallpaper && wpData.wallpaper.wallpaper_color) {
+          const picker = document.getElementById('wallpaper-color');
+          if (picker) picker.value = wpData.wallpaper.wallpaper_color;
+          loadSavedWallpaper(wpData.wallpaper.wallpaper_color);
+        }
+      } catch (error) {
+        console.error('Failed to load wallpaper setting:', error);
+        loadSavedWallpaper();
+      }
+
+      try {
+        const away = await apiFetch('/api/whatsapp/away-message', { method: 'GET' });
+        const awayData = await away.json();
+        if (away.ok && awayData.away_message) {
+          const toggle = document.getElementById('away-message-toggle');
+          const text = document.getElementById('away-message-text');
+          if (toggle) toggle.checked = !!awayData.away_message.is_enabled;
+          if (text) text.value = awayData.away_message.message || '';
+        }
+      } catch (error) {
+        console.error('Failed to load away message setting:', error);
+      }
+    }
+
+    async function saveReadReceiptsSetting(enabled) {
+      try {
+        await apiFetch('/api/whatsapp/settings/read-receipts', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: !!enabled }),
+        });
+      } catch (error) {
+        console.error('Failed to save read receipts setting:', error);
+      }
+    }
+
+    async function saveWallpaperSetting() {
+      const picker = document.getElementById('wallpaper-color');
+      const wallpaper_color = picker ? picker.value : '#000000';
+      const uploadedImage = localStorage.getItem('zeuschat_wallpaper_data') || '';
+      try {
+        const response = await apiFetch('/api/whatsapp/wallpapers/global', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            wallpaper_type: uploadedImage ? 'image' : 'solid',
+            wallpaper_color,
+            wallpaper_url: uploadedImage,
+          }),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          alert(data.error || 'Failed to save wallpaper');
+          return;
+        }
+        localStorage.setItem('zeuschat_wallpaper_color', wallpaper_color);
+        sessionStorage.setItem('zeuschat_wallpaper_color', wallpaper_color);
+        loadSavedWallpaper(wallpaper_color);
+        alert('Wallpaper saved ✅');
+      } catch (error) {
+        console.error('Failed to save wallpaper setting:', error);
+      }
+    }
+
+    const THEME_PALETTES = {
+      'obsidian-gold': { '--theme-bg': '#0b0b0b', '--theme-panel': '#121212', '--theme-accent': '#d4af37', '--theme-text': '#ffffff' },
+      'ocean-breeze': { '--theme-bg': '#081425', '--theme-panel': '#10233f', '--theme-accent': '#4cc9f0', '--theme-text': '#eef8ff' },
+      'forest-night': { '--theme-bg': '#081a12', '--theme-panel': '#13291f', '--theme-accent': '#62d4a8', '--theme-text': '#effff7' },
+      'sunset-pop': { '--theme-bg': '#2a1212', '--theme-panel': '#3b1e1e', '--theme-accent': '#ff9f43', '--theme-text': '#fff3e8' },
+    };
+
+    function setTheme(themeName) {
+      const nextTheme = THEME_PALETTES[themeName] ? themeName : 'obsidian-gold';
+      const palette = THEME_PALETTES[nextTheme];
+      document.body.dataset.theme = nextTheme;
+      Object.entries(palette).forEach(([key, value]) => {
+        document.documentElement.style.setProperty(key, value);
+      });
+      localStorage.setItem('zeuschat_theme', nextTheme);
+      sessionStorage.setItem('zeuschat_theme', nextTheme);
+      const themeSelect = document.getElementById('theme-select');
+      if (themeSelect && themeSelect.value !== nextTheme) themeSelect.value = nextTheme;
+    }
+
+    function loadSavedTheme() {
+      const savedTheme = localStorage.getItem('zeuschat_theme') || 'obsidian-gold';
+      setTheme(savedTheme);
+    }
+
+    function openWallpaperPicker(event) {
+      const file = event?.target?.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = typeof reader.result === 'string' ? reader.result : '';
+        if (!dataUrl) return;
+        localStorage.setItem('zeuschat_wallpaper_data', dataUrl);
+        sessionStorage.setItem('zeuschat_wallpaper_data', dataUrl);
+        loadSavedWallpaper();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removeWallpaper() {
+      localStorage.removeItem('zeuschat_wallpaper_data');
+      sessionStorage.removeItem('zeuschat_wallpaper_data');
+      const preview = document.getElementById('wallpaper-preview');
+      if (!preview) return;
+      preview.style.backgroundImage = 'none';
+      preview.style.backgroundColor = localStorage.getItem('zeuschat_wallpaper_color') || '#111';
+    }
+
+    function loadSavedWallpaper(fallbackColor) {
+      const preview = document.getElementById('wallpaper-preview');
+      if (!preview) return;
+      const wallpaperData = localStorage.getItem('zeuschat_wallpaper_data');
+      const wallpaperColor = fallbackColor || localStorage.getItem('zeuschat_wallpaper_color') || '#111';
+      if (wallpaperData) {
+        preview.style.backgroundImage = `url(${wallpaperData})`;
+        preview.style.backgroundColor = '#111';
+      } else {
+        preview.style.backgroundImage = 'none';
+        preview.style.backgroundColor = wallpaperColor;
+      }
+    }
+
+    async function saveAwayMessageSetting() {
+      const toggle = document.getElementById('away-message-toggle');
+      const text = document.getElementById('away-message-text');
+      try {
+        await apiFetch('/api/whatsapp/away-message', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            is_enabled: !!toggle?.checked,
+            message: text?.value || '',
+          }),
+        });
+      } catch (error) {
+        console.error('Failed to save away message setting:', error);
+      }
+    }
+
     // Authentication guard
     const isLoggedIn = sessionStorage.getItem('user_logged_in') === 'true';
     const userPin = sessionStorage.getItem('user_zeus_pin');
@@ -802,18 +1011,23 @@
       }
 
       await loadDataSaverSettings();
+      await loadWhatsappAdvancedSettings();
 
       document.getElementById('dataSaverToggle')?.addEventListener('change', saveDataSaverSettings);
       document.getElementById('imageQuality')?.addEventListener('change', saveDataSaverSettings);
       document.getElementById('autoDownloadImages')?.addEventListener('change', saveDataSaverSettings);
       document.getElementById('autoDownloadVideos')?.addEventListener('change', saveDataSaverSettings);
+      document.getElementById('read-receipts-toggle')?.addEventListener('change', (event) => {
+        saveReadReceiptsSetting(event.target.checked);
+      });
+      document.getElementById('save-wallpaper-btn')?.addEventListener('click', saveWallpaperSetting);
+      document.getElementById('remove-wallpaper-btn')?.addEventListener('click', removeWallpaper);
+      document.getElementById('away-message-toggle')?.addEventListener('change', saveAwayMessageSetting);
+      document.getElementById('away-message-text')?.addEventListener('change', saveAwayMessageSetting);
       
       // Load blocked contacts list
       loadBlockedContacts();
 
-      // Load subscription info
-      loadSubscriptionSettings();
-      
       // Set up character counter for feedback
       const feedbackMessage = document.getElementById('feedback-message');
       if (feedbackMessage) {
@@ -967,6 +1181,30 @@
       alert(messages[value] + ' ✅');
       console.log(`🔔 Notification setting saved to localStorage and sessionStorage: ${value}`);
     }
+
+    function testNotificationSound() {
+      alert('Testing notification sound... Check your speakers!');
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+
+        oscillator.type = 'sine';
+        oscillator.frequency.value = 880;
+        gainNode.gain.value = 0.08;
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        oscillator.start();
+        setTimeout(() => {
+          oscillator.stop();
+          audioCtx.close();
+        }, 200);
+      } catch (e) {
+        console.warn('Audio test unavailable:', e);
+      }
+    }
     
     function toggleOnlineStatus() {
       const checkbox = document.getElementById('online-status');
@@ -1112,6 +1350,18 @@
           alert('⚠️ Settings saved locally but could not sync with server');
           window.location.href = 'chat.html';
         });
+    }
+
+    // PWA install prompt
+    let _deferredInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); _deferredInstallPrompt = e; });
+    function promptInstallPWA() {
+      if (_deferredInstallPrompt) {
+        _deferredInstallPrompt.prompt();
+        _deferredInstallPrompt.userChoice.then(() => { _deferredInstallPrompt = null; });
+      } else {
+        alert('To install: tap Share → Add to Home Screen (iOS) or the install icon in the browser address bar (Android/Desktop).');
+      }
     }
 
     function logout() {
@@ -1285,44 +1535,6 @@
     });
   }
 
-  async function loadSubscriptionSettings() {
-    try {
-      const res = await apiFetch('/api/user/subscription');
-      const data = await res.json();
-      const planDisplay = document.getElementById('currentPlanDisplay');
-      const cancelItem = document.getElementById('cancelSubscriptionItem');
-      if (!planDisplay) return;
-      const labels = {
-        'free': 'Free Plan',
-        'pro': 'Pro Plan 👑',
-        'pro_annual': 'Pro Annual 👑',
-        'teams': 'Teams Plan 👥',
-        'enterprise': 'Enterprise 🏢'
-      };
-      planDisplay.textContent = labels[data.tier] || 'Free Plan';
-      if (cancelItem) {
-        cancelItem.style.display = (data.tier && data.tier !== 'free') ? 'flex' : 'none';
-      }
-    } catch(e) {
-      console.error('Load subscription settings error:', e);
-    }
-  }
-
-  async function cancelSubscription() {
-    if (!confirm('Cancel your subscription? You will lose access to Pro features at the end of your billing period.')) return;
-    try {
-      const res = await apiFetch('/api/user/subscription/cancel', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
-      const data = await res.json();
-      if (data.success) {
-        alert('Subscription cancelled. You will have access until the end of your billing period.');
-        loadSubscriptionSettings();
-      } else {
-        alert(data.error || 'Failed to cancel subscription');
-      }
-    } catch(e) {
-      alert('Error cancelling subscription: ' + e.message);
-    }
-  }
   </script>
   <div style="text-align:center;padding:12px 0 16px;font-size:12px;">
     <a href="/terms" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">Terms</a> |

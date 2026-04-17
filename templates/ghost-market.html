@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+        <link rel="stylesheet" href="/static/css/video-background.css">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Ghost Market - ZeusChat</title>
@@ -232,7 +233,12 @@
     </style>
 </head>
 <body>
-    <div class="container">
+        <!-- 4K Background Video -->
+        <video class="video-background" autoplay loop muted playsinline>
+            <source src="/static/videos/zeuschat-chatpage.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        <div class="container">
         <div class="market-header">
             <button class="back-btn" onclick="window.location.href='/chat.html'">← Back to Chats</button>
             <h1>🏪 Ghost Market</h1>

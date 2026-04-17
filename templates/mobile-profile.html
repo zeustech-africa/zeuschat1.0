@@ -477,7 +477,7 @@
           <button class="change-avatar-btn" id="changeAvatarBtn">📷</button>
         </div>
         <h2 id="profileName">User Name</h2>
-        <p class="profile-pin" id="profilePin">ZT-XXXX-XXXX</p>
+        <p class="profile-pin" id="profilePin">ZT-0000-0000</p>
         <div class="subscription-badge" id="subscriptionBadge" style="display:inline-flex;align-items:center;gap:8px;margin-top:8px;">
           <span class="plan-badge-mobile" id="planBadge">Free Plan</span>
           <button id="upgradeBtn" onclick="window.location.href='/mobile/subscription'" style="background:linear-gradient(135deg,#D4AF37,#B8960C);color:#0a0a0a;border:none;border-radius:20px;padding:6px 16px;font-size:12px;font-weight:bold;cursor:pointer;">Upgrade</button>
@@ -536,25 +536,48 @@
 
       <!-- Mobile Settings Sections -->
       <div class="mobile-settings-section mobile-only">
-        <div class="setting-item" onclick="navigateTo('/ghost-market')">
-          <span class="setting-icon">🏪</span>
-          <span class="setting-name">Ghost Market</span>
-          <span class="setting-arrow">→</span>
+        <div style="font-size:13px; color:#888; padding:8px 4px 4px; font-weight:600;">Account</div>
+        <div class="setting-item" onclick="document.getElementById('displayName').scrollIntoView({behavior:'smooth'})">
+          <span class="setting-icon">👤</span>
+          <span class="setting-name">Account Info</span>
+          <span class="setting-arrow">›</span>
         </div>
-        <div class="setting-item" onclick="navigateTo('/subscription')">
+        <div class="setting-item" onclick="navigateTo('/mobile/privacy')">
+          <span class="setting-icon">🔒</span>
+          <span class="setting-name">Privacy</span>
+          <span class="setting-arrow">›</span>
+        </div>
+        <div class="setting-item" onclick="navigateTo('/mobile/security')">
+          <span class="setting-icon">🛡️</span>
+          <span class="setting-name">Security</span>
+          <span class="setting-arrow">›</span>
+        </div>
+        <div style="font-size:13px; color:#888; padding:12px 4px 4px; font-weight:600;">Subscription</div>
+        <div class="setting-item" onclick="navigateTo('/mobile/subscription')">
           <span class="setting-icon">💎</span>
-          <span class="setting-name">Upgrade to Pro</span>
-          <span class="setting-arrow">→</span>
+          <span class="setting-name">Manage Subscription</span>
+          <span class="setting-arrow">›</span>
         </div>
-        <div class="setting-item" onclick="navigateTo('/settings.html')">
-          <span class="setting-icon">⚙️</span>
-          <span class="setting-name">Settings</span>
-          <span class="setting-arrow">→</span>
+        <div style="font-size:13px; color:#888; padding:12px 4px 4px; font-weight:600;">Support</div>
+        <div class="setting-item" onclick="navigateTo('/help')">
+          <span class="setting-icon">❓</span>
+          <span class="setting-name">Help</span>
+          <span class="setting-arrow">›</span>
         </div>
-        <div class="setting-item" onclick="logout()">
+        <div class="setting-item" onclick="navigateTo('/about')">
+          <span class="setting-icon">ℹ️</span>
+          <span class="setting-name">About ZeusChat</span>
+          <span class="setting-arrow">›</span>
+        </div>
+        <div class="setting-item" onclick="shareFriend()">
+          <span class="setting-icon">🤝</span>
+          <span class="setting-name">Tell a Friend</span>
+          <span class="setting-arrow">›</span>
+        </div>
+        <div class="setting-item" onclick="logout()" style="margin-top:8px;">
           <span class="setting-icon">🚪</span>
-          <span class="setting-name">Logout</span>
-          <span class="setting-arrow">→</span>
+          <span class="setting-name" style="color:#ff4444;">Logout</span>
+          <span class="setting-arrow">›</span>
         </div>
       </div>
     </div>
@@ -567,11 +590,11 @@
       </button>
       <button class="nav-item nav-item-mobile" data-page="market">
         <span class="nav-icon">🏪</span>
-        <span>Market</span>
+        <span>Ghost Market</span>
       </button>
       <button class="nav-item nav-item-mobile" data-page="community">
         <span class="nav-icon">👻</span>
-        <span>Ghost</span>
+        <span>Ghost Community</span>
       </button>
       <button class="nav-item nav-item-mobile active" data-page="profile">
         <span class="nav-icon">👤</span>
@@ -593,7 +616,7 @@
         <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap;">
           <div style="flex:1; background:#f1f5f9; border-radius:16px; padding:16px; min-width:150px;">
             <div style="font-size:24px; font-weight:800; color:#667eea;">R89<span style="font-size:12px;">/mo</span></div>
-            <div style="font-size:12px; color:#64748b;">Monthly Subscription</div>
+            <div style="font-size:12px; color:#64748b;">Monthly Plan</div>
             <div style="font-size:11px; color:#10b981; margin-top:8px;">✓ All Pro features</div>
             <div style="font-size:11px; color:#10b981;">✓ Cancel anytime</div>
           </div>
@@ -605,7 +628,7 @@
           </div>
         </div>
 
-        <button id="dualSubscribeBtn" style="width:100%; padding:14px; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white; border:none; border-radius:40px; font-size:16px; font-weight:600; cursor:pointer; margin-bottom:12px;">Subscribe Monthly →</button>
+        <button id="dualSubscribeBtn" style="width:100%; padding:14px; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white; border:none; border-radius:40px; font-size:16px; font-weight:600; cursor:pointer; margin-bottom:12px;">Join Monthly →</button>
         <button id="dualOneTimeBtn" style="width:100%; padding:14px; background:#f1f5f9; color:#1e293b; border:none; border-radius:40px; font-size:16px; font-weight:600; cursor:pointer; margin-bottom:12px;">Pay Once (R<span id="oneTimeAmount">39</span>)</button>
         <button id="dualCancelBtn" style="background:none; border:none; color:#94a3b8; cursor:pointer;">Not Now</button>
       </div>
@@ -805,6 +828,16 @@
 
     function navigateTo(path) {
       window.location.href = path;
+    }
+
+    function shareFriend() {
+      const pin = sessionStorage.getItem('user_zeus_pin') || '';
+      const shareText = `Join me on ZeusChat — the private, secure messaging app! Download at https://zeuschat.app — find me with my ZeusPIN: ${pin}`;
+      if (navigator.share) {
+        navigator.share({ title: 'Join ZeusChat', text: shareText, url: 'https://zeuschat.app' }).catch(() => {});
+      } else {
+        navigator.clipboard?.writeText(shareText).then(() => alert('Invite link copied!')).catch(() => alert(shareText));
+      }
     }
 
     async function loadSubscriptionBadge() {

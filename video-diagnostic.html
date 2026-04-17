@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ZeusChat - Video Diagnostic</title>
+    <link rel="stylesheet" href="/static/css/video-background.css">
+    <style>
+        .content-overlay {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: white;
+            text-align: center;
+        }
+        .diagnostic-box {
+            background: rgba(0,0,0,0.7);
+            padding: 30px;
+            border-radius: 20px;
+            max-width: 500px;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 10px;
+        }
+        .success { background: #4CAF50; }
+        .error { background: #F44336; }
+        .warning { background: #FF9800; }
+    </style>
+</head>
+<body>
+    <video class="video-background" autoplay loop muted playsinline>
+        <source src="/static/videos/zeustech-background.mp4" type="video/mp4">
+    </video>
+    <div class="content-overlay">
+        <div class="diagnostic-box">
+            <h1>🎬 ZeusChat Video Diagnostic</h1>
+            <div id="video-status" class="status">Checking video...</div>
+            <div id="video-size" class="status">Checking dimensions...</div>
+            <div id="css-status" class="status">Checking CSS...</div>
+            <hr>
+            <p><strong>Expected behavior:</strong> Video should cover entire background</p>
+            <p><strong>If video is small or in corner:</strong> CSS issue detected</p>
+            <button onclick="location.reload()">Refresh</button>
+        </div>
+    </div>
+    <script>
+        const video = document.querySelector('.video-background');
+        
+        if (video) {
+            video.addEventListener('loadedmetadata', function() {
+                const status = document.getElementById('video-status');
+                status.textContent = '✅ Video loaded: ' + video.videoWidth + 'x' + video.videoHeight;
+                status.className = 'status success';
+                
+                const size = document.getElementById('video-size');
+                const rect = video.getBoundingClientRect();
+                if (rect.width >= window.innerWidth && rect.height >= window.innerHeight) {
+                    size.textContent = '✅ Video covers full screen';
+                    size.className = 'status success';
+                } else {
+                    size.textContent = '⚠️ Video size: ' + rect.width + 'x' + rect.height + ' (should cover screen)';
+                    size.className = 'status warning';
+                }
+            });
+            
+            video.addEventListener('error', function() {
+                const status = document.getElementById('video-status');
+                status.textContent = '❌ Video failed to load';
+                status.className = 'status error';
+            });
+        } else {
+            document.getElementById('video-status').textContent = '❌ Video element not found';
+            document.getElementById('video-status').className = 'status error';
+        }
+        
+        const css = document.getElementById('css-status');
+        const style = getComputedStyle(video);
+        if (style.position === 'fixed' && style.objectFit === 'cover') {
+            css.textContent = '✅ CSS correctly configured';
+            css.className = 'status success';
+        } else {
+            css.textContent = '⚠️ CSS may be incorrect: position=' + style.position + ', object-fit=' + style.objectFit;
+            css.className = 'status warning';
+        }
+    </script>
+</body>
+</html>

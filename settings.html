@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="stylesheet" href="/static/css/video-background.css">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
   <link rel="manifest" href="/static/manifest.json">
@@ -26,6 +27,20 @@
       display: flex;
       flex-direction: column;
     }
+    .video-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: -1;
+    }
+      <!-- 4K Background Video -->
+      <video class="video-bg" autoplay loop muted playsinline>
+        <source src="/static/videos/zeuschat-chatpage.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+      </video>
     .container {
       padding: 20px;
       flex: 1;
@@ -309,6 +324,43 @@
           <option value="nobody">Nobody</option>
         </select>
       </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">🎨 Chat Theme</div>
+      <div class="setting">
+        <div>
+          <div class="setting-label">Theme Style</div>
+          <div style="font-size: 12px; color: #888;">Applied to web and mobile chat UI</div>
+        </div>
+        <select id="theme-select" class="setting-value" onchange="setTheme(this.value)">
+          <option value="obsidian-gold">Obsidian Gold</option>
+          <option value="ocean-breeze">Ocean Breeze</option>
+          <option value="forest-night">Forest Night</option>
+          <option value="sunset-pop">Sunset Pop</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">🖼️ Chat Wallpaper</div>
+      <div class="setting">
+        <div>
+          <div class="setting-label">Wallpaper Style</div>
+          <div style="font-size: 12px; color: #888;">Solid color or custom image</div>
+        </div>
+        <select id="wallpaper-color" class="setting-value">
+          <option value="#000000">Black</option>
+          <option value="#1A2A4A">Navy</option>
+          <option value="#1A3A2A">Forest</option>
+          <option value="#4A1A2A">Burgundy</option>
+        </select>
+      </div>
+      <div id="wallpaper-preview" style="height:90px; border-radius:8px; border:1px solid #333; margin: 8px 0; background:#111 center/cover no-repeat;"></div>
+      <input id="wallpaper-upload" type="file" accept="image/*" style="display:none;" onchange="openWallpaperPicker(event)">
+      <button class="btn" id="upload-wallpaper-btn" type="button" onclick="document.getElementById('wallpaper-upload')?.click()">Choose Image Wallpaper</button>
+      <button class="btn" id="save-wallpaper-btn" type="button">Save Wallpaper</button>
+      <button class="btn" id="remove-wallpaper-btn" type="button" style="background:#2a2a2a; color:#fff;">Remove Wallpaper</button>
     </div>
     <div class="section">
       <div class="section-title" data-i18n="security">Security</div>
@@ -722,6 +774,91 @@
       }
     }
 
+    const THEME_PALETTES = {
+      'obsidian-gold': { '--theme-bg': '#0b0b0b', '--theme-panel': '#121212', '--theme-accent': '#d4af37', '--theme-text': '#ffffff' },
+      'ocean-breeze': { '--theme-bg': '#081425', '--theme-panel': '#10233f', '--theme-accent': '#4cc9f0', '--theme-text': '#eef8ff' },
+      'forest-night': { '--theme-bg': '#081a12', '--theme-panel': '#13291f', '--theme-accent': '#62d4a8', '--theme-text': '#effff7' },
+      'sunset-pop': { '--theme-bg': '#2a1212', '--theme-panel': '#3b1e1e', '--theme-accent': '#ff9f43', '--theme-text': '#fff3e8' },
+    };
+
+    function setTheme(themeName) {
+      const nextTheme = THEME_PALETTES[themeName] ? themeName : 'obsidian-gold';
+      const palette = THEME_PALETTES[nextTheme];
+      document.body.dataset.theme = nextTheme;
+      Object.entries(palette).forEach(([key, value]) => {
+        document.documentElement.style.setProperty(key, value);
+      });
+      localStorage.setItem('zeuschat_theme', nextTheme);
+      sessionStorage.setItem('zeuschat_theme', nextTheme);
+      const select = document.getElementById('theme-select');
+      if (select && select.value !== nextTheme) select.value = nextTheme;
+    }
+
+    function loadSavedTheme() {
+      const savedTheme = localStorage.getItem('zeuschat_theme') || 'obsidian-gold';
+      setTheme(savedTheme);
+    }
+
+    function openWallpaperPicker(event) {
+      const file = event?.target?.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = typeof reader.result === 'string' ? reader.result : '';
+        if (!dataUrl) return;
+        localStorage.setItem('zeuschat_wallpaper_data', dataUrl);
+        sessionStorage.setItem('zeuschat_wallpaper_data', dataUrl);
+        loadSavedWallpaper();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removeWallpaper() {
+      localStorage.removeItem('zeuschat_wallpaper_data');
+      sessionStorage.removeItem('zeuschat_wallpaper_data');
+      loadSavedWallpaper();
+    }
+
+    function loadSavedWallpaper() {
+      const preview = document.getElementById('wallpaper-preview');
+      if (!preview) return;
+      const wallpaperData = localStorage.getItem('zeuschat_wallpaper_data');
+      const wallpaperColor = localStorage.getItem('zeuschat_wallpaper_color') || '#111';
+      const colorSelect = document.getElementById('wallpaper-color');
+      if (colorSelect) colorSelect.value = wallpaperColor;
+      if (wallpaperData) {
+        preview.style.backgroundImage = `url(${wallpaperData})`;
+        preview.style.backgroundColor = '#111';
+      } else {
+        preview.style.backgroundImage = 'none';
+        preview.style.backgroundColor = wallpaperColor;
+      }
+    }
+
+    async function saveWallpaperSetting() {
+      const picker = document.getElementById('wallpaper-color');
+      const wallpaper_color = picker ? picker.value : '#000000';
+      const uploadedImage = localStorage.getItem('zeuschat_wallpaper_data') || '';
+      localStorage.setItem('zeuschat_wallpaper_color', wallpaper_color);
+      sessionStorage.setItem('zeuschat_wallpaper_color', wallpaper_color);
+      loadSavedWallpaper();
+
+      try {
+        await apiFetch('/api/whatsapp/wallpapers/global', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            wallpaper_type: uploadedImage ? 'image' : 'solid',
+            wallpaper_color,
+            wallpaper_url: uploadedImage,
+          }),
+        });
+      } catch (error) {
+        console.error('Failed to sync wallpaper setting:', error);
+      }
+      alert('Wallpaper saved ✅');
+    }
+
     // Authentication guard
     const isLoggedIn = sessionStorage.getItem('user_logged_in') === 'true';
     const userPin = sessionStorage.getItem('user_zeus_pin');
@@ -735,6 +872,9 @@
       ensureCsrfToken().catch((error) => {
         console.error('Failed to initialize CSRF token:', error);
       });
+
+      loadSavedTheme();
+      loadSavedWallpaper();
 
       const savedLanguage = normalizeLanguage(localStorage.getItem('zeuschat_language') || 'en');
       const serverLanguage = await getServerLanguage();
@@ -775,6 +915,8 @@
       document.getElementById('imageQuality')?.addEventListener('change', saveDataSaverSettings);
       document.getElementById('autoDownloadImages')?.addEventListener('change', saveDataSaverSettings);
       document.getElementById('autoDownloadVideos')?.addEventListener('change', saveDataSaverSettings);
+      document.getElementById('save-wallpaper-btn')?.addEventListener('click', saveWallpaperSetting);
+      document.getElementById('remove-wallpaper-btn')?.addEventListener('click', removeWallpaper);
       
       // Load blocked contacts list
       loadBlockedContacts();
@@ -952,7 +1094,9 @@
         groups_visibility: document.querySelector('select[onchange*="groups"]').value,
         pin_to_view_enabled: document.getElementById('pin-view-toggle').checked,
         notification_type: document.getElementById('notification-type').value,
-        show_online_status: document.getElementById('online-status').checked
+        show_online_status: document.getElementById('online-status').checked,
+        chat_theme: localStorage.getItem('zeuschat_theme') || 'obsidian-gold',
+        wallpaper_color: document.getElementById('wallpaper-color')?.value || '#000000'
       };
       
       // Also save to backend

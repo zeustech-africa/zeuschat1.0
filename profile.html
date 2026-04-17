@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="stylesheet" href="/static/css/video-background.css">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
   <link rel="manifest" href="/static/manifest.json">
@@ -458,7 +459,7 @@
 </head>
 <body>
   <video class="video-bg" autoplay muted loop>
-    <source src="zeustech-register.mp4" type="video/mp4">
+    <source src="zeuschat-profile.mp4" type="video/mp4">
   </video>
   <div class="overlay"></div>
 
@@ -468,6 +469,11 @@
     <div class="byline">ZeusChat by ZeusTech</div>
   </div>
 
+  <!-- 4K Background Video -->
+  <video class="video-bg" autoplay loop muted playsinline>
+    <source src="/static/videos/zeuschat-profile.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
   <div class="container">
     <div class="box">
       <!-- Mobile Profile Header -->
@@ -519,6 +525,9 @@
         <button class="btn secondary" onclick="goBack()">← Back</button>
       </div>
 
+      <!-- Manage Subscription Button -->
+      <button class="btn" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin-top: 12px; width: 100%; padding: 12px 24px;" onclick="window.location.href='/subscription'">💎 Manage Subscription</button>
+
       <div class="note">
         ✓ Profile picture helps other users recognize you<br>
         ✓ Your display name will be shown in conversations<br>
@@ -534,7 +543,7 @@
         </div>
         <div class="setting-item" onclick="navigateTo('/subscription')">
           <span class="setting-icon">💎</span>
-          <span class="setting-name">Upgrade to Pro</span>
+          <span class="setting-name">Manage Subscription</span>
           <span class="setting-arrow">→</span>
         </div>
         <div class="setting-item" onclick="navigateTo('/settings.html')">

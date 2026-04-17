@@ -341,6 +341,10 @@
                 const buyButton = canBuy
                     ? '<button class="buy-btn" onclick="event.stopPropagation(); buyItem(' + item.id + ')">Buy Now</button>'
                     : '<button class="buy-btn" disabled>' + (item.is_owner ? 'Your Listing' : 'Not Available') + '</button>';
+                const listingActions = '<div class="listing-actions" style="display:flex; gap:8px; margin-top:8px;">' +
+                    '<button class="save-button" onclick="event.stopPropagation(); saveListing(' + item.id + ')">🔖 Save</button>' +
+                    '<button class="inquire-button" onclick="event.stopPropagation(); inquireAboutListing(' + item.id + ')">💬 Inquire</button>' +
+                    '</div>';
 
                 return '<div class="item-card" data-status="' + escapeHtml(item.status || 'approved') + '" data-owner="' + (item.is_owner ? '1' : '0') + '">' +
                     '<div class="item-image">' + imgHtml + '</div>' +
@@ -349,9 +353,18 @@
                     '<div class="item-price">R' + item.price + '</div>' +
                     '<div class="item-seller">Seller: ' + escapeHtml(item.seller_pin_half || 'ZT-XXXX') + '</div>' +
                     '<div class="item-status">' + statusHtml + '</div>' +
-                    buyButton +
+                    buyButton + listingActions +
                     '</div></div>';
             }).join('');
+        }
+
+        function saveListing(listingId) {
+            sessionStorage.setItem('saved_listing_' + listingId, '1');
+            alert('Listing saved ✅');
+        }
+
+        function inquireAboutListing(listingId) {
+            window.location.href = '/mobile-chat.html?listing=' + encodeURIComponent(String(listingId)) + '&action=inquire-message-seller';
         }
 
         async function loadItems() {

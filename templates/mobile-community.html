@@ -3,124 +3,1354 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Ghost Community - ZeusChat</title>
-    <link rel="stylesheet" href="/static/ghost.css">
+    <title>Ghost - ZeusChat</title>
     <link rel="stylesheet" href="/static/mobile.css">
+    <style>
+        :root {
+            --bg: #090b10;
+            --bg-elevated: #11151f;
+            --bg-card: rgba(18, 24, 35, 0.94);
+            --panel: rgba(11, 15, 23, 0.9);
+            --text: #f3f4f6;
+            --muted: #9ca3af;
+            --line: rgba(255, 255, 255, 0.08);
+            --gold: #d4af37;
+            --cyan: #69d2e7;
+            --red: #f87171;
+            --green: #34d399;
+            --shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+            --radius-lg: 24px;
+            --radius-md: 18px;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background:
+                radial-gradient(circle at top left, rgba(105, 210, 231, 0.16), transparent 28%),
+                radial-gradient(circle at top right, rgba(212, 175, 55, 0.18), transparent 34%),
+                linear-gradient(180deg, #0b0f16 0%, #090b10 100%);
+            color: var(--text);
+            font-family: "Avenir Next", "Space Grotesk", "Segoe UI", sans-serif;
+            padding: 18px 16px 94px;
+        }
+
+        .shell {
+            max-width: 720px;
+            margin: 0 auto;
+        }
+
+        .hero {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            margin: -18px -16px 18px;
+            padding: 18px 16px 14px;
+            background: linear-gradient(180deg, rgba(9, 11, 16, 0.97), rgba(9, 11, 16, 0.82), transparent);
+            backdrop-filter: blur(18px);
+        }
+
+        .hero-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .hero-title {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .eyebrow {
+            color: var(--gold);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 30px;
+            line-height: 1;
+            letter-spacing: -0.04em;
+        }
+
+        .hero-subtitle {
+            margin-top: 10px;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.45;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .icon-btn,
+        .primary-btn,
+        .ghost-btn,
+        .pill-btn,
+        .nav-item,
+        .action-card,
+        .tab-btn,
+        .feed-switch,
+        .chip,
+        .metric-chip,
+        .mini-btn {
+            border: 0;
+            cursor: pointer;
+            font: inherit;
+        }
+
+        .icon-btn {
+            width: 46px;
+            height: 46px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.07);
+            color: var(--text);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .top-tabs,
+        .feed-tabs,
+        .category-row,
+        .post-metrics,
+        .post-actions,
+        .highlights-row,
+        .quick-actions {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .top-tabs::-webkit-scrollbar,
+        .feed-tabs::-webkit-scrollbar,
+        .category-row::-webkit-scrollbar,
+        .post-metrics::-webkit-scrollbar,
+        .post-actions::-webkit-scrollbar,
+        .highlights-row::-webkit-scrollbar,
+        .quick-actions::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab-btn,
+        .feed-switch,
+        .chip {
+            white-space: nowrap;
+            padding: 10px 16px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .tab-btn.active,
+        .feed-switch.active,
+        .chip.active {
+            background: linear-gradient(135deg, var(--gold), #c58f12);
+            color: #091019;
+        }
+
+        .panel {
+            background: var(--bg-card);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+        }
+
+        .overview-card {
+            padding: 16px;
+            margin-bottom: 16px;
+            background:
+                linear-gradient(140deg, rgba(105, 210, 231, 0.1), transparent 35%),
+                linear-gradient(180deg, rgba(20, 26, 38, 0.98), rgba(14, 19, 30, 0.96));
+        }
+
+        .overview-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .metric-chip {
+            padding: 12px;
+            border-radius: var(--radius-md);
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text);
+            text-align: left;
+        }
+
+        .metric-chip strong {
+            display: block;
+            font-size: 18px;
+            color: var(--gold);
+        }
+
+        .metric-chip span {
+            display: block;
+            margin-top: 4px;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .section {
+            margin-bottom: 18px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .section-title {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .section-copy {
+            margin: 6px 0 0;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .action-card {
+            min-width: 170px;
+            padding: 16px;
+            border-radius: var(--radius-lg);
+            background: linear-gradient(180deg, rgba(17, 21, 31, 0.96), rgba(12, 16, 24, 0.96));
+            border: 1px solid var(--line);
+            color: var(--text);
+            text-align: left;
+        }
+
+        .action-card strong {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+
+        .action-card span {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .highlight-card {
+            min-width: 260px;
+            padding: 16px;
+            border-radius: var(--radius-lg);
+            background: linear-gradient(180deg, rgba(15, 20, 31, 0.98), rgba(9, 13, 20, 0.96));
+            border: 1px solid var(--line);
+        }
+
+        .highlight-label {
+            color: var(--gold);
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+
+        .highlight-headline {
+            margin: 10px 0 6px;
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1.35;
+        }
+
+        .highlight-meta {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .content-area {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .post-card {
+            overflow: hidden;
+        }
+
+        .post-media {
+            position: relative;
+            background: linear-gradient(160deg, rgba(105, 210, 231, 0.16), rgba(8, 12, 18, 0.96));
+            min-height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .post-media img,
+        .post-media video {
+            width: 100%;
+            max-height: 460px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .post-media-placeholder {
+            padding: 40px 24px;
+            text-align: left;
+            width: 100%;
+            font-size: 24px;
+            line-height: 1.25;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+        }
+
+        .post-content {
+            padding: 16px;
+        }
+
+        .post-topline {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .post-author {
+            font-weight: 800;
+            font-size: 14px;
+        }
+
+        .post-time {
+            color: var(--muted);
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
+        .follow-btn {
+            padding: 9px 14px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .follow-btn.active {
+            background: rgba(105, 210, 231, 0.18);
+            color: var(--cyan);
+        }
+
+        .post-text {
+            margin: 0 0 12px;
+            color: #e5e7eb;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        .post-metrics {
+            margin-bottom: 12px;
+        }
+
+        .metric-pill {
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--muted);
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .post-actions {
+            margin-bottom: 12px;
+        }
+
+        .pill-btn,
+        .mini-btn {
+            padding: 10px 14px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text);
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .pill-btn.active {
+            background: rgba(212, 175, 55, 0.18);
+            color: var(--gold);
+        }
+
+        .hashtags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .hashtag {
+            padding: 7px 10px;
+            border-radius: 999px;
+            background: rgba(105, 210, 231, 0.1);
+            color: var(--cyan);
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .status-pill.approved { background: rgba(52, 211, 153, 0.14); color: var(--green); }
+        .status-pill.pending,
+        .status-pill.pending_ai { background: rgba(212, 175, 55, 0.14); color: var(--gold); }
+        .status-pill.rejected { background: rgba(248, 113, 113, 0.14); color: var(--red); }
+
+        .empty-state,
+        .loading-state {
+            padding: 30px 20px;
+            text-align: center;
+            color: var(--muted);
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-lg);
+        }
+
+        .sheet,
+        .overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 60;
+        }
+
+        .overlay {
+            background: rgba(3, 6, 10, 0.72);
+            backdrop-filter: blur(10px);
+            display: none;
+        }
+
+        .overlay.open { display: block; }
+
+        .sheet {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            pointer-events: none;
+        }
+
+        .sheet-card {
+            width: min(720px, 100%);
+            max-height: 88vh;
+            overflow-y: auto;
+            border-radius: 28px 28px 0 0;
+            background: linear-gradient(180deg, #151b28, #0d1119 70%);
+            border: 1px solid var(--line);
+            border-bottom: 0;
+            transform: translateY(105%);
+            transition: transform 0.28s ease;
+            pointer-events: auto;
+            padding: 16px 16px calc(22px + env(safe-area-inset-bottom, 0px));
+        }
+
+        .sheet.open .sheet-card { transform: translateY(0); }
+
+        .sheet-handle {
+            width: 54px;
+            height: 6px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.16);
+            margin: 0 auto 14px;
+        }
+
+        .sheet-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .sheet-title {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 800;
+        }
+
+        .form-stack {
+            display: grid;
+            gap: 12px;
+        }
+
+        .input,
+        .textarea,
+        .file-input {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text);
+            font: inherit;
+        }
+
+        .textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .field-label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .primary-btn,
+        .ghost-btn {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 16px;
+            font-weight: 800;
+        }
+
+        .primary-btn {
+            background: linear-gradient(135deg, var(--gold), #c58f12);
+            color: #091019;
+        }
+
+        .ghost-btn {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text);
+        }
+
+        .comments-list {
+            display: grid;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .comment-card {
+            padding: 14px;
+            border-radius: var(--radius-md);
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--line);
+        }
+
+        .comment-meta {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        .comment-text {
+            font-size: 14px;
+            line-height: 1.5;
+            color: var(--text);
+        }
+
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: 100px;
+            transform: translateX(-50%) translateY(30px);
+            min-width: 180px;
+            max-width: calc(100vw - 32px);
+            padding: 12px 16px;
+            border-radius: 999px;
+            background: rgba(9, 11, 16, 0.94);
+            border: 1px solid rgba(212, 175, 55, 0.25);
+            color: var(--text);
+            text-align: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            z-index: 90;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .mobile-bottom-nav {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 40;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 12px calc(18px + env(safe-area-inset-bottom, 0px));
+            background: rgba(9, 11, 16, 0.96);
+            border-top: 1px solid var(--line);
+            backdrop-filter: blur(18px);
+        }
+
+        .nav-item {
+            background: none;
+            color: var(--muted);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 8px;
+            border-radius: 12px;
+            min-width: 56px;
+            font-size: 12px;
+        }
+
+        .nav-item.active { color: var(--gold); }
+
+        .nav-icon { font-size: 20px; }
+
+        @media (max-width: 420px) {
+            .overview-grid { grid-template-columns: 1fr; }
+            .hero-top { align-items: flex-start; }
+            h1 { font-size: 28px; }
+        }
+    </style>
 </head>
 <body>
-    <div class="feed-container" id="feedContainer">
-        <div id="postsLoader" style="text-align: center; padding: 40px; color: #D4AF37;">Loading...</div>
+    <div class="shell">
+        <div class="hero">
+            <div class="hero-top">
+                <div class="hero-title">
+                    <span class="eyebrow">Ghost Network</span>
+                    <h1>Highlights, creators, and anonymous heat.</h1>
+                </div>
+                <div class="hero-actions">
+                    <button class="icon-btn" type="button" onclick="window.location.href='/creator-wallet'" title="Creator Wallet">◔</button>
+                    <button class="icon-btn" type="button" onclick="openCreateSheet()" title="Create Post">⊕</button>
+                </div>
+            </div>
+            <div class="hero-subtitle">Ghost now works as one surface: trending community posts, featured market listings, and your own creator lane without exposing identity.</div>
+        </div>
+
+        <div class="overview-card panel">
+            <div class="top-tabs" id="modeTabs">
+                <button class="tab-btn active" type="button" data-mode="highlights">Highlights</button>
+                <button class="tab-btn" type="button" data-mode="for-you">For You</button>
+                <button class="tab-btn" type="button" data-mode="following">Following</button>
+                <button class="tab-btn" type="button" data-mode="mine">My Ghost</button>
+            </div>
+            <div class="overview-grid" id="overviewStats">
+                <button class="metric-chip" type="button"><strong>0</strong><span>Trending posts</span></button>
+                <button class="metric-chip" type="button"><strong>0</strong><span>Featured listings</span></button>
+                <button class="metric-chip" type="button"><strong>24h</strong><span>Auto-expiry window</span></button>
+            </div>
+        </div>
+
+        <div id="highlightsView" class="content-area">
+            <div class="section">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">Quick Actions</h2>
+                        <p class="section-copy">Jump straight into the part of Ghost you want to move.</p>
+                    </div>
+                </div>
+                <div class="quick-actions">
+                    <button class="action-card" type="button" onclick="switchMode('for-you')">
+                        <strong>Enter Community</strong>
+                        <span>Scroll the public Ghost feed with likes, comments, and follows.</span>
+                    </button>
+                    <button class="action-card" type="button" onclick="window.location.href='/mobile/market'">
+                        <strong>Open Market</strong>
+                        <span>Browse featured listings and anonymous sellers without leaving mobile Ghost.</span>
+                    </button>
+                    <button class="action-card" type="button" onclick="switchMode('mine')">
+                        <strong>My Ghost Profile</strong>
+                        <span>See your own pending, approved, and expired creator posts in one strip.</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">Trending Community</h2>
+                        <p class="section-copy">The top public Ghost posts right now.</p>
+                    </div>
+                    <button class="mini-btn" type="button" onclick="switchMode('for-you')">Open Feed</button>
+                </div>
+                <div id="trendingPostsRail" class="highlights-row">
+                    <div class="loading-state">Loading trending posts...</div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">Featured Market</h2>
+                        <p class="section-copy">Most viewed anonymous listings from Ghost Market.</p>
+                    </div>
+                    <button class="mini-btn" type="button" onclick="window.location.href='/mobile/market'">Open Market</button>
+                </div>
+                <div id="featuredListingsRail" class="highlights-row">
+                    <div class="loading-state">Loading featured listings...</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="feedView" class="content-area" style="display:none;">
+            <div class="feed-tabs" id="feedTabs">
+                <button class="feed-switch active" type="button" data-feed="for-you">For You</button>
+                <button class="feed-switch" type="button" data-feed="following">Following</button>
+                <button class="feed-switch" type="button" data-feed="trending">Trending</button>
+            </div>
+            <div id="feedContainer" class="content-area">
+                <div class="loading-state">Loading Ghost feed...</div>
+            </div>
+        </div>
+
+        <div id="mineView" class="content-area" style="display:none;">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">My Ghost Posts</h2>
+                    <p class="section-copy">Everything you have submitted, including pending moderation.</p>
+                </div>
+                <button class="mini-btn" type="button" onclick="openCreateSheet()">Create</button>
+            </div>
+            <div id="myPostsContainer" class="content-area">
+                <div class="loading-state">Loading your posts...</div>
+            </div>
+        </div>
     </div>
 
-    <a class="wallet-link" href="/creator-wallet">Creator Wallet</a>
+    <div id="sheetOverlay" class="overlay" onclick="closeAllSheets()"></div>
 
-    <div class="create-post-btn" id="createPostBtn">
-        <span style="font-size: 28px;">+</span>
+    <div id="createSheet" class="sheet" aria-hidden="true">
+        <div class="sheet-card">
+            <div class="sheet-handle"></div>
+            <div class="sheet-header">
+                <h3 class="sheet-title">Create Ghost Post</h3>
+                <button class="icon-btn" type="button" onclick="closeCreateSheet()">✕</button>
+            </div>
+            <div class="form-stack">
+                <div>
+                    <span class="field-label">Post Type</span>
+                    <div class="category-row" id="createTypeRow">
+                        <button class="chip active" type="button" data-type="text">Text</button>
+                        <button class="chip" type="button" data-type="image">Image</button>
+                        <button class="chip" type="button" data-type="video">Video</button>
+                    </div>
+                </div>
+                <div>
+                    <span class="field-label">Caption</span>
+                    <textarea id="createTextContent" class="textarea" placeholder="Say something sharp. Hashtags are optional."></textarea>
+                </div>
+                <div>
+                    <span class="field-label">Hashtags</span>
+                    <input id="createHashtags" class="input" type="text" placeholder="ghost, creator, trending">
+                </div>
+                <div>
+                    <span class="field-label">Media</span>
+                    <input id="createMediaFile" class="file-input" type="file" accept="image/*,video/*">
+                </div>
+                <button class="primary-btn" type="button" onclick="submitPost()">Submit For Approval</button>
+                <button class="ghost-btn" type="button" onclick="closeCreateSheet()">Cancel</button>
+            </div>
+        </div>
     </div>
+
+    <div id="commentsSheet" class="sheet" aria-hidden="true">
+        <div class="sheet-card">
+            <div class="sheet-handle"></div>
+            <div class="sheet-header">
+                <h3 class="sheet-title" id="commentsTitle">Comments</h3>
+                <button class="icon-btn" type="button" onclick="closeCommentsSheet()">✕</button>
+            </div>
+            <div id="commentsList" class="comments-list">
+                <div class="loading-state">Loading comments...</div>
+            </div>
+            <div class="form-stack">
+                <textarea id="commentInput" class="textarea" placeholder="Add a comment"></textarea>
+                <button class="primary-btn" type="button" onclick="submitComment()">Post Comment</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
 
     <div class="mobile-bottom-nav mobile-only">
-        <button class="nav-item nav-item-mobile" data-page="chat">
+        <button class="nav-item" type="button" onclick="window.location.href='/mobile/chat'">
             <span class="nav-icon">💬</span>
             <span>Chats</span>
         </button>
-        <button class="nav-item nav-item-mobile" data-page="market">
+        <button class="nav-item" type="button" onclick="window.location.href='/mobile/market'">
             <span class="nav-icon">🏪</span>
             <span>Market</span>
         </button>
-        <button class="nav-item nav-item-mobile active" data-page="community">
+        <button class="nav-item active" type="button">
             <span class="nav-icon">👻</span>
             <span>Ghost</span>
         </button>
-        <button class="nav-item nav-item-mobile" data-page="profile">
+        <button class="nav-item" type="button" onclick="window.location.href='/mobile/profile'">
             <span class="nav-icon">👤</span>
             <span>Profile</span>
         </button>
-        <button class="nav-item nav-item-mobile" data-page="settings">
+        <button class="nav-item" type="button" onclick="window.location.href='/mobile/settings'">
             <span class="nav-icon">⚙️</span>
             <span>Settings</span>
         </button>
     </div>
 
-    <div id="createPostModal" class="modal-overlay hidden">
-        <div class="modal-card">
-            <h2 style="color:#D4AF37;">Create Ghost Post</h2>
-
-            <div class="form-group">
-                <label>Title/Caption *</label>
-                <input type="text" id="postTitle" placeholder="Enter title...">
-            </div>
-
-            <div class="form-group">
-                <label>Content (optional)</label>
-                <textarea id="postContent" rows="4" placeholder="Write your story..."></textarea>
-            </div>
-
-            <div class="form-group">
-                <label>Media</label>
-                <input type="file" id="postMedia" accept="image/*,video/*">
-            </div>
-
-            <div class="form-group">
-                <label>💰 Monetization</label>
-                <div style="display:flex; gap:16px; margin-bottom:12px;">
-                    <label><input type="radio" name="paidType" value="free" checked> Free Post</label>
-                    <label><input type="radio" name="paidType" value="paid"> Paid Post</label>
-                </div>
-            </div>
-
-            <div class="form-group hidden" id="priceGroup">
-                <label>Price (R)</label>
-                <select id="postPrice">
-                    <option value="5">R5</option>
-                    <option value="10">R10</option>
-                    <option value="20">R20</option>
-                    <option value="50">R50</option>
-                    <option value="100">R100</option>
-                </select>
-            </div>
-
-            <div class="form-group hidden" id="previewGroup">
-                <label>Preview Text (what free users see)</label>
-                <textarea id="previewText" rows="2" placeholder="This post contains exclusive content..."></textarea>
-            </div>
-
-            <div style="display:flex; gap:12px; margin-top:20px;">
-                <button id="cancelPostBtn" class="secondary-action" style="flex:1;">Cancel</button>
-                <button id="submitPostBtn" class="primary-action" style="flex:2;">Post →</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="payModal" class="modal-overlay hidden">
-        <div class="pay-modal-card">
-            <div style="font-size:48px; margin-bottom:16px;">🔒</div>
-            <h3 id="payModalTitle" style="color:#D4AF37;">Locked Content</h3>
-            <p id="payModalPrice" style="margin:16px 0;">Price: R20</p>
-            <button id="confirmPayBtn" class="primary-action" style="width:100%;">Pay to Unlock →</button>
-            <button id="cancelPayBtn" class="secondary-action" style="width:100%; margin-top:12px;">Cancel</button>
-        </div>
-    </div>
-
-    <script src="/static/ghost.js"></script>
     <script>
-      (function initMobileNavOverride() {
-        const pages = {
-          chat: '/mobile/chat',
-          market: '/mobile/market',
-          community: '/mobile/community',
-          profile: '/mobile/profile',
-          settings: '/mobile/settings'
+        const state = {
+            mode: 'highlights',
+            feedType: 'for-you',
+            csrfToken: null,
+            selectedPost: null,
+            createType: 'text',
+            trendingPosts: [],
+            featuredListings: [],
+            currentFeed: [],
+            myPosts: [],
+            videoTelemetry: {}
         };
 
-        document.querySelectorAll('.mobile-bottom-nav .nav-item').forEach(function (item) {
-          item.addEventListener('click', function () {
-            const page = item.dataset.page;
-            if (pages[page]) {
-              window.location.href = pages[page];
+        let videoViewObserver = null;
+
+        async function ensureCsrfToken(forceRefresh = false) {
+            if (state.csrfToken && !forceRefresh) return state.csrfToken;
+            const response = await fetch('/api/csrf-token', { credentials: 'include' });
+            const data = await response.json();
+            state.csrfToken = data.csrf_token || null;
+            return state.csrfToken;
+        }
+
+        async function apiFetch(url, options = {}) {
+            const requestOptions = { ...options };
+            requestOptions.credentials = 'include';
+            requestOptions.headers = { ...(requestOptions.headers || {}) };
+            const method = (requestOptions.method || 'GET').toUpperCase();
+            requestOptions.method = method;
+
+            if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+                const token = await ensureCsrfToken();
+                if (token) requestOptions.headers['X-CSRF-Token'] = token;
             }
-          });
+
+            const response = await fetch(url, requestOptions);
+            if (response.status === 403 && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+                state.csrfToken = null;
+            }
+            return response;
+        }
+
+        function escapeHtml(value) {
+            const div = document.createElement('div');
+            div.textContent = value || '';
+            return div.innerHTML;
+        }
+
+        function formatCount(value) {
+            return new Intl.NumberFormat().format(Number(value || 0));
+        }
+
+        function formatTime(value) {
+            if (!value) return 'Now';
+            const timestamp = new Date(value);
+            if (Number.isNaN(timestamp.getTime())) return 'Now';
+            const diffMs = Date.now() - timestamp.getTime();
+            const minutes = Math.floor(diffMs / 60000);
+            if (minutes < 1) return 'Just now';
+            if (minutes < 60) return `${minutes}m ago`;
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return `${hours}h ago`;
+            return `${Math.floor(hours / 24)}d ago`;
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            clearTimeout(showToast._timer);
+            showToast._timer = setTimeout(() => toast.classList.remove('show'), 2200);
+        }
+
+        function getStatusClass(status) {
+            return status === 'approved' ? 'approved' : (status === 'rejected' ? 'rejected' : 'pending');
+        }
+
+        function renderOverviewStats() {
+            document.getElementById('overviewStats').innerHTML = `
+                <button class="metric-chip" type="button" onclick="switchMode('for-you')"><strong>${formatCount(state.trendingPosts.length)}</strong><span>Trending posts</span></button>
+                <button class="metric-chip" type="button" onclick="window.location.href='/mobile/market'"><strong>${formatCount(state.featuredListings.length)}</strong><span>Featured listings</span></button>
+                <button class="metric-chip" type="button"><strong>${formatCount(state.myPosts.length)}</strong><span>Your posts</span></button>
+            `;
+        }
+
+        function renderTrendingRail() {
+            const rail = document.getElementById('trendingPostsRail');
+            if (!state.trendingPosts.length) {
+                rail.innerHTML = '<div class="empty-state">No trending posts yet.</div>';
+                return;
+            }
+            rail.innerHTML = state.trendingPosts.map((post) => `
+                <button class="highlight-card" type="button" onclick="openComments(${post.id})">
+                    <div class="highlight-label">Community</div>
+                    <div class="highlight-headline">${escapeHtml(post.caption || post.textContent || 'Ghost Post')}</div>
+                    <div class="highlight-meta">👻 ${escapeHtml(post.zeusPin)} · ❤️ ${formatCount(post.likesCount)} · 💬 ${formatCount(post.commentsCount)}</div>
+                </button>
+            `).join('');
+        }
+
+        function renderFeaturedRail() {
+            const rail = document.getElementById('featuredListingsRail');
+            if (!state.featuredListings.length) {
+                rail.innerHTML = '<div class="empty-state">No featured listings yet.</div>';
+                return;
+            }
+            rail.innerHTML = state.featuredListings.map((listing) => `
+                <button class="highlight-card" type="button" onclick="window.location.href='/mobile/market'">
+                    <div class="highlight-label">Market</div>
+                    <div class="highlight-headline">${escapeHtml(listing.title)}</div>
+                    <div class="highlight-meta">👁️ ${formatCount(listing.viewsCount)} · 💾 ${formatCount(listing.savedCount)} · ${escapeHtml(listing.currency)} ${formatCount(listing.price)}</div>
+                </button>
+            `).join('');
+        }
+
+        function renderPostCard(post, mine = false) {
+            const mediaMarkup = post.mediaUrl
+                ? (post.contentType === 'video'
+                    ? `<video controls playsinline preload="metadata" data-post-id="${post.id}" src="${escapeHtml(post.mediaUrl)}"></video>`
+                    : `<img src="${escapeHtml(post.mediaUrl)}" alt="Ghost media">`)
+                : `<div class="post-media-placeholder">${escapeHtml(post.caption || post.textContent || 'Ghost text post')}</div>`;
+
+            const hashtags = (post.hashtags || []).map((tag) => `<button class="hashtag" type="button" onclick="filterByHashtag('${escapeHtml(tag)}')">#${escapeHtml(tag)}</button>`).join('');
+            const status = mine ? `<div class="status-pill ${getStatusClass(post.status)}">${escapeHtml((post.status || 'pending').replace('_', ' '))}</div>` : '';
+            return `
+                <div class="post-card panel" data-post-id="${post.id}">
+                    <div class="post-media" onclick="recordView(${post.id})">${mediaMarkup}</div>
+                    <div class="post-content">
+                        <div class="post-topline">
+                            <div>
+                                <div class="post-author">👻 ${escapeHtml(post.zeusPin)}</div>
+                                <div class="post-time">${formatTime(post.createdAt)}</div>
+                            </div>
+                            ${mine ? status : `<button class="follow-btn ${post.isFollowedByUser ? 'active' : ''}" type="button" onclick="toggleFollow(event, '${escapeHtml(post.zeusPin)}', ${post.isFollowedByUser ? 'true' : 'false'})">${post.isFollowedByUser ? 'Following' : 'Follow'}</button>`}
+                        </div>
+                        <p class="post-text">${escapeHtml(post.textContent || post.caption || '')}</p>
+                        <div class="post-metrics">
+                            <div class="metric-pill">👁️ ${formatCount(post.viewsCount)} views</div>
+                            <div class="metric-pill">❤️ ${formatCount(post.likesCount)} likes</div>
+                            <div class="metric-pill">💬 ${formatCount(post.commentsCount)} comments</div>
+                            <div class="metric-pill">↗️ ${formatCount(post.sharesCount)} shares</div>
+                        </div>
+                        <div class="post-actions">
+                            <button class="pill-btn ${post.isLikedByUser ? 'active' : ''}" type="button" onclick="toggleLike(${post.id}, ${post.isLikedByUser ? 'true' : 'false'})">${post.isLikedByUser ? '♥ Liked' : '♡ Like'}</button>
+                            <button class="pill-btn" type="button" onclick="openComments(${post.id})">Comment</button>
+                            <button class="pill-btn" type="button" onclick="sharePost(${post.id})">Share</button>
+                        </div>
+                        ${hashtags ? `<div class="hashtags">${hashtags}</div>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderFeed() {
+            const container = document.getElementById('feedContainer');
+            if (!state.currentFeed.length) {
+                container.innerHTML = '<div class="empty-state">No posts available in this feed yet.</div>';
+                return;
+            }
+            container.innerHTML = state.currentFeed.map((post) => renderPostCard(post)).join('');
+            attachVideoTelemetry();
+        }
+
+        function renderMyPosts() {
+            const container = document.getElementById('myPostsContainer');
+            if (!state.myPosts.length) {
+                container.innerHTML = '<div class="empty-state">You have not posted to Ghost Community yet.</div>';
+                return;
+            }
+            container.innerHTML = state.myPosts.map((post) => renderPostCard(post, true)).join('');
+        }
+
+        function updateModeUi() {
+            document.querySelectorAll('#modeTabs .tab-btn').forEach((button) => {
+                button.classList.toggle('active', button.dataset.mode === state.mode);
+            });
+            document.getElementById('highlightsView').style.display = state.mode === 'highlights' ? '' : 'none';
+            document.getElementById('feedView').style.display = ['for-you', 'following'].includes(state.mode) ? '' : 'none';
+            document.getElementById('mineView').style.display = state.mode === 'mine' ? '' : 'none';
+            document.querySelectorAll('#feedTabs .feed-switch').forEach((button) => {
+                button.classList.toggle('active', button.dataset.feed === state.feedType);
+            });
+        }
+
+        async function loadHighlights() {
+            const [trendingResponse, featuredResponse] = await Promise.all([
+                apiFetch('/api/ghost/community/feed?type=trending&limit=5&offset=0'),
+                apiFetch('/api/ghost/market/feed?sortBy=most_views&limit=5&offset=0')
+            ]);
+            const trendingData = await trendingResponse.json();
+            const featuredData = await featuredResponse.json();
+            state.trendingPosts = trendingData.posts || [];
+            state.featuredListings = featuredData.listings || [];
+            renderTrendingRail();
+            renderFeaturedRail();
+            renderOverviewStats();
+        }
+
+        async function loadFeed(feedType = state.feedType, hashtag = '') {
+            state.feedType = feedType;
+            updateModeUi();
+            document.getElementById('feedContainer').innerHTML = '<div class="loading-state">Loading Ghost feed...</div>';
+            const query = new URLSearchParams({ type: feedType, limit: '20', offset: '0' });
+            if (hashtag) query.set('hashtag', hashtag);
+            const response = await apiFetch(`/api/ghost/community/feed?${query.toString()}`);
+            const data = await response.json();
+            if (!response.ok) {
+                document.getElementById('feedContainer').innerHTML = `<div class="empty-state">${escapeHtml(data.error || 'Failed to load feed')}</div>`;
+                return;
+            }
+            state.currentFeed = data.posts || [];
+            renderFeed();
+        }
+
+        async function loadMyPosts() {
+            document.getElementById('myPostsContainer').innerHTML = '<div class="loading-state">Loading your posts...</div>';
+            const response = await apiFetch('/api/ghost/community/my-posts?limit=50&offset=0');
+            const data = await response.json();
+            if (!response.ok) {
+                document.getElementById('myPostsContainer').innerHTML = `<div class="empty-state">${escapeHtml(data.error || 'Failed to load your posts')}</div>`;
+                return;
+            }
+            state.myPosts = data.posts || [];
+            renderMyPosts();
+            renderOverviewStats();
+        }
+
+        function switchMode(mode) {
+            state.mode = mode;
+            updateModeUi();
+            if (mode === 'for-you') loadFeed('for-you');
+            if (mode === 'following') loadFeed('following');
+            if (mode === 'mine') loadMyPosts();
+        }
+
+        async function toggleLike(postId, isLiked) {
+            const response = await apiFetch(`/api/ghost/community/post/${postId}/like`, { method: isLiked ? 'DELETE' : 'POST' });
+            const data = await response.json();
+            if (!response.ok) {
+                showToast(data.error || 'Unable to update like');
+                return;
+            }
+            state.currentFeed = state.currentFeed.map((post) => post.id === postId ? {
+                ...post,
+                isLikedByUser: !isLiked,
+                likesCount: data.likesCount
+            } : post);
+            state.trendingPosts = state.trendingPosts.map((post) => post.id === postId ? {
+                ...post,
+                isLikedByUser: !isLiked,
+                likesCount: data.likesCount
+            } : post);
+            state.myPosts = state.myPosts.map((post) => post.id === postId ? {
+                ...post,
+                isLikedByUser: !isLiked,
+                likesCount: data.likesCount
+            } : post);
+            renderFeed();
+            renderTrendingRail();
+            renderMyPosts();
+        }
+
+        async function toggleFollow(event, zeusPin, isFollowed) {
+            event.stopPropagation();
+            const response = await apiFetch(`/api/ghost/community/user/${encodeURIComponent(zeusPin)}/follow`, { method: isFollowed ? 'DELETE' : 'POST' });
+            const data = await response.json();
+            if (!response.ok) {
+                showToast(data.error || 'Unable to update follow');
+                return;
+            }
+            state.currentFeed = state.currentFeed.map((post) => post.zeusPin === zeusPin ? { ...post, isFollowedByUser: !isFollowed } : post);
+            renderFeed();
+        }
+
+        async function sharePost(postId) {
+            const response = await apiFetch(`/api/ghost/community/post/${postId}/share`, { method: 'POST' });
+            const data = await response.json();
+            if (!response.ok) {
+                showToast(data.error || 'Unable to share post');
+                return;
+            }
+            const shareUrl = `${window.location.origin}/mobile/community#post-${postId}`;
+            if (navigator.share) {
+                try {
+                    await navigator.share({ title: 'Ghost Community Post', url: shareUrl });
+                } catch (error) {
+                    // no-op
+                }
+            } else if (navigator.clipboard) {
+                await navigator.clipboard.writeText(shareUrl);
+                showToast('Link copied');
+            }
+            state.currentFeed = state.currentFeed.map((post) => post.id === postId ? { ...post, sharesCount: data.sharesCount } : post);
+            renderFeed();
+        }
+
+        function getOrCreateTelemetry(postId) {
+            if (!state.videoTelemetry[postId]) {
+                state.videoTelemetry[postId] = {
+                    maxWatchSeconds: 0,
+                    completed: false,
+                    replayCount: 0,
+                    hasSentInitialView: false
+                };
+            }
+            return state.videoTelemetry[postId];
+        }
+
+        function attachVideoTelemetry() {
+            if (!videoViewObserver) {
+                videoViewObserver = new IntersectionObserver((entries) => {
+                    entries.forEach((entry) => {
+                        if (!entry.isIntersecting || entry.intersectionRatio < 0.6) return;
+                        const video = entry.target;
+                        const postId = Number(video.dataset.postId || 0);
+                        if (!postId) return;
+
+                        const telemetry = getOrCreateTelemetry(postId);
+                        if (!telemetry.hasSentInitialView) {
+                            telemetry.hasSentInitialView = true;
+                            recordView(postId, telemetry);
+                        }
+                    });
+                }, { threshold: [0.6] });
+            }
+
+            document.querySelectorAll('#feedContainer video[data-post-id]').forEach((video) => {
+                const postId = Number(video.dataset.postId || 0);
+                if (!postId) return;
+                const telemetry = getOrCreateTelemetry(postId);
+
+                if (video.dataset.telemetryBound !== '1') {
+                    video.addEventListener('timeupdate', () => {
+                        telemetry.maxWatchSeconds = Math.max(telemetry.maxWatchSeconds, video.currentTime || 0);
+                    });
+
+                    video.addEventListener('ended', () => {
+                        telemetry.completed = true;
+                        telemetry.replayCount += 1;
+                        recordView(postId, telemetry);
+                    });
+
+                    video.addEventListener('play', () => {
+                        if ((video.currentTime || 0) > 0.25) {
+                            telemetry.replayCount = Math.max(telemetry.replayCount, 1);
+                        }
+                    });
+
+                    video.dataset.telemetryBound = '1';
+                }
+
+                videoViewObserver.observe(video);
+            });
+        }
+
+        async function recordView(postId, telemetryOverride = null) {
+            const telemetry = telemetryOverride || state.videoTelemetry[postId] || null;
+            const payload = telemetry ? {
+                watchSeconds: Number((telemetry.maxWatchSeconds || 0).toFixed(2)),
+                completed: !!telemetry.completed,
+                replayCount: Math.max(0, telemetry.replayCount || 0)
+            } : {};
+
+            const response = await apiFetch(`/api/ghost/community/post/${postId}/view`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+            if (!response.ok) return;
+            state.currentFeed = state.currentFeed.map((post) => post.id === postId ? { ...post, viewsCount: data.viewsCount } : post);
+            renderFeed();
+        }
+
+        async function openComments(postId) {
+            document.getElementById('commentsList').innerHTML = '<div class="loading-state">Loading comments...</div>';
+            openSheet('commentsSheet');
+            const response = await apiFetch(`/api/ghost/community/post/${postId}`);
+            const data = await response.json();
+            if (!response.ok) {
+                document.getElementById('commentsList').innerHTML = `<div class="empty-state">${escapeHtml(data.error || 'Failed to load comments')}</div>`;
+                return;
+            }
+            state.selectedPost = data;
+            document.getElementById('commentsTitle').textContent = data.caption || 'Comments';
+            renderComments();
+        }
+
+        function renderComments() {
+            const container = document.getElementById('commentsList');
+            const comments = state.selectedPost && state.selectedPost.comments ? state.selectedPost.comments : [];
+            if (!comments.length) {
+                container.innerHTML = '<div class="empty-state">No comments yet. Be the first one in.</div>';
+                return;
+            }
+            container.innerHTML = comments.map((comment) => `
+                <div class="comment-card">
+                    <div class="comment-meta">
+                        <strong>👻 ${escapeHtml(comment.zeusPin)}</strong>
+                        <span>${formatTime(comment.createdAt)}</span>
+                    </div>
+                    <div class="comment-text">${escapeHtml(comment.commentText)}</div>
+                </div>
+            `).join('');
+        }
+
+        async function submitComment() {
+            if (!state.selectedPost) return;
+            const input = document.getElementById('commentInput');
+            const commentText = input.value.trim();
+            if (!commentText) {
+                showToast('Write a comment first');
+                return;
+            }
+            const response = await apiFetch(`/api/ghost/community/post/${state.selectedPost.id}/comment`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ commentText })
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                showToast(data.error || 'Unable to post comment');
+                return;
+            }
+            input.value = '';
+            state.selectedPost.comments = [data.comment, ...(state.selectedPost.comments || [])];
+            state.selectedPost.commentsCount = (state.selectedPost.commentsCount || 0) + 1;
+            state.currentFeed = state.currentFeed.map((post) => post.id === state.selectedPost.id ? { ...post, commentsCount: state.selectedPost.commentsCount } : post);
+            state.myPosts = state.myPosts.map((post) => post.id === state.selectedPost.id ? { ...post, commentsCount: state.selectedPost.commentsCount } : post);
+            renderComments();
+            renderFeed();
+            renderMyPosts();
+        }
+
+        function filterByHashtag(tag) {
+            state.mode = 'for-you';
+            updateModeUi();
+            loadFeed('trending', tag);
+        }
+
+        function openSheet(id) {
+            document.getElementById('sheetOverlay').classList.add('open');
+            document.getElementById(id).classList.add('open');
+        }
+
+        function closeAllSheets() {
+            document.getElementById('sheetOverlay').classList.remove('open');
+            document.getElementById('createSheet').classList.remove('open');
+            document.getElementById('commentsSheet').classList.remove('open');
+        }
+
+        function openCreateSheet() {
+            openSheet('createSheet');
+        }
+
+        function closeCreateSheet() {
+            document.getElementById('createSheet').classList.remove('open');
+            if (!document.getElementById('commentsSheet').classList.contains('open')) {
+                document.getElementById('sheetOverlay').classList.remove('open');
+            }
+        }
+
+        function closeCommentsSheet() {
+            document.getElementById('commentsSheet').classList.remove('open');
+            if (!document.getElementById('createSheet').classList.contains('open')) {
+                document.getElementById('sheetOverlay').classList.remove('open');
+            }
+        }
+
+        async function submitPost() {
+            const textContent = document.getElementById('createTextContent').value.trim();
+            const hashtags = document.getElementById('createHashtags').value.trim();
+            const mediaFile = document.getElementById('createMediaFile').files[0];
+            if (state.createType === 'text' && !textContent) {
+                showToast('Add text for the post');
+                return;
+            }
+            if ((state.createType === 'image' || state.createType === 'video') && !mediaFile) {
+                showToast('Choose media first');
+                return;
+            }
+            const formData = new FormData();
+            formData.append('contentType', state.createType);
+            formData.append('textContent', textContent);
+            formData.append('hashtags', JSON.stringify(hashtags.split(',').map((tag) => tag.trim()).filter(Boolean)));
+            if (mediaFile) formData.append('media', mediaFile);
+
+            const response = await apiFetch('/api/ghost/community/post', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                showToast(data.error || 'Unable to submit post');
+                return;
+            }
+            showToast('Post sent for admin approval');
+            document.getElementById('createTextContent').value = '';
+            document.getElementById('createHashtags').value = '';
+            document.getElementById('createMediaFile').value = '';
+            closeCreateSheet();
+            switchMode('mine');
+            await loadMyPosts();
+        }
+
+        function bindModeTabs() {
+            document.querySelectorAll('#modeTabs .tab-btn').forEach((button) => {
+                button.addEventListener('click', () => switchMode(button.dataset.mode));
+            });
+            document.querySelectorAll('#feedTabs .feed-switch').forEach((button) => {
+                button.addEventListener('click', () => {
+                    state.mode = button.dataset.feed === 'following' ? 'following' : 'for-you';
+                    loadFeed(button.dataset.feed);
+                });
+            });
+            document.querySelectorAll('#createTypeRow .chip').forEach((button) => {
+                button.addEventListener('click', () => {
+                    state.createType = button.dataset.type;
+                    document.querySelectorAll('#createTypeRow .chip').forEach((chip) => chip.classList.toggle('active', chip === button));
+                });
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            bindModeTabs();
+            updateModeUi();
+            await ensureCsrfToken();
+            await Promise.all([loadHighlights(), loadMyPosts()]);
         });
-      })();
     </script>
 </body>
 </html>

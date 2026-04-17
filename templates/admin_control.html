@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZeusChat Admin Control Room</title>
+    <style>
+        :root {
+            --bg: #0f1117;
+            --panel: #171b24;
+            --panel-2: #1f2531;
+            --line: #2d3442;
+            --text: #ecf2ff;
+            --muted: #9fb0d1;
+            --accent: #20b486;
+            --warn: #f2b134;
+            --bad: #ee5f5f;
+            --ok: #37c77f;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background:
+                radial-gradient(1200px 500px at -15% -20%, #24314a 0%, transparent 60%),
+                radial-gradient(900px 500px at 110% 20%, #1f4f46 0%, transparent 55%),
+                var(--bg);
+            color: var(--text);
+            font-family: "Segoe UI", "Inter", system-ui, sans-serif;
+        }
+        .wrap { max-width: 1200px; margin: 0 auto; padding: 24px; }
+        .header { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; }
+        .title { font-size: 28px; font-weight: 700; letter-spacing: 0.3px; }
+        .sub { color: var(--muted); font-size: 13px; }
+        .chip { background: #22303f; border: 1px solid #34506f; color: #b4d7ff; padding: 6px 10px; border-radius: 999px; font-size: 12px; }
+        .grid { display: grid; gap: 14px; grid-template-columns: repeat(4, 1fr); margin-bottom: 20px; }
+        .card { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.0)); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+        .num { font-size: 28px; font-weight: 700; margin-bottom: 6px; }
+        .lbl { color: var(--muted); font-size: 13px; }
+        .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+        .panel-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--line); background: var(--panel-2); }
+        .actions { display: flex; gap: 8px; }
+        button {
+            border: 1px solid transparent;
+            border-radius: 10px;
+            padding: 8px 12px;
+            cursor: pointer;
+            color: white;
+            background: #2f3f57;
+        }
+        button:hover { filter: brightness(1.08); }
+        .btn-ok { background: #1f8a62; }
+        .btn-warn { background: #8b6b1f; }
+        .btn-bad { background: #a53f3f; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line); font-size: 13px; }
+        th { color: var(--muted); font-weight: 600; }
+        .badge { border-radius: 999px; padding: 4px 8px; font-size: 11px; }
+        .pending { background: rgba(242,177,52,.2); color: #ffd782; }
+        .verified { background: rgba(55,199,127,.2); color: #92efba; }
+        .rejected { background: rgba(238,95,95,.2); color: #ffaaaa; }
+        .active { background: rgba(55,199,127,.2); color: #92efba; }
+        .suspended { background: rgba(238,95,95,.2); color: #ffaaaa; }
+        .deleted { background: rgba(191,130,255,.2); color: #d7b4ff; }
+        .foot { color: var(--muted); font-size: 12px; padding: 12px 16px; }
+        @media (max-width: 1000px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 640px) {
+            .wrap { padding: 12px; }
+            .grid { grid-template-columns: 1fr; }
+            th:nth-child(4), td:nth-child(4), th:nth-child(5), td:nth-child(5) { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="header">
+            <div>
+                <div class="title">Admin Control Room</div>
+                <div class="sub">Audit 5 integration view: users, verification, moderation actions</div>
+            </div>
+            <div class="chip">/api/admin/* connected</div>
+        </div>
+
+        <div class="grid" id="stats"></div>
+
+        <div class="panel">
+                    <!-- Pending User Chat Section -->
+                    <div class="pending-chat-section" id="pending-chat-section" style="display:none; margin-bottom: 32px;">
+                        <h3>Chat with Pending User</h3>
+                        <div class="chat-messages" id="admin-chat-messages" style="background: #222; border-radius: 10px; padding: 12px; min-height: 80px; max-height: 220px; overflow-y: auto; margin-bottom: 10px;"></div>
+                        <div class="chat-input" style="display: flex; gap: 8px;">
+                            <input type="text" id="admin-reply-input" placeholder="Type reply..." style="flex:1; padding: 8px; border-radius: 8px; border: none;">
+                            <button onclick="sendAdminReply()">Send</button>
+                        </div>
+                    </div>
+            <div class="panel-head">
+                <strong>Users</strong>
+                <div class="actions">
+                    <button onclick="loadAll()">Refresh</button>
+                </div>
+            </div>
+            <div style="overflow:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>PIN</th>
+                            <th>Name</th>
+                            <th>Verification</th>
+                            <th>Account</th>
+                            <th>Joined</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersBody"></tbody>
+                </table>
+            </div>
+            <div class="foot" id="statusLine">Loading...</div>
+        </div>
+    </div>
+
+    <script>
+        function statusClass(value) {
+            const v = (value || '').toLowerCase();
+            if (v === 'verified') return 'verified';
+            if (v === 'pending') return 'pending';
+            if (v === 'active') return 'active';
+            if (v === 'suspended') return 'suspended';
+            if (v === 'deleted') return 'deleted';
+            return 'rejected';
+        }
+
+        async function callJson(url, options) {
+            const res = await fetch(url, options || {});
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+            return body;
+        }
+
+        async function loadStats() {
+            const data = await callJson('/api/admin/stats');
+            const cards = [
+                ['Total Users', data.total_users || 0],
+                ['Pending Verification', data.pending_verification || 0],
+                ['Verified Users', data.verified_users || 0],
+                ['Pending Posts', data.pending_posts || 0],
+            ];
+            document.getElementById('stats').innerHTML = cards.map(([label, value]) =>
+                `<div class="card"><div class="num">${value}</div><div class="lbl">${label}</div></div>`
+            ).join('');
+        }
+
+        async function loadUsers() {
+            const data = await callJson('/api/admin/users/all');
+            const users = data.users || [];
+            const body = document.getElementById('usersBody');
+            body.innerHTML = users.map((u) => `
+                <tr>
+                    <td>${u.zeus_pin || 'N/A'}</td>
+                    <td>${u.full_name || 'Not provided'}</td>
+                    <td><span class="badge ${statusClass(u.verification_status)}">${u.verification_status || 'pending'}</span></td>
+                    <td><span class="badge ${statusClass(u.account_status)}">${u.account_status || 'active'}</span></td>
+                    <td>${u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A'}</td>
+                    <td>
+                        <button class="btn-ok" onclick="verifyUser(${u.id}, true)">Approve</button>
+                        <button class="btn-warn" onclick="suspendUser(${u.id})">Suspend</button>
+                        <button class="btn-bad" onclick="deleteUser(${u.id})">Delete</button>
+                        <button onclick="openPendingChat(${u.id})">Chat</button>
+                    </td>
+                </tr>
+            `).join('');
+                    let currentPendingUserId = null;
+                    function openPendingChat(userId) {
+                        document.getElementById("pending-chat-section").style.display = "block";
+                        currentPendingUserId = userId;
+                        loadPendingChatMessages();
+                        if (window.pendingChatInterval) clearInterval(window.pendingChatInterval);
+                        window.pendingChatInterval = setInterval(loadPendingChatMessages, 5000);
+                    }
+                    function loadPendingChatMessages() {
+                        if (!currentPendingUserId) return;
+                        fetch("/api/admin/pending/messages/" + currentPendingUserId)
+                            .then(res => res.json())
+                            .then(data => {
+                                var container = document.getElementById("admin-chat-messages");
+                                container.innerHTML = (data.messages || []).map(msg =>
+                                    `<div class='chat-message ${msg.sender}'><strong>${msg.sender}:</strong> ${msg.text}</div>`
+                                ).join("");
+                                container.scrollTop = container.scrollHeight;
+                            });
+                    }
+                    function sendAdminReply() {
+                        var input = document.getElementById("admin-reply-input");
+                        var message = input.value.trim();
+                        if (message && currentPendingUserId) {
+                            fetch("/api/admin/pending/reply", {
+                                method: "POST",
+                                headers: {"Content-Type": "application/json"},
+                                body: JSON.stringify({user_id: currentPendingUserId, message: message})
+                            }).then(() => {
+                                input.value = "";
+                                loadPendingChatMessages();
+                            });
+                        }
+                    }
+            document.getElementById('statusLine').textContent = `Loaded ${users.length} users.`;
+        }
+
+        async function verifyUser(userId, approved) {
+            const payload = approved ? { approved: true } : { approved: false, rejection_reason: 'Rejected by admin' };
+            await callJson(`/api/admin/users/${userId}/verify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            await loadAll();
+        }
+
+        async function suspendUser(userId) {
+            const reason = prompt('Suspension reason') || 'Suspended by admin';
+            await callJson(`/api/admin/users/${userId}/suspend`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason })
+            });
+            await loadAll();
+        }
+
+        async function deleteUser(userId) {
+            const reason = prompt('Deletion reason') || 'Deleted by admin';
+            await callJson(`/api/admin/users/${userId}/delete`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason })
+            });
+            await loadAll();
+        }
+
+        async function loadAll() {
+            try {
+                await loadStats();
+                await loadUsers();
+            } catch (err) {
+                document.getElementById('statusLine').textContent = `Error: ${err.message}`;
+            }
+        }
+
+        loadAll();
+    </script>
+</body>
+</html>

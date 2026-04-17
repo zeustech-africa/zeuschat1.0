@@ -6,539 +6,2613 @@
     <title>Ghost Market - ZeusChat</title>
     <link rel="stylesheet" href="/static/mobile.css">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0a0d12;
+            --panel: rgba(16, 22, 31, 0.94);
+            --card: rgba(22, 29, 40, 0.96);
+            --text: #f8fafc;
+            --muted: #9aa4b2;
+            --line: rgba(255, 255, 255, 0.08);
+            --gold: #d4af37;
+            --emerald: #34d399;
+            --cyan: #5dd4f1;
+            --danger: #fb7185;
+            --shadow: 0 22px 48px rgba(0, 0, 0, 0.34);
+            --radius-lg: 24px;
+            --radius-md: 18px;
+        }
+
+        * { box-sizing: border-box; }
+
         body {
-            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            color: white;
-            padding-bottom: 80px;
+            margin: 0;
+            min-height: 100vh;
+            background:
+                radial-gradient(circle at top left, rgba(212, 175, 55, 0.14), transparent 30%),
+                radial-gradient(circle at top right, rgba(93, 212, 241, 0.12), transparent 26%),
+                linear-gradient(180deg, #0b1016 0%, #090c10 100%);
+            color: var(--text);
+            font-family: "Avenir Next", "Space Grotesk", "Segoe UI", sans-serif;
+            padding: 18px 16px 96px;
         }
-        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-        .market-header {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
+
+        .shell {
+            max-width: 760px;
+            margin: 0 auto;
         }
-        .back-btn {
-            background: rgba(212, 175, 55, 0.2);
-            border: 1px solid #D4AF37;
-            color: #D4AF37;
-            padding: 10px 16px;
-            border-radius: 40px;
-            cursor: pointer;
-            font-size: 14px;
+
+        .market-hero {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            margin: -18px -16px 16px;
+            padding: 18px 16px 14px;
+            background: linear-gradient(180deg, rgba(10, 13, 18, 0.98), rgba(10, 13, 18, 0.84), transparent);
+            backdrop-filter: blur(18px);
         }
-        .back-btn:hover {
-            background: rgba(212, 175, 55, 0.4);
-        }
-        .header {
+
+        .hero-top {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-            flex-wrap: wrap;
-            gap: 15px;
+            gap: 12px;
+            align-items: flex-start;
         }
-        h1 {
-            color: #D4AF37;
-            font-size: 28px;
+
+        .hero-top h1 {
+            margin: 4px 0 0;
+            font-size: 31px;
+            line-height: 1;
+            letter-spacing: -0.04em;
         }
-        .subtitle {
-            color: rgba(255,255,255,0.6);
-            margin-bottom: 24px;
+
+        .eyebrow {
+            color: var(--gold);
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
         }
-        .market-tabs {
+
+        .hero-copy {
+            margin-top: 10px;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .icon-btn,
+        .tab-btn,
+        .filter-chip,
+        .pill-btn,
+        .primary-btn,
+        .ghost-btn,
+        .action-card,
+        .nav-item,
+        .small-btn {
+            border: 0;
+            cursor: pointer;
+            font: inherit;
+        }
+
+        .icon-btn {
+            width: 46px;
+            height: 46px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.07);
+            color: var(--text);
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+        }
+
+        .overview {
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .tabs,
+        .filters-row,
+        .stats-row,
+        .actions-row,
+        .spotlight-row {
             display: flex;
             gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
+            overflow-x: auto;
+            scrollbar-width: none;
         }
-        .tab-btn {
-            border: 1px solid rgba(212,175,55,0.35);
-            background: rgba(255,255,255,0.08);
-            color: #e5e7eb;
-            border-radius: 999px;
+
+        .tabs::-webkit-scrollbar,
+        .filters-row::-webkit-scrollbar,
+        .stats-row::-webkit-scrollbar,
+        .actions-row::-webkit-scrollbar,
+        .spotlight-row::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab-btn,
+        .filter-chip {
+            white-space: nowrap;
             padding: 10px 16px;
-            cursor: pointer;
-            min-height: 44px;
-            font-weight: 600;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 800;
         }
-        .tab-btn.active {
-            background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%);
-            color: #0a0a0a;
-            border-color: #D4AF37;
+
+        .tab-btn.active,
+        .filter-chip.active {
+            background: linear-gradient(135deg, var(--gold), #c58f12);
+            color: #081018;
         }
-        .search-bar {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 24px;
-            flex-wrap: wrap;
-        }
-        .search-bar input {
-            flex: 1;
-            padding: 14px;
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(212,175,55,0.3);
-            border-radius: 40px;
-            color: white;
-            font-size: 16px;
-            min-height: 44px;
-        }
-        .search-bar select, .search-bar button {
-            padding: 14px 20px;
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(212,175,55,0.3);
-            border-radius: 40px;
-            color: white;
-            cursor: pointer;
-            min-height: 44px;
-        }
-        .search-bar select option { background: #1a1a1a; }
-        .items-grid {
+
+        .search-wrap {
             display: grid;
-            grid-template-columns: 1fr;
-            gap: 16px;
-            margin-top: 20px;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            margin-top: 14px;
         }
-        .item-card {
-            background: rgba(17, 17, 17, 0.95);
-            border: 1px solid rgba(212,175,55,0.2);
-            border-radius: 20px;
-            overflow: hidden;
-            transition: transform 0.2s;
-            cursor: pointer;
-        }
-        .item-card:hover { transform: translateY(-4px); }
-        .item-image {
+
+        .search-input,
+        .select-input,
+        .text-input,
+        .text-area,
+        .file-input {
             width: 100%;
-            height: 200px;
-            background: #1a1a1a;
+            padding: 14px 16px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text);
+            font: inherit;
+        }
+
+        .field-label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .content-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .listing-card {
+            overflow: hidden;
+            background: var(--card);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--line);
+        }
+
+        .listing-media {
+            position: relative;
+            min-height: 170px;
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.16), rgba(12, 18, 25, 0.96));
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #D4AF37;
-            font-size: 48px;
+            cursor: pointer;
         }
-        .item-image img {
+
+        .listing-media img {
             width: 100%;
             height: 100%;
             object-fit: cover;
+            display: block;
         }
-        .item-info { padding: 16px; }
-        .item-title {
-            font-weight: 600;
-            margin-bottom: 8px;
-            font-size: 16px;
+
+        .listing-placeholder {
+            font-size: 38px;
+            color: rgba(255, 255, 255, 0.7);
         }
-        .item-price {
-            color: #D4AF37;
-            font-size: 20px;
-            font-weight: bold;
-            margin-bottom: 8px;
+
+        .save-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 38px;
+            height: 38px;
+            border-radius: 14px;
+            background: rgba(10, 13, 18, 0.76);
+            color: var(--text);
+            backdrop-filter: blur(10px);
         }
-        .item-seller {
-            font-size: 12px;
-            color: rgba(255,255,255,0.5);
-            margin-bottom: 12px;
+
+        .save-btn.active {
+            color: var(--gold);
         }
-        .item-status {
-            min-height: 22px;
-            margin-bottom: 10px;
-        }
-        .status-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
+
+        .sold-badge,
+        .status-pill {
+            position: absolute;
+            left: 10px;
+            top: 10px;
+            padding: 8px 10px;
+            border-radius: 999px;
             font-size: 11px;
-            margin-top: 2px;
-            font-weight: 600;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            backdrop-filter: blur(12px);
         }
-        .status-badge.pending {
-            background: #fef3c7;
-            color: #d97706;
+
+        .sold-badge { background: rgba(251, 113, 133, 0.18); color: #ffd4dc; }
+        .status-pill.pending_approval { background: rgba(212, 175, 55, 0.16); color: var(--gold); }
+        .status-pill.rejected { background: rgba(251, 113, 133, 0.18); color: #ffd4dc; }
+
+        .listing-body {
+            padding: 14px;
         }
-        .status-badge.rejected {
-            background: #fee2e2;
-            color: #dc2626;
+
+        .listing-title {
+            margin: 0 0 8px;
+            font-size: 15px;
+            font-weight: 800;
+            line-height: 1.35;
         }
-        .buy-btn[disabled] {
-            cursor: not-allowed;
-            background: #374151;
-            color: #d1d5db;
+
+        .listing-price {
+            color: var(--gold);
+            font-size: 18px;
+            font-weight: 900;
+            margin-bottom: 8px;
         }
-        .buy-btn {
-            width: 100%;
-            padding: 12px;
-            background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%);
-            color: #0a0a0a;
-            border: none;
-            border-radius: 40px;
-            font-weight: bold;
-            cursor: pointer;
-            min-height: 44px;
-        }
-        .seller-section {
-            margin-top: 40px;
-            padding: 20px;
-            background: rgba(212,175,55,0.1);
-            border-radius: 20px;
-            text-align: center;
-        }
-        .seller-section h3 { margin-bottom: 8px; color: #D4AF37; }
-        .seller-section p { color: rgba(255,255,255,0.6); margin-bottom: 16px; }
-        .note {
-            color: rgba(255,255,255,0.45);
+
+        .listing-meta,
+        .listing-stats,
+        .empty-state,
+        .loading-state,
+        .note,
+        .meta-copy {
+            color: var(--muted);
             font-size: 12px;
+        }
+
+        .listing-stats {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
             margin-top: 10px;
         }
-        .sell-btn {
-            padding: 14px 28px;
-            background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%);
-            color: #0a0a0a;
-            border: none;
-            border-radius: 40px;
-            font-weight: bold;
-            cursor: pointer;
-            min-height: 44px;
+
+        .small-btn,
+        .pill-btn,
+        .primary-btn,
+        .ghost-btn {
+            border-radius: 16px;
+            padding: 12px 14px;
+            font-weight: 800;
         }
-        .upgrade-card {
-            border: 1px solid rgba(212, 175, 55, 0.35);
-            border-radius: 18px;
-            padding: 18px;
-            background: rgba(17, 17, 17, 0.45);
+
+        .small-btn,
+        .pill-btn {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text);
         }
-        .btn-gold {
-            padding: 14px 28px;
-            background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%);
-            color: #0a0a0a;
-            border: none;
-            border-radius: 40px;
-            font-weight: bold;
-            cursor: pointer;
-            min-height: 44px;
+
+        .small-btn.active,
+        .pill-btn.active {
+            background: rgba(212, 175, 55, 0.16);
+            color: var(--gold);
         }
-        .loading {
+
+        .primary-btn {
+            background: linear-gradient(135deg, var(--gold), #c58f12);
+            color: #071017;
+        }
+
+        .ghost-btn {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text);
+        }
+
+        .seller-panel {
+            padding: 16px;
+        }
+
+        .seller-status {
+            margin-top: 12px;
+        }
+
+        .stats-card,
+        .spotlight-card,
+        .inquiry-card {
+            padding: 16px;
+            border-radius: var(--radius-lg);
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--line);
+        }
+
+        .stats-card strong {
+            display: block;
+            font-size: 19px;
+            color: var(--gold);
+            margin-bottom: 4px;
+        }
+
+        .spotlight-card {
+            min-width: 250px;
+            text-align: left;
+        }
+
+        .spotlight-label {
+            color: var(--cyan);
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+
+        .spotlight-title {
+            margin: 10px 0 6px;
+            font-size: 15px;
+            font-weight: 800;
+        }
+
+        .inquiry-card {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .inquiry-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--gold);
+            display: inline-block;
+        }
+
+        .status-dot.read { background: var(--emerald); }
+
+        .empty-state,
+        .loading-state {
+            padding: 32px 20px;
             text-align: center;
-            padding: 40px;
-            color: rgba(255,255,255,0.5);
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-lg);
         }
-        @media (max-width: 768px) {
-            .container { padding: 16px; }
-            .items-grid { grid-template-columns: 1fr; }
-            h1 { font-size: 24px; }
+
+        .overlay,
+        .sheet {
+            position: fixed;
+            inset: 0;
+            z-index: 60;
+        }
+
+        .overlay {
+            display: none;
+            background: rgba(4, 7, 10, 0.72);
+            backdrop-filter: blur(10px);
+        }
+
+        .overlay.open { display: block; }
+
+        .sheet {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            pointer-events: none;
+        }
+
+        .sheet-card {
+            width: min(760px, 100%);
+            max-height: 88vh;
+            overflow-y: auto;
+            pointer-events: auto;
+            padding: 16px 16px calc(22px + env(safe-area-inset-bottom, 0px));
+            border-radius: 28px 28px 0 0;
+            border: 1px solid var(--line);
+            border-bottom: 0;
+            background: linear-gradient(180deg, #151c28, #0d121b 70%);
+            transform: translateY(105%);
+            transition: transform 0.26s ease;
+        }
+
+        .sheet.open .sheet-card { transform: translateY(0); }
+
+        .sheet-handle {
+            width: 54px;
+            height: 6px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.16);
+            margin: 0 auto 14px;
+        }
+
+        .sheet-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .sheet-header h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 800;
+        }
+
+        .detail-grid {
+            display: grid;
+            gap: 14px;
+        }
+
+        .carousel {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .carousel::-webkit-scrollbar { display: none; }
+
+        .carousel img {
+            width: 240px;
+            height: 220px;
+            object-fit: cover;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--line);
+        }
+
+        .detail-actions,
+        .form-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .detail-actions {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .form-grid.two {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .text-area {
+            min-height: 110px;
+            resize: vertical;
+        }
+
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: 100px;
+            transform: translateX(-50%) translateY(26px);
+            min-width: 180px;
+            max-width: calc(100vw - 32px);
+            padding: 12px 16px;
+            border-radius: 999px;
+            background: rgba(10, 13, 18, 0.96);
+            border: 1px solid rgba(212, 175, 55, 0.24);
+            color: var(--text);
+            text-align: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            z-index: 90;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .mobile-bottom-nav {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 40;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 12px calc(18px + env(safe-area-inset-bottom, 0px));
+            background: rgba(10, 13, 18, 0.96);
+            border-top: 1px solid var(--line);
+            backdrop-filter: blur(18px);
+        }
+
+        .nav-item {
+            background: none;
+            color: var(--muted);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 8px;
+            min-width: 56px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .nav-item.active { color: var(--gold); }
+        .nav-icon { font-size: 20px; }
+
+        @media (max-width: 620px) {
+            .cards-grid,
+            .detail-actions,
+            .form-grid.two {
+                grid-template-columns: 1fr;
+            }
+
+            .carousel img {
+                width: 88vw;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="market-header">
-            <button class="back-btn" onclick="window.location.href='/mobile/chat'">← Back to Chats</button>
-            <h1>🏪 Ghost Market</h1>
-        </div>
-        <p class="subtitle">Buy and sell anonymously. No names. No shame. Every item reviewed by admin.</p>
-
-        <div class="market-tabs">
-            <button class="tab-btn active" data-tab="browse">🏪 Browse Market</button>
-            <button class="tab-btn" data-tab="my-listings">📦 My Listings</button>
-        </div>
-
-        <div class="search-bar">
-            <input type="text" id="searchInput" placeholder="Search ghost market...">
-            <select id="categoryFilter">
-                <option value="">All Categories</option>
-                <option value="Electronics">Electronics</option>
-                <option value="Clothing">Clothing</option>
-                <option value="Furniture">Furniture</option>
-                <option value="Books">Books</option>
-                <option value="Home">Home &amp; Garden</option>
-                <option value="Sports">Sports</option>
-                <option value="Toys">Toys &amp; Hobbies</option>
-                <option value="Other">Other</option>
-            </select>
-            <button id="searchBtn">🔍 Search</button>
+    <div class="shell">
+        <div class="market-hero">
+            <div class="hero-top">
+                <div>
+                    <div class="eyebrow">Ghost Commerce</div>
+                    <h1>Anonymous listings, sharper discovery.</h1>
+                </div>
+                <button class="icon-btn" type="button" onclick="openListingSheet()">＋</button>
+            </div>
+            <div class="hero-copy">Ghost Market now behaves like a focused marketplace: browse, save, manage your own inventory, and answer buyer inquiries without breaking anonymous flow.</div>
         </div>
 
-        <div id="itemsGrid" class="items-grid">
-            <div class="loading">Loading ghost market...</div>
+        <div class="overview panel">
+            <div class="tabs" id="marketTabs">
+                <button class="tab-btn active" type="button" data-tab="browse">Browse</button>
+                <button class="tab-btn" type="button" data-tab="saved">Saved</button>
+                <button class="tab-btn" type="button" data-tab="mine">My Listings</button>
+                <button class="tab-btn" type="button" data-tab="inbox">Inbox</button>
+            </div>
+            <div class="search-wrap">
+                <input id="searchInput" class="search-input" type="text" placeholder="Search items, brands, or categories">
+                <button class="small-btn" type="button" onclick="loadActiveTab(true)">Search</button>
+            </div>
+            <div class="filters-row" id="categoryFilters" style="margin-top:12px;">
+                <button class="filter-chip active" type="button" data-category="">All</button>
+                <button class="filter-chip" type="button" data-category="Electronics">Electronics</button>
+                <button class="filter-chip" type="button" data-category="Fashion">Fashion</button>
+                <button class="filter-chip" type="button" data-category="Home">Home</button>
+                <button class="filter-chip" type="button" data-category="Vehicles">Vehicles</button>
+                <button class="filter-chip" type="button" data-category="Other">Other</button>
+            </div>
         </div>
 
-        <div id="sellerSection" class="seller-section" style="display: none;">
-            <h3>Become a Ghost Seller</h3>
-            <p>Sell your used items anonymously. Admin approves every listing.</p>
-            <button id="applySellerBtn" class="sell-btn">Apply to Sell →</button>
+        <div class="seller-panel panel" id="sellerPanel">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">Seller Console</h2>
+                    <p class="section-copy">Application status, analytics, and the one-tap path to listing inventory.</p>
+                </div>
+            </div>
+            <div class="seller-status" id="sellerStatus">Checking seller access...</div>
+            <div class="stats-row" id="analyticsRow" style="margin-top:14px;"></div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">Community Spotlight</h2>
+                    <p class="section-copy">Trending Ghost Community posts feeding demand back into the marketplace.</p>
+                </div>
+                <button class="small-btn" type="button" onclick="window.location.href='/mobile/community'">Open Ghost</button>
+            </div>
+            <div id="communitySpotlights" class="spotlight-row">
+                <div class="loading-state">Loading community spotlight...</div>
+            </div>
+        </div>
+
+        <div id="cardsContainer" class="cards-grid"></div>
+        <div id="inboxContainer" class="content-stack" style="display:none;"></div>
+    </div>
+
+    <div id="overlay" class="overlay" onclick="closeAllSheets()"></div>
+
+    <div id="detailSheet" class="sheet">
+        <div class="sheet-card">
+            <div class="sheet-handle"></div>
+            <div class="sheet-header">
+                <h3 id="detailTitle">Listing Details</h3>
+                <button class="icon-btn" type="button" onclick="closeDetailSheet()">✕</button>
+            </div>
+            <div id="detailContent" class="detail-grid"></div>
         </div>
     </div>
 
-    <!-- Mobile Bottom Navigation -->
+    <div id="createListingSheet" class="sheet">
+        <div class="sheet-card">
+            <div class="sheet-handle"></div>
+            <div class="sheet-header">
+                <h3>Create Ghost Listing</h3>
+                <button class="icon-btn" type="button" onclick="closeListingSheet()">✕</button>
+            </div>
+            <div class="form-grid">
+                <div>
+                    <span class="field-label">Title</span>
+                    <input id="listingTitle" class="text-input" type="text" placeholder="What are you selling?">
+                </div>
+                <div>
+                    <span class="field-label">Photos</span>
+                    <input id="listingImages" class="file-input" type="file" accept="image/*" multiple>
+                </div>
+                <div>
+                    <span class="field-label">Description</span>
+                    <textarea id="listingDescription" class="text-area" placeholder="Condition, features, defects, and why someone should buy it."></textarea>
+                </div>
+                <div class="form-grid two">
+                    <div>
+                        <span class="field-label">Price</span>
+                        <input id="listingPrice" class="text-input" type="number" min="0" step="0.01" placeholder="0.00">
+                    </div>
+                    <div>
+                        <span class="field-label">Currency</span>
+                        <select id="listingCurrency" class="select-input">
+                            <option value="ZAR">ZAR</option>
+                            <option value="ZT">ZT</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-grid two">
+                    <div>
+                        <span class="field-label">Condition</span>
+                        <select id="listingCondition" class="select-input">
+                            <option value="new">New</option>
+                            <option value="like_new">Like New</option>
+                            <option value="used" selected>Used</option>
+                            <option value="refurbished">Refurbished</option>
+                        </select>
+                    </div>
+                    <div>
+                        <span class="field-label">Category</span>
+                        <select id="listingCategory" class="select-input">
+                            <option value="Electronics">Electronics</option>
+                            <option value="Fashion">Fashion</option>
+                            <option value="Home">Home</option>
+                            <option value="Vehicles">Vehicles</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <span class="field-label">Location</span>
+                    <input id="listingLocation" class="text-input" type="text" placeholder="City or pickup area">
+                </div>
+                <button class="primary-btn" type="button" onclick="submitListing()">Submit For Approval</button>
+                <button class="ghost-btn" type="button" onclick="closeListingSheet()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
     <div class="mobile-bottom-nav mobile-only">
-        <button class="nav-item nav-item-mobile" data-page="chat">
+        <button class="nav-item" type="button" onclick="window.location.href='/mobile/chat'">
             <span class="nav-icon">💬</span>
             <span>Chats</span>
         </button>
-        <button class="nav-item nav-item-mobile active" data-page="market">
+        <button class="nav-item active" type="button">
             <span class="nav-icon">🏪</span>
             <span>Market</span>
         </button>
-        <button class="nav-item nav-item-mobile" data-page="community">
+        <button class="nav-item" type="button" onclick="window.location.href='/mobile/community'">
             <span class="nav-icon">👻</span>
             <span>Ghost</span>
         </button>
-        <button class="nav-item nav-item-mobile" data-page="profile">
+        <button class="nav-item" type="button" onclick="window.location.href='/mobile/profile'">
             <span class="nav-icon">👤</span>
             <span>Profile</span>
         </button>
-        <button class="nav-item nav-item-mobile" data-page="settings">
+        <button class="nav-item" type="button" onclick="window.location.href='/mobile/settings'">
             <span class="nav-icon">⚙️</span>
             <span>Settings</span>
         </button>
     </div>
 
     <script>
-        let isSeller = false;
-        let currentTab = 'browse';
-        let allItems = [];
-        let csrfToken = null;
+        const marketState = {
+            csrfToken: null,
+            activeTab: 'browse',
+            category: '',
+            listings: [],
+            savedListings: [],
+            myListings: [],
+            inquiries: [],
+            analytics: null,
+            sellerStatus: { isSeller: false, status: 'not_applied', tier: 'free' },
+            detailListing: null,
+            spotlightPosts: []
+        };
 
-        async function ensureCsrfToken() {
-            if (!csrfToken) {
-                try {
-                    const resp = await fetch('/api/csrf-token', { credentials: 'include' });
-                    const data = await resp.json();
-                    csrfToken = data.csrf_token;
-                } catch (err) { console.error('CSRF fetch failed:', err); }
-            }
-            return csrfToken;
+        async function ensureCsrfToken(forceRefresh = false) {
+            if (marketState.csrfToken && !forceRefresh) return marketState.csrfToken;
+            const response = await fetch('/api/csrf-token', { credentials: 'include' });
+            const data = await response.json();
+            marketState.csrfToken = data.csrf_token || null;
+            return marketState.csrfToken;
         }
 
         async function apiFetch(url, options = {}) {
-            options.credentials = 'include';
-            options.headers = options.headers || {};
-            const method = (options.method || 'GET').toUpperCase();
-            if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
+            const requestOptions = { ...options };
+            requestOptions.credentials = 'include';
+            requestOptions.headers = { ...(requestOptions.headers || {}) };
+            const method = (requestOptions.method || 'GET').toUpperCase();
+            requestOptions.method = method;
+            if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
                 const token = await ensureCsrfToken();
-                if (token) options.headers['X-CSRF-Token'] = token;
+                if (token) requestOptions.headers['X-CSRF-Token'] = token;
             }
-            const response = await fetch(url, options);
-            if (response.status === 403 && method !== 'GET') {
-                csrfToken = null;
-                const newToken = await ensureCsrfToken();
-                if (newToken) options.headers['X-CSRF-Token'] = newToken;
-                return await fetch(url, options);
+            return fetch(url, requestOptions);
+        }
+
+        function escapeHtml(value) {
+            const div = document.createElement('div');
+            div.textContent = value || '';
+            return div.innerHTML;
+        }
+
+        function formatCount(value) {
+            return new Intl.NumberFormat().format(Number(value || 0));
+        }
+
+        function formatTime(value) {
+            if (!value) return 'Now';
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return 'Now';
+            const diffMins = Math.floor((Date.now() - date.getTime()) / 60000);
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return `${diffMins}m ago`;
+            const hours = Math.floor(diffMins / 60);
+            if (hours < 24) return `${hours}h ago`;
+            return `${Math.floor(hours / 24)}d ago`;
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            clearTimeout(showToast._timer);
+            showToast._timer = setTimeout(() => toast.classList.remove('show'), 2200);
+        }
+
+        function getStatusBadge(listing) {
+            if (listing.status === 'sold') return '<div class="sold-badge">Sold</div>';
+            if (listing.status && listing.status !== 'approved') return `<div class="status-pill ${escapeHtml(listing.status)}">${escapeHtml(listing.status.replace('_', ' '))}</div>`;
+            return '';
+        }
+
+        function renderListingCard(listing) {
+            const image = listing.images && listing.images.length
+                ? `<img src="${escapeHtml(listing.images[0])}" alt="${escapeHtml(listing.title)}">`
+                : '<div class="listing-placeholder">📦</div>';
+            return `
+                <article class="listing-card">
+                    <div class="listing-media" onclick="openListing(${listing.id})">
+                        ${image}
+                        ${getStatusBadge(listing)}
+                        <button class="save-btn ${listing.isSavedByUser ? 'active' : ''}" type="button" onclick="toggleSave(event, ${listing.id}, ${listing.isSavedByUser ? 'true' : 'false'})">${listing.isSavedByUser ? '★' : '☆'}</button>
+                    </div>
+                    <div class="listing-body">
+                        <h3 class="listing-title">${escapeHtml(listing.title)}</h3>
+                        <div class="listing-price">${escapeHtml(listing.currency || 'ZAR')} ${formatCount(listing.price)}</div>
+                        <div class="listing-meta">👤 ${escapeHtml(listing.sellerZeusPin || 'Ghost seller')} · ${escapeHtml(listing.condition || 'used')}</div>
+                        <div class="listing-stats">
+                            <span>👁️ ${formatCount(listing.viewsCount)}</span>
+                            <span>💾 ${formatCount(listing.savedCount)}</span>
+                            <span>💬 ${formatCount(listing.messagesCount)}</span>
+                        </div>
+                    </div>
+                </article>
+            `;
+        }
+
+        function renderCards() {
+            const cards = document.getElementById('cardsContainer');
+            const inbox = document.getElementById('inboxContainer');
+            inbox.style.display = 'none';
+            cards.style.display = 'grid';
+
+            let items = [];
+            if (marketState.activeTab === 'browse') items = marketState.listings;
+            if (marketState.activeTab === 'saved') items = marketState.savedListings;
+            if (marketState.activeTab === 'mine') items = marketState.myListings;
+
+            if (!items.length) {
+                cards.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">No listings found for this section.</div>';
+                return;
+            }
+            cards.innerHTML = items.map(renderListingCard).join('');
+        }
+
+        function renderInbox() {
+            const cards = document.getElementById('cardsContainer');
+            const inbox = document.getElementById('inboxContainer');
+            cards.style.display = 'none';
+            inbox.style.display = 'flex';
+            inbox.className = 'content-stack';
+
+            if (!marketState.inquiries.length) {
+                inbox.innerHTML = '<div class="empty-state">No inquiries yet. Buyer messages land here after they ask about your listings.</div>';
+                return;
+            }
+            inbox.innerHTML = marketState.inquiries.map((inquiry) => `
+                <div class="inquiry-card">
+                    <div class="inquiry-head">
+                        <div>
+                            <strong>${escapeHtml(inquiry.listingTitle)}</strong>
+                            <div class="meta-copy">👤 ${escapeHtml(inquiry.buyerZeusPin)} · ${formatTime(inquiry.createdAt)}</div>
+                        </div>
+                        <div><span class="status-dot ${inquiry.isRead ? 'read' : ''}"></span></div>
+                    </div>
+                    <div>${escapeHtml(inquiry.message)}</div>
+                    ${inquiry.sellerReply ? `<div class="meta-copy">Reply sent: ${escapeHtml(inquiry.sellerReply)}</div>` : ''}
+                    <div class="actions-row">
+                        <button class="small-btn" type="button" onclick="markInquiryRead(${inquiry.id})">Mark Read</button>
+                        <button class="small-btn" type="button" onclick="replyToInquiry(${inquiry.id})">Reply</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderSellerPanel() {
+            const status = document.getElementById('sellerStatus');
+            const analytics = document.getElementById('analyticsRow');
+            analytics.innerHTML = '';
+            if (marketState.sellerStatus.tier === 'free') {
+                status.innerHTML = `
+                    <div class="meta-copy">Selling is limited to paid tiers.</div>
+                    <div class="actions-row" style="margin-top:12px;">
+                        <button class="primary-btn" type="button" onclick="window.location.href='/mobile/subscription'">Upgrade to Sell</button>
+                    </div>
+                `;
+                return;
+            }
+            if (marketState.sellerStatus.status === 'pending') {
+                status.innerHTML = '<div class="meta-copy">Your seller application is pending admin review.</div>';
+                return;
+            }
+            if (!marketState.sellerStatus.isSeller) {
+                status.innerHTML = `
+                    <div class="meta-copy">You are eligible to sell but still need seller approval.</div>
+                    <div class="actions-row" style="margin-top:12px;">
+                        <button class="primary-btn" type="button" onclick="applySeller()">Apply to Sell</button>
+                    </div>
+                `;
+                return;
+            }
+            status.innerHTML = `
+                <div class="meta-copy">Seller approved. List items, mark sold, and answer inquiries directly from here.</div>
+                <div class="actions-row" style="margin-top:12px;">
+                    <button class="primary-btn" type="button" onclick="openListingSheet()">Sell an Item</button>
+                    <button class="ghost-btn" type="button" onclick="loadAnalytics()">Refresh Analytics</button>
+                </div>
+            `;
+            if (marketState.analytics) {
+                analytics.innerHTML = `
+                    <div class="stats-card"><strong>${formatCount(marketState.analytics.totalViews)}</strong><span>Views</span></div>
+                    <div class="stats-card"><strong>${formatCount(marketState.analytics.totalSaves)}</strong><span>Saves</span></div>
+                    <div class="stats-card"><strong>${formatCount(marketState.analytics.totalMessages)}</strong><span>Messages</span></div>
+                    <div class="stats-card"><strong>${formatCount(marketState.analytics.itemsSold)}</strong><span>Sold</span></div>
+                `;
+            }
+        }
+
+        function renderSpotlights() {
+            const container = document.getElementById('communitySpotlights');
+            if (!marketState.spotlightPosts.length) {
+                container.innerHTML = '<div class="empty-state">No community spotlights yet.</div>';
+                return;
+            }
+            container.innerHTML = marketState.spotlightPosts.map((post) => `
+                <button class="spotlight-card" type="button" onclick="window.location.href='/mobile/community'">
+                    <div class="spotlight-label">Ghost Community</div>
+                    <div class="spotlight-title">${escapeHtml(post.caption || post.textContent || 'Ghost Post')}</div>
+                    <div class="meta-copy">👻 ${escapeHtml(post.zeusPin)} · ❤️ ${formatCount(post.likesCount)} · 👁️ ${formatCount(post.viewsCount)}</div>
+                </button>
+            `).join('');
+        }
+
+        async function loadBrowseListings(force = false) {
+            if (marketState.activeTab !== 'browse' && !force) return;
+            const query = new URLSearchParams({
+                sortBy: 'newest',
+                limit: '40',
+                offset: '0'
+            });
+            if (marketState.category) query.set('category', marketState.category);
+            const search = document.getElementById('searchInput').value.trim();
+            if (search) query.set('search', search);
+            const response = await apiFetch(`/api/ghost/market/feed?${query.toString()}`);
+            const data = await response.json();
+            marketState.listings = data.listings || [];
+            if (marketState.activeTab === 'browse') renderCards();
+        }
+
+        async function loadSavedListings() {
+            const response = await apiFetch('/api/ghost/market/saved-listings');
+            const data = await response.json();
+            marketState.savedListings = data.listings || [];
+            if (marketState.activeTab === 'saved') renderCards();
+        }
+
+        async function loadMyListings() {
+            const response = await apiFetch('/api/ghost/market/my-listings?status=all&limit=50&offset=0');
+            const data = await response.json();
+            marketState.myListings = data.listings || [];
+            if (marketState.activeTab === 'mine') renderCards();
+        }
+
+        async function loadInbox() {
+            const response = await apiFetch('/api/ghost/market/my-inquiries?status=all&limit=50');
+            const data = await response.json();
+            marketState.inquiries = data.inquiries || [];
+            if (marketState.activeTab === 'inbox') renderInbox();
+        }
+
+        async function loadSellerState() {
+            let tier = 'free';
+            try {
+                const subscription = await fetch('/api/user/subscription', { credentials: 'include' });
+                if (subscription.ok) {
+                    const subscriptionData = await subscription.json();
+                    tier = (subscriptionData.tier || 'free').toLowerCase();
+                }
+            } catch (error) {
+                tier = 'free';
+            }
+
+            const response = await apiFetch('/api/ghost-market/seller-status');
+            const data = await response.json();
+            marketState.sellerStatus = {
+                isSeller: !!data.is_seller,
+                status: data.status || 'not_applied',
+                tier
+            };
+            renderSellerPanel();
+            if (marketState.sellerStatus.isSeller) loadAnalytics();
+        }
+
+        async function loadAnalytics() {
+            if (!marketState.sellerStatus.isSeller) return;
+            const response = await apiFetch('/api/ghost/market/analytics?period=week');
+            const data = await response.json();
+            if (!response.ok) return;
+            marketState.analytics = data;
+            renderSellerPanel();
+        }
+
+        async function loadSpotlights() {
+            const response = await apiFetch('/api/ghost/community/feed?type=trending&limit=5&offset=0');
+            const data = await response.json();
+            marketState.spotlightPosts = data.posts || [];
+            renderSpotlights();
+        }
+
+        async function loadActiveTab(force = false) {
+            if (marketState.activeTab === 'browse') await loadBrowseListings(force);
+            if (marketState.activeTab === 'saved') await loadSavedListings();
+            if (marketState.activeTab === 'mine') await loadMyListings();
+            if (marketState.activeTab === 'inbox') await loadInbox();
+        }
+
+        function setActiveTab(tab) {
+            marketState.activeTab = tab;
+            document.querySelectorAll('#marketTabs .tab-btn').forEach((button) => button.classList.toggle('active', button.dataset.tab === tab));
+            loadActiveTab(true);
+        }
+
+        async function toggleSave(event, listingId, isSaved) {
+            event.stopPropagation();
+            const response = await apiFetch(`/api/ghost/market/listing/${listingId}/save`, { method: isSaved ? 'DELETE' : 'POST' });
+            const data = await response.json();
+            if (!response.ok) {
+                showToast(data.error || 'Unable to update saved state');
+                return;
+            }
+            const update = (listing) => listing.id === listingId ? { ...listing, isSavedByUser: !isSaved, savedCount: data.savedCount } : listing;
+            marketState.listings = marketState.listings.map(update);
+            marketState.savedListings = isSaved
+                ? marketState.savedListings.filter((listing) => listing.id !== listingId)
+                : marketState.savedListings.map(update);
+            marketState.myListings = marketState.myListings.map(update);
+            loadActiveTab(true);
+        }
+
+        async function openListing(listingId) {
+            const response = await apiFetch(`/api/ghost/market/listing/${listingId}`);
+            const data = await response.json();
+            if (!response.ok) {
+                showToast(data.error || 'Unable to load listing');
+                return;
+            }
+            marketState.detailListing = data;
+            document.getElementById('detailTitle').textContent = data.title;
+            renderDetail();
+            openSheet('detailSheet');
+            await apiFetch(`/api/ghost/market/listing/${listingId}/view`, { method: 'POST' });
+        }
+
+        function renderDetail() {
+            const listing = marketState.detailListing;
+            if (!listing) return;
+            const images = listing.images && listing.images.length
+                ? listing.images.map((src) => `<img src="${escapeHtml(src)}" alt="${escapeHtml(listing.title)}">`).join('')
+                : '<div class="empty-state">No images uploaded</div>';
+            const ownerActions = listing.isOwner ? `
+                <div class="detail-actions">
+                    <button class="primary-btn" type="button" onclick="markSold(${listing.id})">Mark Sold</button>
+                    <button class="ghost-btn" type="button" onclick="deleteListing(${listing.id})">Delete Listing</button>
+                </div>
+            ` : `
+                <div class="detail-actions">
+                    <button class="primary-btn" type="button" onclick="sendInquiry(${listing.id})">Message Seller</button>
+                    <button class="ghost-btn ${listing.isSavedByUser ? 'active' : ''}" type="button" onclick="toggleSaveFromDetail(${listing.id}, ${listing.isSavedByUser ? 'true' : 'false'})">${listing.isSavedByUser ? 'Saved' : 'Save Listing'}</button>
+                </div>
+            `;
+            document.getElementById('detailContent').innerHTML = `
+                <div class="carousel">${images}</div>
+                <div>
+                    <div class="listing-price">${escapeHtml(listing.currency)} ${formatCount(listing.price)}</div>
+                    <div class="meta-copy">👤 ${escapeHtml(listing.sellerZeusPin)} · 📦 ${escapeHtml(listing.condition)} · 📍 ${escapeHtml(listing.location || 'No location')}</div>
+                    <p style="line-height:1.6; color:#e5e7eb; margin:14px 0 0;">${escapeHtml(listing.description || 'No description')}</p>
+                </div>
+                <div class="stats-row">
+                    <div class="stats-card"><strong>${formatCount(listing.viewsCount)}</strong><span>Views</span></div>
+                    <div class="stats-card"><strong>${formatCount(listing.savedCount)}</strong><span>Saves</span></div>
+                    <div class="stats-card"><strong>${formatCount(listing.messagesCount)}</strong><span>Messages</span></div>
+                </div>
+                ${ownerActions}
+            `;
+        }
+
+        async function toggleSaveFromDetail(listingId, isSaved) {
+            await toggleSave({ stopPropagation() {} }, listingId, isSaved);
+            const refresh = await apiFetch(`/api/ghost/market/listing/${listingId}`);
+            marketState.detailListing = await refresh.json();
+            renderDetail();
+        }
+
+        async function sendInquiry(listingId) {
+            const message = prompt('Message the seller');
+            if (!message || !message.trim()) return;
+            const response = await apiFetch(`/api/ghost/market/listing/${listingId}/inquire`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: message.trim() })
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                showToast(data.error || 'Unable to send inquiry');
+                return;
+            }
+            showToast('Inquiry sent to seller');
+            closeDetailSheet();
+        }
+
+        async function markSold(listingId) {
+            const response = await apiFetch(`/api/ghost/market/listing/${listingId}/mark-sold`, { method: 'PUT' });
+            const data = await response.json();
+            if (!response.ok) {
+                showToast(data.error || 'Unable to mark sold');
+                return;
+            }
+            showToast('Listing marked as sold');
+            closeDetailSheet();
+            loadMyListings();
+            loadBrowseListings(true);
+        }
+
+        async function deleteListing(listingId) {
+            const confirmed = window.confirm('Delete this listing?');
+            if (!confirmed) return;
+            const response = await apiFetch(`/api/ghost/market/listing/${listingId}`, { method: 'DELETE' });
+            const data = await response.json();
+            if (!response.ok) {
+                showToast(data.error || 'Unable to delete listing');
+                return;
+            }
+            showToast('Listing deleted');
+            closeDetailSheet();
+            loadMyListings();
+            loadBrowseListings(true);
+        }
+
+        async function markInquiryRead(inquiryId) {
+            const response = await apiFetch(`/api/ghost/market/inquiry/${inquiryId}/read`, { method: 'PUT' });
+            const data = await response.json();
+            if (!response.ok) {
+                showToast(data.error || 'Unable to update inquiry');
+                return;
+            }
+            marketState.inquiries = marketState.inquiries.map((inquiry) => inquiry.id === inquiryId ? { ...inquiry, isRead: true } : inquiry);
+            renderInbox();
+        }
+
+        async function replyToInquiry(inquiryId) {
+            const message = prompt('Reply to buyer');
+            if (!message || !message.trim()) return;
+            const response = await apiFetch(`/api/ghost/market/inquiry/${inquiryId}/reply`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: message.trim() })
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                showToast(data.error || 'Unable to send reply');
+                return;
+            }
+            showToast('Reply sent into chat flow');
+            loadInbox();
+        }
+
+        async function applySeller() {
+            const storeName = prompt('Store name');
+            if (!storeName || !storeName.trim()) return;
+            const storeDescription = prompt('Store description') || '';
+            const response = await apiFetch('/api/ghost-market/apply-seller', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ store_name: storeName.trim(), store_description: storeDescription.trim() })
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                showToast(data.error || 'Unable to apply');
+                return;
+            }
+            showToast('Seller application submitted');
+            loadSellerState();
+        }
+
+        function openSheet(id) {
+            document.getElementById('overlay').classList.add('open');
+            document.getElementById(id).classList.add('open');
+        }
+
+        function closeAllSheets() {
+            document.getElementById('overlay').classList.remove('open');
+            document.getElementById('detailSheet').classList.remove('open');
+            document.getElementById('createListingSheet').classList.remove('open');
+        }
+
+        function openListingSheet() {
+            if (!marketState.sellerStatus.isSeller) {
+                showToast('Seller approval required first');
+                return;
+            }
+            openSheet('createListingSheet');
+        }
+
+        function closeListingSheet() {
+            document.getElementById('createListingSheet').classList.remove('open');
+            if (!document.getElementById('detailSheet').classList.contains('open')) {
+                document.getElementById('overlay').classList.remove('open');
+            }
+        }
+
+        function closeDetailSheet() {
+            document.getElementById('detailSheet').classList.remove('open');
+            if (!document.getElementById('createListingSheet').classList.contains('open')) {
+                document.getElementById('overlay').classList.remove('open');
+            }
+        }
+
+        async function submitListing() {
+            const title = document.getElementById('listingTitle').value.trim();
+            const description = document.getElementById('listingDescription').value.trim();
+            const price = document.getElementById('listingPrice').value.trim();
+            const currency = document.getElementById('listingCurrency').value;
+            const condition = document.getElementById('listingCondition').value;
+            const category = document.getElementById('listingCategory').value;
+            const location = document.getElementById('listingLocation').value.trim();
+            const files = document.getElementById('listingImages').files;
+
+            if (!title || !description || !price || !files.length) {
+                showToast('Complete the listing form first');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('title', title);
+            formData.append('description', description);
+            formData.append('price', price);
+            formData.append('currency', currency);
+            formData.append('condition', condition);
+            formData.append('category', category);
+            formData.append('location', location);
+            Array.from(files).slice(0, 10).forEach((file) => formData.append('images', file));
+
+            const response = await apiFetch('/api/ghost/market/listing', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                showToast(data.error || 'Unable to submit listing');
+                return;
+            }
+
+            showToast('Listing sent for admin approval');
+            document.getElementById('listingTitle').value = '';
+            document.getElementById('listingDescription').value = '';
+            document.getElementById('listingPrice').value = '';
+            document.getElementById('listingLocation').value = '';
+            document.getElementById('listingImages').value = '';
+            closeListingSheet();
+            setActiveTab('mine');
+            loadMyListings();
+        }
+
+        function bindTabs() {
+            document.querySelectorAll('#marketTabs .tab-btn').forEach((button) => {
+                button.addEventListener('click', () => setActiveTab(button.dataset.tab));
+            });
+            document.querySelectorAll('#categoryFilters .filter-chip').forEach((button) => {
+                button.addEventListener('click', () => {
+                    marketState.category = button.dataset.category || '';
+                    document.querySelectorAll('#categoryFilters .filter-chip').forEach((chip) => chip.classList.toggle('active', chip === button));
+                    if (marketState.activeTab === 'browse') loadBrowseListings(true);
+                });
+            });
+            document.getElementById('searchInput').addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') loadActiveTab(true);
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            bindTabs();
+            await ensureCsrfToken();
+            await Promise.all([loadSellerState(), loadBrowseListings(true), loadSpotlights()]);
+        });
+    </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Ghost Market - ZeusChat</title>
+    <link rel="stylesheet" href="/static/mobile.css">
+    <style>
+        :root {
+            --bg: #0b1116;
+            --card: rgba(16, 23, 30, 0.96);
+            --panel: rgba(13, 19, 25, 0.92);
+            --text: #f4f7f8;
+            --muted: #93a5ad;
+            --line: rgba(255, 255, 255, 0.08);
+            --gold: #d4af37;
+            --mint: #6ee7c8;
+            --blue: #76c8ff;
+            --red: #f87171;
+            --green: #34d399;
+            --shadow: 0 20px 48px rgba(0, 0, 0, 0.34);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background:
+                radial-gradient(circle at top left, rgba(212, 175, 55, 0.18), transparent 30%),
+                radial-gradient(circle at top right, rgba(118, 200, 255, 0.14), transparent 30%),
+                linear-gradient(180deg, #0d141b, #0a0f14);
+            color: var(--text);
+            font-family: "Avenir Next", "Space Grotesk", "Segoe UI", sans-serif;
+            padding: 18px 16px 94px;
+        }
+
+        .shell {
+            max-width: 760px;
+            margin: 0 auto;
+        }
+
+        .hero {
+            position: sticky;
+            top: 0;
+            z-index: 18;
+            margin: -18px -16px 18px;
+            padding: 18px 16px 14px;
+            background: linear-gradient(180deg, rgba(10, 15, 20, 0.97), rgba(10, 15, 20, 0.82), transparent);
+            backdrop-filter: blur(18px);
+        }
+
+        .hero-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .eyebrow {
+            display: block;
+            color: var(--gold);
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 30px;
+            line-height: 1;
+            letter-spacing: -0.04em;
+        }
+
+        .hero-copy {
+            margin-top: 10px;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.45;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .icon-btn,
+        .primary-btn,
+        .ghost-btn,
+        .tab-btn,
+        .filter-chip,
+        .mini-btn,
+        .nav-item,
+        .metric-card,
+        .listing-card,
+        .inquiry-card,
+        .spotlight-card,
+        .status-chip,
+        .action-pill {
+            border: 0;
+            cursor: pointer;
+            font: inherit;
+        }
+
+        .icon-btn {
+            width: 46px;
+            height: 46px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.07);
+            color: var(--text);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 19px;
+        }
+
+        .panel {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+        }
+
+        .tabs,
+        .filter-row,
+        .spotlight-row,
+        .analytics-row,
+        .listing-actions,
+        .detail-actions {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .tabs::-webkit-scrollbar,
+        .filter-row::-webkit-scrollbar,
+        .spotlight-row::-webkit-scrollbar,
+        .analytics-row::-webkit-scrollbar,
+        .listing-actions::-webkit-scrollbar,
+        .detail-actions::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab-btn,
+        .filter-chip,
+        .mini-btn,
+        .status-chip,
+        .action-pill {
+            white-space: nowrap;
+            padding: 10px 14px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .tab-btn.active,
+        .filter-chip.active {
+            background: linear-gradient(135deg, var(--gold), #c58f12);
+            color: #091019;
+        }
+
+        .search-panel {
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .search-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .input,
+        .textarea,
+        .select,
+        .file-input {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 16px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text);
+            font: inherit;
+        }
+
+        .textarea {
+            min-height: 110px;
+            resize: vertical;
+        }
+
+        .section {
+            margin-bottom: 18px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .section-title {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .section-copy {
+            margin: 6px 0 0;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .analytics-row {
+            margin-bottom: 16px;
+        }
+
+        .metric-card {
+            min-width: 150px;
+            padding: 14px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text);
+            text-align: left;
+        }
+
+        .metric-card strong {
+            display: block;
+            font-size: 20px;
+            color: var(--gold);
+        }
+
+        .metric-card span {
+            display: block;
+            margin-top: 4px;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .content-area {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .listing-card {
+            overflow: hidden;
+            text-align: left;
+        }
+
+        .listing-image {
+            height: 148px;
+            background: linear-gradient(145deg, rgba(118, 200, 255, 0.14), rgba(212, 175, 55, 0.12));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+        }
+
+        .listing-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .listing-body {
+            padding: 12px;
+        }
+
+        .listing-price {
+            color: var(--gold);
+            font-size: 18px;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+
+        .listing-title {
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.4;
+            margin-bottom: 8px;
+            min-height: 40px;
+        }
+
+        .listing-meta,
+        .detail-meta,
+        .seller-copy,
+        .inquiry-meta,
+        .empty-state,
+        .loading-state {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .listing-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .status-chip.sold { background: rgba(248, 113, 113, 0.14); color: var(--red); }
+        .status-chip.pending_approval,
+        .status-chip.pending { background: rgba(212, 175, 55, 0.14); color: var(--gold); }
+        .status-chip.approved,
+        .status-chip.active { background: rgba(52, 211, 153, 0.14); color: var(--green); }
+        .status-chip.rejected { background: rgba(248, 113, 113, 0.14); color: var(--red); }
+
+        .listing-actions,
+        .detail-actions {
+            margin-top: 10px;
+        }
+
+        .action-pill.active {
+            background: rgba(110, 231, 200, 0.16);
+            color: var(--mint);
+        }
+
+        .seller-panel {
+            padding: 16px;
+            margin-bottom: 16px;
+            background:
+                linear-gradient(140deg, rgba(212, 175, 55, 0.10), transparent 34%),
+                linear-gradient(180deg, rgba(16, 23, 30, 0.98), rgba(12, 18, 24, 0.96));
+        }
+
+        .seller-panel h2 {
+            margin: 0 0 8px;
+            font-size: 17px;
+        }
+
+        .seller-panel p {
+            margin: 0 0 14px;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .spotlight-card {
+            min-width: 240px;
+            padding: 16px;
+            border-radius: 22px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text);
+            text-align: left;
+        }
+
+        .spotlight-card strong {
+            display: block;
+            margin: 8px 0 6px;
+            font-size: 15px;
+        }
+
+        .spotlight-label {
+            color: var(--blue);
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+
+        .inquiry-card {
+            padding: 14px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text);
+            text-align: left;
+        }
+
+        .inquiry-card strong {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .inquiry-text {
+            font-size: 14px;
+            line-height: 1.55;
+            margin-bottom: 10px;
+            white-space: pre-wrap;
+        }
+
+        .sheet,
+        .overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 60;
+        }
+
+        .overlay {
+            background: rgba(3, 6, 10, 0.72);
+            backdrop-filter: blur(10px);
+            display: none;
+        }
+
+        .overlay.open { display: block; }
+
+        .sheet {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            pointer-events: none;
+        }
+
+        .sheet-card {
+            width: min(760px, 100%);
+            max-height: 88vh;
+            overflow-y: auto;
+            border-radius: 28px 28px 0 0;
+            background: linear-gradient(180deg, #151b28, #0d1119 70%);
+            border: 1px solid var(--line);
+            border-bottom: 0;
+            transform: translateY(105%);
+            transition: transform 0.28s ease;
+            pointer-events: auto;
+            padding: 16px 16px calc(22px + env(safe-area-inset-bottom, 0px));
+        }
+
+        .sheet.open .sheet-card { transform: translateY(0); }
+
+        .sheet-handle {
+            width: 54px;
+            height: 6px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.16);
+            margin: 0 auto 14px;
+        }
+
+        .sheet-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .sheet-title {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 800;
+        }
+
+        .field-label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .form-stack {
+            display: grid;
+            gap: 12px;
+        }
+
+        .two-col {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .primary-btn,
+        .ghost-btn {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 16px;
+            font-weight: 800;
+        }
+
+        .primary-btn {
+            background: linear-gradient(135deg, var(--gold), #c58f12);
+            color: #091019;
+        }
+
+        .ghost-btn {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text);
+        }
+
+        .detail-image {
+            width: 100%;
+            border-radius: 20px;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.05);
+            margin-bottom: 14px;
+        }
+
+        .detail-image img {
+            width: 100%;
+            display: block;
+            max-height: 320px;
+            object-fit: cover;
+        }
+
+        .detail-title {
+            margin: 0 0 6px;
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+        }
+
+        .detail-price {
+            color: var(--gold);
+            font-size: 22px;
+            font-weight: 900;
+            margin-bottom: 10px;
+        }
+
+        .detail-description {
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text);
+            white-space: pre-wrap;
+            margin-top: 14px;
+        }
+
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: 100px;
+            transform: translateX(-50%) translateY(30px);
+            min-width: 180px;
+            max-width: calc(100vw - 32px);
+            padding: 12px 16px;
+            border-radius: 999px;
+            background: rgba(9, 11, 16, 0.94);
+            border: 1px solid rgba(212, 175, 55, 0.25);
+            color: var(--text);
+            text-align: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            z-index: 90;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .mobile-bottom-nav {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 40;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 12px calc(18px + env(safe-area-inset-bottom, 0px));
+            background: rgba(9, 11, 16, 0.96);
+            border-top: 1px solid var(--line);
+            backdrop-filter: blur(18px);
+        }
+
+        .nav-item {
+            background: none;
+            color: var(--muted);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 8px;
+            border-radius: 12px;
+            min-width: 56px;
+            font-size: 12px;
+        }
+
+        .nav-item.active { color: var(--gold); }
+
+        .nav-icon { font-size: 20px; }
+
+        @media (max-width: 540px) {
+            .grid,
+            .two-col {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <div class="hero">
+            <div class="hero-top">
+                <div>
+                    <span class="eyebrow">Ghost Commerce</span>
+                    <h1>Anonymous marketplace, cleaner and faster.</h1>
+                </div>
+                <div class="hero-actions">
+                    <button class="icon-btn" type="button" onclick="window.location.href='/mobile/community'" title="Ghost Hub">👻</button>
+                    <button class="icon-btn" type="button" onclick="openCreateListingSheet()" title="Sell Item">⊕</button>
+                </div>
+            </div>
+            <div class="hero-copy">Browse public listings, save items, manage your own store, and answer buyer inquiries without breaking the admin approval flow.</div>
+        </div>
+
+        <div class="search-panel panel">
+            <div class="tabs" id="viewTabs">
+                <button class="tab-btn active" type="button" data-view="browse">Browse</button>
+                <button class="tab-btn" type="button" data-view="saved">Saved</button>
+                <button class="tab-btn" type="button" data-view="mine">My Listings</button>
+                <button class="tab-btn" type="button" data-view="inbox">Inbox</button>
+            </div>
+            <div class="search-row" style="margin-top:14px;">
+                <input id="searchInput" class="input" type="text" placeholder="Search items, descriptions, categories">
+                <button class="primary-btn" type="button" style="width:auto; min-width:116px;" onclick="loadCurrentView(true)">Search</button>
+            </div>
+            <div class="filter-row" id="categoryChips">
+                <button class="filter-chip active" type="button" data-category="">All</button>
+                <button class="filter-chip" type="button" data-category="Electronics">Electronics</button>
+                <button class="filter-chip" type="button" data-category="Fashion">Fashion</button>
+                <button class="filter-chip" type="button" data-category="Home">Home</button>
+                <button class="filter-chip" type="button" data-category="Vehicles">Vehicles</button>
+                <button class="filter-chip" type="button" data-category="Other">Other</button>
+            </div>
+        </div>
+
+        <div id="sellerPanel" class="seller-panel panel"></div>
+
+        <div id="analyticsSection" class="section" style="display:none;">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">Seller Analytics</h2>
+                    <p class="section-copy">A lightweight dashboard for views, saves, messages, and sold items.</p>
+                </div>
+                <button class="mini-btn" type="button" onclick="loadAnalytics()">Refresh</button>
+            </div>
+            <div id="analyticsCards" class="analytics-row"></div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">Trending from Ghost Community</h2>
+                    <p class="section-copy">Cross-promotion from community into commerce.</p>
+                </div>
+                <button class="mini-btn" type="button" onclick="window.location.href='/mobile/community'">Open Ghost</button>
+            </div>
+            <div id="communitySpotlight" class="spotlight-row">
+                <div class="loading-state">Loading community highlights...</div>
+            </div>
+        </div>
+
+        <div id="listingsContainer" class="content-area">
+            <div class="loading-state">Loading Ghost Market...</div>
+        </div>
+    </div>
+
+    <div id="sheetOverlay" class="overlay" onclick="closeAllSheets()"></div>
+
+    <div id="listingDetailSheet" class="sheet">
+        <div class="sheet-card">
+            <div class="sheet-handle"></div>
+            <div class="sheet-header">
+                <h3 class="sheet-title">Listing Details</h3>
+                <button class="icon-btn" type="button" onclick="closeDetailSheet()">✕</button>
+            </div>
+            <div id="listingDetailContent"></div>
+        </div>
+    </div>
+
+    <div id="createListingSheet" class="sheet">
+        <div class="sheet-card">
+            <div class="sheet-handle"></div>
+            <div class="sheet-header">
+                <h3 class="sheet-title">Sell On Ghost Market</h3>
+                <button class="icon-btn" type="button" onclick="closeCreateListingSheet()">✕</button>
+            </div>
+            <div class="form-stack">
+                <div>
+                    <span class="field-label">Title</span>
+                    <input id="listingTitleInput" class="input" type="text" placeholder="What are you selling?">
+                </div>
+                <div>
+                    <span class="field-label">Description</span>
+                    <textarea id="listingDescriptionInput" class="textarea" placeholder="Describe the item, condition, and why it matters."></textarea>
+                </div>
+                <div class="two-col">
+                    <div>
+                        <span class="field-label">Price</span>
+                        <input id="listingPriceInput" class="input" type="number" min="0" step="0.01" placeholder="0.00">
+                    </div>
+                    <div>
+                        <span class="field-label">Currency</span>
+                        <select id="listingCurrencyInput" class="select">
+                            <option value="ZAR">ZAR</option>
+                            <option value="ZT">ZT</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="two-col">
+                    <div>
+                        <span class="field-label">Condition</span>
+                        <select id="listingConditionInput" class="select">
+                            <option value="new">New</option>
+                            <option value="like_new">Like New</option>
+                            <option value="used">Used</option>
+                            <option value="refurbished">Refurbished</option>
+                        </select>
+                    </div>
+                    <div>
+                        <span class="field-label">Category</span>
+                        <select id="listingCategoryInput" class="select">
+                            <option value="Electronics">Electronics</option>
+                            <option value="Fashion">Fashion</option>
+                            <option value="Home">Home</option>
+                            <option value="Vehicles">Vehicles</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <span class="field-label">Location</span>
+                    <input id="listingLocationInput" class="input" type="text" placeholder="City, area, or locker region">
+                </div>
+                <div>
+                    <span class="field-label">Photos</span>
+                    <input id="listingImagesInput" class="file-input" type="file" accept="image/*" multiple>
+                </div>
+                <button class="primary-btn" type="button" onclick="submitListing()">Submit Listing</button>
+                <button class="ghost-btn" type="button" onclick="closeCreateListingSheet()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="replySheet" class="sheet">
+        <div class="sheet-card">
+            <div class="sheet-handle"></div>
+            <div class="sheet-header">
+                <h3 class="sheet-title">Reply To Buyer</h3>
+                <button class="icon-btn" type="button" onclick="closeReplySheet()">✕</button>
+            </div>
+            <div class="form-stack">
+                <textarea id="replyMessageInput" class="textarea" placeholder="Answer the buyer and open a chat bridge."></textarea>
+                <button class="primary-btn" type="button" onclick="submitReply()">Send Reply</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <div class="mobile-bottom-nav mobile-only">
+        <button class="nav-item" type="button" onclick="window.location.href='/mobile/chat'">
+            <span class="nav-icon">💬</span>
+            <span>Chats</span>
+        </button>
+        <button class="nav-item active" type="button">
+            <span class="nav-icon">🏪</span>
+            <span>Market</span>
+        </button>
+        <button class="nav-item" type="button" onclick="window.location.href='/mobile/community'">
+            <span class="nav-icon">👻</span>
+            <span>Ghost</span>
+        </button>
+        <button class="nav-item" type="button" onclick="window.location.href='/mobile/profile'">
+            <span class="nav-icon">👤</span>
+            <span>Profile</span>
+        </button>
+        <button class="nav-item" type="button" onclick="window.location.href='/mobile/settings'">
+            <span class="nav-icon">⚙️</span>
+            <span>Settings</span>
+        </button>
+    </div>
+
+    <script>
+        const state = {
+            view: 'browse',
+            category: '',
+            csrfToken: null,
+            selectedListing: null,
+            selectedInquiryId: null,
+            listings: [],
+            savedListings: [],
+            myListings: [],
+            inquiries: [],
+            analytics: null,
+            sellerStatus: { isSeller: false, status: 'not_applied', tier: 'free' },
+            communityHighlights: []
+        };
+
+        async function ensureCsrfToken(forceRefresh = false) {
+            if (state.csrfToken && !forceRefresh) return state.csrfToken;
+            const response = await fetch('/api/csrf-token', { credentials: 'include' });
+            const data = await response.json();
+            state.csrfToken = data.csrf_token || null;
+            return state.csrfToken;
+        }
+
+        async function apiFetch(url, options = {}) {
+            const requestOptions = { ...options };
+            requestOptions.credentials = 'include';
+            requestOptions.headers = { ...(requestOptions.headers || {}) };
+            const method = (requestOptions.method || 'GET').toUpperCase();
+            requestOptions.method = method;
+            if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+                const token = await ensureCsrfToken();
+                if (token) requestOptions.headers['X-CSRF-Token'] = token;
+            }
+            const response = await fetch(url, requestOptions);
+            if (response.status === 403 && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+                state.csrfToken = null;
             }
             return response;
         }
 
-        function escapeHtml(text) {
+        function escapeHtml(value) {
             const div = document.createElement('div');
-            div.textContent = text || '';
+            div.textContent = value == null ? '' : String(value);
             return div.innerHTML;
         }
 
-        function getStatusBadge(status, rejectionReason) {
-            if (status === 'pending_approval') {
-                return '<span class="status-badge pending">⏳ Pending Admin Approval</span>';
-            }
-            if (status === 'rejected') {
-                return '<span class="status-badge rejected">❌ Rejected: ' + escapeHtml(rejectionReason || 'No reason provided') + '</span>';
-            }
-            return '';
+        function formatCount(value) {
+            return new Intl.NumberFormat().format(Number(value || 0));
         }
 
-        function renderItems() {
-            const grid = document.getElementById('itemsGrid');
-            const visibleItems = allItems.filter(function (item) {
-                if (currentTab === 'my-listings') {
-                    return !!item.is_owner;
-                }
-                return item.status === 'approved';
-            });
+        function formatTime(value) {
+            if (!value) return 'Now';
+            const timestamp = new Date(value);
+            if (Number.isNaN(timestamp.getTime())) return 'Now';
+            const diff = Date.now() - timestamp.getTime();
+            const minutes = Math.floor(diff / 60000);
+            if (minutes < 1) return 'Just now';
+            if (minutes < 60) return `${minutes}m ago`;
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return `${hours}h ago`;
+            return `${Math.floor(hours / 24)}d ago`;
+        }
 
-            if (!visibleItems.length) {
-                grid.innerHTML = currentTab === 'my-listings'
-                    ? '<div class="loading">No listings yet. Tap "Sell an Item" to submit your first listing.</div>'
-                    : '<div class="loading">No items found in Ghost Market</div>';
+        function formatMoney(currency, price) {
+            const symbol = currency === 'ZT' ? 'ZT' : 'R';
+            return `${symbol} ${formatCount(price)}`;
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            clearTimeout(showToast._timer);
+            showToast._timer = setTimeout(() => toast.classList.remove('show'), 2200);
+        }
+
+        function getStatusClass(status) {
+            return status || 'pending';
+        }
+
+        function renderSellerPanel() {
+            const panel = document.getElementById('sellerPanel');
+            const status = state.sellerStatus;
+            if (status.tier === 'free') {
+                panel.innerHTML = `
+                    <h2>Upgrade to Sell</h2>
+                    <p>Free users can browse, save, and inquire. Selling requires Pro or Teams plus seller approval.</p>
+                    <button class="primary-btn" type="button" onclick="window.location.href='/mobile/subscription'">Upgrade To Pro</button>
+                `;
                 return;
             }
 
-            grid.innerHTML = visibleItems.map(function (item) {
-                const imgHtml = item.images
-                    ? '<img src="/' + escapeHtml(item.images.split(',')[0]) + '" alt="' + escapeHtml(item.title) + '">'
-                    : '📦';
-                const statusHtml = getStatusBadge(item.status, item.rejection_reason);
-                const canBuy = item.status === 'approved' && !item.is_owner;
-                const buyButton = canBuy
-                    ? '<button class="buy-btn" onclick="event.stopPropagation(); buyItem(' + item.id + ')">Buy Now</button>'
-                    : '<button class="buy-btn" disabled>' + (item.is_owner ? 'Your Listing' : 'Not Available') + '</button>';
-
-                return '<div class="item-card" data-status="' + escapeHtml(item.status || 'approved') + '" data-owner="' + (item.is_owner ? '1' : '0') + '">' +
-                    '<div class="item-image">' + imgHtml + '</div>' +
-                    '<div class="item-info">' +
-                    '<div class="item-title">' + escapeHtml(item.title) + '</div>' +
-                    '<div class="item-price">R' + item.price + '</div>' +
-                    '<div class="item-seller">Seller: ' + escapeHtml(item.seller_pin_half || 'ZT-XXXX') + '</div>' +
-                    '<div class="item-status">' + statusHtml + '</div>' +
-                    buyButton +
-                    '</div></div>';
-            }).join('');
-        }
-
-        async function loadItems() {
-            const search = document.getElementById('searchInput').value;
-            const category = document.getElementById('categoryFilter').value;
-
-            try {
-                const response = await fetch(
-                    '/api/ghost-market/items?search=' + encodeURIComponent(search) +
-                    '&category=' + encodeURIComponent(category),
-                    { credentials: 'include' }
-                );
-                const data = await response.json();
-
-                if (data.success) {
-                    allItems = data.items || [];
-                    renderItems();
-                } else {
-                    document.getElementById('itemsGrid').innerHTML = '<div class="loading">No items found in Ghost Market</div>';
-                }
-            } catch (err) {
-                document.getElementById('itemsGrid').innerHTML = '<div class="loading">Failed to load items</div>';
+            if (status.isSeller) {
+                panel.innerHTML = `
+                    <h2>Your Ghost Store is live</h2>
+                    <p>You can create listings, mark items sold, and manage buyer inquiries from this screen.</p>
+                    <button class="primary-btn" type="button" onclick="openCreateListingSheet()">Create Listing</button>
+                `;
+                return;
             }
-        }
 
-        async function buyItem(itemId) {
-            if (!confirm('Buy this item? Payment will be held in escrow until you confirm receipt.')) return;
-
-            try {
-                const response = await apiFetch('/api/ghost-market/buy/' + itemId, { method: 'POST' });
-                const data = await response.json();
-
-                if (data.success && data.redirect_url) {
-                    window.location.href = data.redirect_url;
-                } else {
-                    alert(data.error || 'Unable to process purchase');
-                }
-            } catch (err) {
-                alert('Network error. Please try again.');
+            if (status.status === 'pending') {
+                panel.innerHTML = `
+                    <h2>Seller Application Pending</h2>
+                    <p>Your store request is waiting for admin review. You can keep browsing while that runs.</p>
+                    <button class="ghost-btn" type="button" onclick="loadSellerStatus(true)">Refresh Status</button>
+                `;
+                return;
             }
+
+            panel.innerHTML = `
+                <h2>Apply to become a seller</h2>
+                <p>Ghost Market keeps sellers anonymous but still requires subscription and approval before listings go public.</p>
+                <button class="primary-btn" type="button" onclick="applySeller()">Apply To Sell</button>
+            `;
         }
 
-        async function checkSellerAccess() {
-            const sellerSection = document.getElementById('sellerSection');
-            sellerSection.style.display = 'block';
+        function listingCard(listing, mine = false) {
+            const image = listing.images && listing.images.length
+                ? `<img src="${escapeHtml(listing.images[0])}" alt="${escapeHtml(listing.title)}">`
+                : '📦';
+            const status = mine ? `<div class="status-chip ${getStatusClass(listing.status)}">${escapeHtml((listing.status || 'pending').replace('_', ' '))}</div>` : '';
+            return `
+                <button class="listing-card panel" type="button" onclick="openListing(${listing.id})">
+                    <div class="listing-image">${image}</div>
+                    <div class="listing-body">
+                        <div class="listing-price">${formatMoney(listing.currency, listing.price)}</div>
+                        <div class="listing-title">${escapeHtml(listing.title)}</div>
+                        <div class="listing-meta">
+                            <span>👤 ${escapeHtml(listing.sellerZeusPin || 'Ghost Seller')}</span>
+                            <span>👁️ ${formatCount(listing.viewsCount)}</span>
+                            <span>💾 ${formatCount(listing.savedCount)}</span>
+                        </div>
+                        ${status}
+                    </div>
+                </button>
+            `;
+        }
 
-            let isLoggedIn = true;
+        function renderListings() {
+            const container = document.getElementById('listingsContainer');
+            document.getElementById('analyticsSection').style.display = state.view === 'mine' ? '' : 'none';
+            if (state.view === 'inbox') {
+                if (!state.inquiries.length) {
+                    container.innerHTML = '<div class="empty-state panel">No buyer inquiries yet.</div>';
+                    return;
+                }
+                container.innerHTML = state.inquiries.map((inquiry) => `
+                    <div class="inquiry-card panel">
+                        <strong>${escapeHtml(inquiry.listingTitle)} · ${escapeHtml(inquiry.buyerZeusPin)}</strong>
+                        <div class="inquiry-meta">${formatTime(inquiry.createdAt)} · ${inquiry.isRead ? 'Read' : 'Unread'}</div>
+                        <div class="inquiry-text">${escapeHtml(inquiry.message)}</div>
+                        ${inquiry.sellerReply ? `<div class="inquiry-text" style="color: var(--mint);">Reply: ${escapeHtml(inquiry.sellerReply)}</div>` : ''}
+                        <div class="detail-actions">
+                            <button class="action-pill" type="button" onclick="markInquiryRead(${inquiry.id})">Mark Read</button>
+                            <button class="action-pill active" type="button" onclick="openReplySheet(${inquiry.id})">Reply</button>
+                        </div>
+                    </div>
+                `).join('');
+                return;
+            }
+
+            const dataset = state.view === 'saved'
+                ? state.savedListings
+                : state.view === 'mine'
+                    ? state.myListings
+                    : state.listings;
+
+            if (!dataset.length) {
+                container.innerHTML = `<div class="empty-state panel">${state.view === 'browse' ? 'No listings match the current filters.' : state.view === 'saved' ? 'No saved listings yet.' : 'You have not submitted any listings yet.'}</div>`;
+                return;
+            }
+
+            container.innerHTML = `<div class="grid">${dataset.map((listing) => listingCard(listing, state.view === 'mine')).join('')}</div>`;
+        }
+
+        function renderAnalytics() {
+            const wrap = document.getElementById('analyticsCards');
+            if (!state.analytics) {
+                wrap.innerHTML = '';
+                return;
+            }
+            wrap.innerHTML = `
+                <button class="metric-card" type="button"><strong>${formatCount(state.analytics.totalViews)}</strong><span>Total views</span></button>
+                <button class="metric-card" type="button"><strong>${formatCount(state.analytics.totalSaves)}</strong><span>Total saves</span></button>
+                <button class="metric-card" type="button"><strong>${formatCount(state.analytics.totalMessages)}</strong><span>Buyer messages</span></button>
+                <button class="metric-card" type="button"><strong>${formatCount(state.analytics.itemsSold)}</strong><span>Items sold</span></button>
+                <button class="metric-card" type="button"><strong>${formatMoney('ZAR', state.analytics.totalRevenue)}</strong><span>Revenue</span></button>
+            `;
+        }
+
+        function renderCommunitySpotlight() {
+            const rail = document.getElementById('communitySpotlight');
+            if (!state.communityHighlights.length) {
+                rail.innerHTML = '<div class="empty-state panel">No community spotlight yet.</div>';
+                return;
+            }
+            rail.innerHTML = state.communityHighlights.map((post) => `
+                <button class="spotlight-card panel" type="button" onclick="window.location.href='/mobile/community'">
+                    <div class="spotlight-label">Ghost Community</div>
+                    <strong>${escapeHtml(post.caption || post.textContent || 'Ghost Post')}</strong>
+                    <div class="listing-meta">👻 ${escapeHtml(post.zeusPin)} · ❤️ ${formatCount(post.likesCount)} · 👁️ ${formatCount(post.viewsCount)}</div>
+                </button>
+            `).join('');
+        }
+
+        async function loadSellerStatus(force = false) {
             let tier = 'free';
-
             try {
-                const subResponse = await fetch('/api/user/subscription', { credentials: 'include' });
-                if (subResponse.status === 401) {
-                    isLoggedIn = false;
-                } else {
+                const subResponse = await apiFetch('/api/user/subscription');
+                if (subResponse.ok) {
                     const subData = await subResponse.json();
                     tier = (subData.tier || 'free').toLowerCase();
                 }
-            } catch (err) {
-                isLoggedIn = false;
+            } catch (error) {
+                tier = 'free';
             }
 
-            if (!isLoggedIn) {
-                sellerSection.innerHTML =
-                    '<h3>Become a Ghost Seller</h3>' +
-                    '<p>Login to apply to become a seller</p>' +
-                    '<button class="sell-btn" onclick="window.location.href=\'/mobile/login\'">Login →</button>';
-                return;
-            }
-
-            if (tier === 'free') {
-                sellerSection.innerHTML =
-                    '<div class="upgrade-card">' +
-                    '<h3>👑 Become a Seller</h3>' +
-                    '<p>Only Pro and Teams subscribers can sell on Ghost Market.</p>' +
-                    '<button class="btn-gold" onclick="window.location.href=\'/subscription\'">Upgrade to Pro → R89/month</button>' +
-                    '<p class="note">Free users can browse and buy anonymously.</p>' +
-                    '</div>';
-                return;
-            }
-
-            try {
-                const sellerResponse = await fetch('/api/ghost-market/seller-status', { credentials: 'include' });
-                const sellerData = await sellerResponse.json();
-
-                if (sellerData.is_seller) {
-                    isSeller = true;
-                    sellerSection.innerHTML = '<button class="sell-btn" id="sellBtn">📦 Sell an Item</button>';
-                    const sellBtn = document.getElementById('sellBtn');
-                    if (sellBtn) {
-                        sellBtn.addEventListener('click', function () {
-                            window.location.href = '/ghost-market/sell';
-                        });
-                    }
-                } else if (sellerData.status === 'pending') {
-                    sellerSection.innerHTML =
-                        '<h3>⏳ Seller Application Pending</h3>' +
-                        '<p>Your application is being reviewed by admin.</p>' +
-                        '<p class="note">You will be notified when approved.</p>';
-                } else {
-                    sellerSection.innerHTML =
-                        '<h3>Become a Ghost Seller</h3>' +
-                        '<p>Sell your used items anonymously. Admin approves every listing.</p>' +
-                        '<button class="sell-btn" id="applySellerBtn">Apply to Sell →</button>';
-                    const applyBtn = document.getElementById('applySellerBtn');
-                    if (applyBtn) {
-                        applyBtn.addEventListener('click', function () {
-                            window.location.href = '/ghost-market/apply-seller';
-                        });
-                    }
-                }
-            } catch (err) {
-                sellerSection.innerHTML =
-                    '<h3>Unable to load seller status</h3>' +
-                    '<p>Please refresh the page and try again.</p>';
+            const sellerResponse = await apiFetch('/api/ghost-market/seller-status');
+            const sellerData = sellerResponse.ok ? await sellerResponse.json() : { is_seller: false, status: 'not_applied' };
+            state.sellerStatus = {
+                isSeller: !!sellerData.is_seller,
+                status: sellerData.status || 'not_applied',
+                tier
+            };
+            renderSellerPanel();
+            if (state.sellerStatus.isSeller && (force || state.view === 'mine')) {
+                loadAnalytics();
             }
         }
 
-        document.getElementById('searchBtn').addEventListener('click', loadItems);
-        document.getElementById('searchInput').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') loadItems();
-        });
+        async function loadBrowseListings() {
+            const query = new URLSearchParams({
+                sortBy: 'newest',
+                limit: '20',
+                offset: '0',
+                search: document.getElementById('searchInput').value.trim()
+            });
+            if (state.category) query.set('category', state.category);
+            const response = await apiFetch(`/api/ghost/market/feed?${query.toString()}`);
+            const data = await response.json();
+            state.listings = response.ok ? (data.listings || []) : [];
+            if (!response.ok) showToast(data.error || 'Failed to load market');
+            renderListings();
+        }
 
-        document.querySelectorAll('.tab-btn').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                document.querySelectorAll('.tab-btn').forEach(function (item) {
-                    item.classList.remove('active');
+        async function loadSavedListings() {
+            const response = await apiFetch('/api/ghost/market/saved-listings');
+            const data = await response.json();
+            state.savedListings = response.ok ? (data.listings || []) : [];
+            if (!response.ok) showToast(data.error || 'Failed to load saved listings');
+            renderListings();
+        }
+
+        async function loadMyListings() {
+            const response = await apiFetch('/api/ghost/market/my-listings?status=all&limit=50&offset=0');
+            const data = await response.json();
+            state.myListings = response.ok ? (data.listings || []) : [];
+            if (!response.ok) showToast(data.error || 'Failed to load your listings');
+            renderListings();
+        }
+
+        async function loadInquiries() {
+            const response = await apiFetch('/api/ghost/market/my-inquiries?status=all&limit=50');
+            const data = await response.json();
+            state.inquiries = response.ok ? (data.inquiries || []) : [];
+            if (!response.ok) showToast(data.error || 'Failed to load inquiries');
+            renderListings();
+        }
+
+        async function loadAnalytics() {
+            if (!state.sellerStatus.isSeller) return;
+            const response = await apiFetch('/api/ghost/market/analytics?period=week');
+            const data = await response.json();
+            state.analytics = response.ok ? data : null;
+            renderAnalytics();
+        }
+
+        async function loadCommunityHighlights() {
+            const response = await apiFetch('/api/ghost/community/feed?type=trending&limit=5&offset=0');
+            const data = await response.json();
+            state.communityHighlights = response.ok ? (data.posts || []) : [];
+            renderCommunitySpotlight();
+        }
+
+        async function loadCurrentView(force = false) {
+            document.getElementById('listingsContainer').innerHTML = '<div class="loading-state panel">Loading Ghost Market...</div>';
+            if (state.view === 'browse') return loadBrowseListings();
+            if (state.view === 'saved') return loadSavedListings();
+            if (state.view === 'mine') return loadMyListings();
+            return loadInquiries();
+        }
+
+        function switchView(view) {
+            state.view = view;
+            document.querySelectorAll('#viewTabs .tab-btn').forEach((button) => button.classList.toggle('active', button.dataset.view === view));
+            loadCurrentView(true);
+            if (view === 'mine') loadAnalytics();
+        }
+
+        async function openListing(listingId) {
+            const response = await apiFetch(`/api/ghost/market/listing/${listingId}`);
+            const data = await response.json();
+            if (!response.ok) {
+                showToast(data.error || 'Unable to load listing');
+                return;
+            }
+            state.selectedListing = data;
+            await apiFetch(`/api/ghost/market/listing/${listingId}/view`, { method: 'POST' });
+            renderDetailSheet();
+            openSheet('listingDetailSheet');
+        }
+
+        function renderDetailSheet() {
+            const listing = state.selectedListing;
+            if (!listing) return;
+            const image = listing.images && listing.images.length
+                ? `<div class="detail-image"><img src="${escapeHtml(listing.images[0])}" alt="${escapeHtml(listing.title)}"></div>`
+                : '';
+            const ownerActions = listing.isOwner ? `
+                <div class="detail-actions">
+                    ${listing.status !== 'sold' ? `<button class="action-pill active" type="button" onclick="markSold(${listing.id})">Mark Sold</button>` : ''}
+                    <button class="action-pill" type="button" onclick="deleteListing(${listing.id})">Delete</button>
+                </div>
+            ` : `
+                <div class="detail-actions">
+                    <button class="action-pill ${listing.isSavedByUser ? 'active' : ''}" type="button" onclick="toggleSave(${listing.id}, ${listing.isSavedByUser ? 'true' : 'false'})">${listing.isSavedByUser ? 'Saved' : 'Save'}</button>
+                    ${listing.status !== 'sold' ? `<button class="action-pill active" type="button" onclick="sendInquiry(${listing.id})">Message Seller</button>` : ''}
+                </div>
+            `;
+            document.getElementById('listingDetailContent').innerHTML = `
+                ${image}
+                <div class="detail-title">${escapeHtml(listing.title)}</div>
+                <div class="detail-price">${formatMoney(listing.currency, listing.price)}</div>
+                <div class="detail-meta">👤 ${escapeHtml(listing.sellerZeusPin)} · ${escapeHtml(listing.condition)} · ${escapeHtml(listing.category)} · ${escapeHtml(listing.location || 'No location')}</div>
+                <div class="detail-meta" style="margin-top:8px;">👁️ ${formatCount(listing.viewsCount)} views · 💾 ${formatCount(listing.savedCount)} saves · 💬 ${formatCount(listing.messagesCount)} inquiries</div>
+                <div class="detail-description">${escapeHtml(listing.description || 'No description provided.')}</div>
+                ${ownerActions}
+            `;
+        }
+
+        async function toggleSave(listingId, isSaved) {
+            const response = await apiFetch(`/api/ghost/market/listing/${listingId}/save`, { method: isSaved ? 'DELETE' : 'POST' });
+            const data = await response.json();
+            if (!response.ok) {
+                showToast(data.error || 'Unable to update save');
+                return;
+            }
+            showToast(isSaved ? 'Removed from saved' : 'Saved to your list');
+            closeDetailSheet();
+            await Promise.all([loadBrowseListings(), loadSavedListings()]);
+        }
+
+        async function sendInquiry(listingId) {
+            const message = prompt('Send a message to the seller');
+            if (!message || !message.trim()) return;
+            const response = await apiFetch(`/api/ghost/market/listing/${listingId}/inquire`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: message.trim() })
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                showToast(data.error || 'Unable to send inquiry');
+                return;
+            }
+            showToast('Inquiry sent to seller');
+            closeDetailSheet();
+            loadBrowseListings();
+        }
+
+        async function markSold(listingId) {
+            const response = await apiFetch(`/api/ghost/market/listing/${listingId}/mark-sold`, { method: 'PUT' });
+            const data = await response.json();
+            if (!response.ok) {
+                showToast(data.error || 'Unable to mark sold');
+                return;
+            }
+            showToast('Listing marked sold');
+            closeDetailSheet();
+            loadMyListings();
+            loadAnalytics();
+        }
+
+        async function deleteListing(listingId) {
+            const response = await apiFetch(`/api/ghost/market/listing/${listingId}`, { method: 'DELETE' });
+            const data = await response.json();
+            if (!response.ok) {
+                showToast(data.error || 'Unable to delete listing');
+                return;
+            }
+            showToast('Listing removed');
+            closeDetailSheet();
+            loadMyListings();
+        }
+
+        async function applySeller() {
+            const storeName = prompt('Store name');
+            if (!storeName || !storeName.trim()) return;
+            const storeDescription = prompt('Store description') || '';
+            const response = await apiFetch('/api/ghost-market/apply-seller', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ store_name: storeName.trim(), store_description: storeDescription.trim() })
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                showToast(data.error || 'Unable to apply');
+                return;
+            }
+            showToast('Seller application submitted');
+            loadSellerStatus(true);
+        }
+
+        async function submitListing() {
+            const images = document.getElementById('listingImagesInput').files;
+            const formData = new FormData();
+            formData.append('title', document.getElementById('listingTitleInput').value.trim());
+            formData.append('description', document.getElementById('listingDescriptionInput').value.trim());
+            formData.append('price', document.getElementById('listingPriceInput').value.trim());
+            formData.append('currency', document.getElementById('listingCurrencyInput').value);
+            formData.append('condition', document.getElementById('listingConditionInput').value);
+            formData.append('category', document.getElementById('listingCategoryInput').value);
+            formData.append('location', document.getElementById('listingLocationInput').value.trim());
+            Array.from(images).forEach((file) => formData.append('images', file));
+
+            const response = await apiFetch('/api/ghost/market/listing', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                showToast(data.error || 'Unable to submit listing');
+                return;
+            }
+            showToast('Listing sent for approval');
+            document.getElementById('listingTitleInput').value = '';
+            document.getElementById('listingDescriptionInput').value = '';
+            document.getElementById('listingPriceInput').value = '';
+            document.getElementById('listingLocationInput').value = '';
+            document.getElementById('listingImagesInput').value = '';
+            closeCreateListingSheet();
+            switchView('mine');
+        }
+
+        async function markInquiryRead(inquiryId) {
+            const response = await apiFetch(`/api/ghost/market/inquiry/${inquiryId}/read`, { method: 'PUT' });
+            const data = await response.json();
+            if (!response.ok) {
+                showToast(data.error || 'Unable to mark inquiry read');
+                return;
+            }
+            state.inquiries = state.inquiries.map((inquiry) => inquiry.id === inquiryId ? { ...inquiry, isRead: true } : inquiry);
+            renderListings();
+        }
+
+        function openReplySheet(inquiryId) {
+            state.selectedInquiryId = inquiryId;
+            document.getElementById('replyMessageInput').value = '';
+            openSheet('replySheet');
+        }
+
+        async function submitReply() {
+            if (!state.selectedInquiryId) return;
+            const message = document.getElementById('replyMessageInput').value.trim();
+            if (!message) {
+                showToast('Write a reply first');
+                return;
+            }
+            const response = await apiFetch(`/api/ghost/market/inquiry/${state.selectedInquiryId}/reply`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message })
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                showToast(data.error || 'Unable to reply');
+                return;
+            }
+            showToast('Reply sent and chat bridge opened');
+            closeReplySheet();
+            loadInquiries();
+        }
+
+        function openSheet(id) {
+            document.getElementById('sheetOverlay').classList.add('open');
+            document.getElementById(id).classList.add('open');
+        }
+
+        function closeAllSheets() {
+            document.getElementById('sheetOverlay').classList.remove('open');
+            document.getElementById('listingDetailSheet').classList.remove('open');
+            document.getElementById('createListingSheet').classList.remove('open');
+            document.getElementById('replySheet').classList.remove('open');
+        }
+
+        function closeDetailSheet() {
+            document.getElementById('listingDetailSheet').classList.remove('open');
+            if (!document.getElementById('createListingSheet').classList.contains('open') && !document.getElementById('replySheet').classList.contains('open')) {
+                document.getElementById('sheetOverlay').classList.remove('open');
+            }
+        }
+
+        function openCreateListingSheet() {
+            if (!state.sellerStatus.isSeller) {
+                showToast(state.sellerStatus.tier === 'free' ? 'Upgrade first to sell' : 'Seller approval required first');
+                return;
+            }
+            openSheet('createListingSheet');
+        }
+
+        function closeCreateListingSheet() {
+            document.getElementById('createListingSheet').classList.remove('open');
+            if (!document.getElementById('listingDetailSheet').classList.contains('open') && !document.getElementById('replySheet').classList.contains('open')) {
+                document.getElementById('sheetOverlay').classList.remove('open');
+            }
+        }
+
+        function closeReplySheet() {
+            document.getElementById('replySheet').classList.remove('open');
+            if (!document.getElementById('listingDetailSheet').classList.contains('open') && !document.getElementById('createListingSheet').classList.contains('open')) {
+                document.getElementById('sheetOverlay').classList.remove('open');
+            }
+        }
+
+        function bindTabs() {
+            document.querySelectorAll('#viewTabs .tab-btn').forEach((button) => {
+                button.addEventListener('click', () => switchView(button.dataset.view));
+            });
+            document.querySelectorAll('#categoryChips .filter-chip').forEach((button) => {
+                button.addEventListener('click', () => {
+                    state.category = button.dataset.category;
+                    document.querySelectorAll('#categoryChips .filter-chip').forEach((chip) => chip.classList.toggle('active', chip === button));
+                    if (state.view === 'browse') loadBrowseListings();
                 });
-                btn.classList.add('active');
-                currentTab = btn.dataset.tab;
-                renderItems();
             });
-        });
-
-        // Mobile navigation
-        document.querySelectorAll('.mobile-bottom-nav .nav-item').forEach(function (item) {
-            item.addEventListener('click', function () {
-                const page = item.dataset.page;
-                const pages = {
-                    'chat': '/mobile/chat',
-                    'community': '/mobile/community',
-                    'profile': '/mobile/profile',
-                    'market': '/mobile/market',
-                    'settings': '/mobile/settings'
-                };
-                if (pages[page]) window.location.href = pages[page];
+            document.getElementById('searchInput').addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') loadCurrentView(true);
             });
-        });
+        }
 
-        loadItems();
-        checkSellerAccess();
+        window.addEventListener('DOMContentLoaded', async () => {
+            bindTabs();
+            await ensureCsrfToken();
+            await Promise.all([loadSellerStatus(), loadCommunityHighlights()]);
+            switchView('browse');
+        });
     </script>
-    <div style="text-align:center;padding:12px 0 16px;font-size:12px;">
-        <a href="/terms" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">Terms</a> |
-        <a href="/privacy" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">Privacy</a> |
-        <a href="/kyc-policy" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">KYC Policy</a> |
-        <a href="/ghost-market-policy" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">Ghost Market Policy</a> |
-        <a href="/refund-policy" style="color:#D4AF37;text-decoration:none;margin:0 6px;opacity:0.6;">Refunds</a>
-    </div>
 </body>
 </html>

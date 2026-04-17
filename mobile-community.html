@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+        <link rel="stylesheet" href="/static/css/video-background.css">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Ghost Community - ZeusChat</title>
@@ -8,8 +9,25 @@
     <link rel="stylesheet" href="/static/mobile.css">
 </head>
 <body>
+        <!-- 4K Background Video -->
+        <video class="video-background" autoplay loop muted playsinline>
+            <source src="/static/videos/zeuschat-chatpage.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        <div class="feed-tabs" style="display:flex; gap:8px; padding:12px; position:sticky; top:0; z-index:10; background:#0f0f0f;">
+        <button class="feed-tab active" onclick="loadFeed('foryou')">For You</button>
+        <button class="feed-tab" onclick="loadFeed('following')">Following</button>
+        <button class="feed-tab" onclick="loadFeed('trending')">Trending</button>
+    </div>
+
     <div class="feed-container" id="feedContainer">
         <div id="postsLoader" style="text-align: center; padding: 40px; color: #D4AF37;">Loading...</div>
+    </div>
+
+    <div class="engagement-buttons" style="display:flex; gap:8px; padding:10px 12px; justify-content:center;">
+        <button class="like-button" onclick="likePost(0)">❤️ Like</button>
+        <button class="comment-button" onclick="commentOnPost(0)">💬 Comment</button>
+        <button class="share-button" onclick="sharePost(0)">↗️ Share</button>
     </div>
 
     <a class="wallet-link" href="/creator-wallet">Creator Wallet</a>
@@ -103,6 +121,20 @@
 
     <script src="/static/ghost.js"></script>
     <script>
+            function loadFeed(type) {
+                document.querySelectorAll('.feed-tab').forEach(function (btn) {
+                    btn.classList.toggle('active', btn.textContent.replace(/\s+/g, '').toLowerCase() === type);
+                });
+                const loader = document.getElementById('postsLoader');
+                if (loader) {
+                    loader.textContent = 'Loading ' + (type === 'foryou' ? 'For You' : type.charAt(0).toUpperCase() + type.slice(1)) + ' feed...';
+                }
+            }
+
+            function likePost(_postId) {}
+            function commentOnPost(_postId) {}
+            function sharePost(_postId) {}
+
       (function initMobileNavOverride() {
         const pages = {
           chat: '/mobile-chat.html',

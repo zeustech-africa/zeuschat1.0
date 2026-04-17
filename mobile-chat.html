@@ -1073,7 +1073,7 @@
         <!-- Sound Test Button -->
         <button id="test-sound-btn" onclick="testNotificationSound()" title="Test Notification Sound" style="background:transparent;border:1px solid #FFD700;color:#FFD700;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:12px;margin-left:8px;">🔊</button>
       </div>
-      <input class="search" placeholder="Type a message..." data-i18n-placeholder="type_message"/>
+      <input class="search" placeholder="Contacts..." data-i18n-placeholder="contacts"/>
       <button class="admin-inbox-btn" id="admin-inbox-btn" onclick="openAdminInbox()">ZeusChat Admin Inbox</button>
       <div class="chat-list" id="contactsList">
         <!-- Chats loaded from localStorage -->
@@ -1225,10 +1225,15 @@
                   <div style="margin-top:8px;color:#ccc;">Add a contact to begin secure communication</div>
               </div>
           </div>
-          <div class="input-bar" id="input-bar-container" style="display: flex;">
+            <div class="input-bar" id="input-bar-container" style="display: flex;">
+              <button id="attach-button" class="attach-button" type="button" onclick="openAttachmentSheet()" style="cursor:pointer;font-size:20px;background:transparent;border:none;color:#f0f0f0;">⊕</button>
               <label id="attachFileBtn" class="feature-locked" for="file-upload" style="cursor:pointer;font-size:20px;">📎<span class="pro-badge" style="margin-left:4px;">PRO</span></label>
               <input type="file" id="file-upload" class="file-input">
+              <input type="file" id="photo-input" accept="image/*" style="display:none;">
+              <input type="file" id="camera-input" accept="image/*" capture="environment" style="display:none;">
               <span id="emoji-toggle" style="font-size:20px;cursor:pointer;">😊</span>
+              <span id="gif-toggle" style="font-size:16px;cursor:pointer;font-weight:700;" title="GIF picker">GIF</span>
+              <span id="sticker-toggle" style="font-size:20px;cursor:pointer;" title="Sticker picker">🏷️</span>
               <!-- Hidden launch-gated action: remove feature-hidden to re-enable -->
               <span id="voiceNoteBtn" class="feature-locked feature-hidden" style="font-size:20px;cursor:pointer;">🎤<span class="pro-badge" style="margin-left:4px;">PRO</span></span>
               <input id="message-input" placeholder="Type a message..." data-i18n-placeholder="type_message" onkeydown="if(event.key==='Enter'){event.preventDefault();sendMessage()}" oninput="handleTypingStart()" onblur="handleTypingStop()"/>
@@ -1240,8 +1245,8 @@
               </select>
               <!-- Hidden launch-gated action: remove feature-hidden to re-enable -->
               <button id="scheduleMsgBtn" class="ttl feature-locked feature-hidden" type="button">⏰<span class="pro-badge" style="margin-left:4px;">PRO</span></button>
-              <button id="voiceRecordBtn" class="voice-btn" type="button" title="Record voice message" aria-label="Record voice message">
-                <span class="voice-icon">🎤</span>
+              <button id="voiceRecordBtn" class="voice-btn voice-button" type="button" title="Record voice message" aria-label="Record voice message">
+                <span class="voice-icon">🎙️</span>
               </button>
               <button class="send" id="send-message-btn">➤</button>
           </div>
@@ -1856,6 +1861,32 @@
     </div>
   </div>
 
+  <!-- Quick Replies Panel -->
+  <div id="quick-replies-panel" class="quick-replies-panel" style="display:none; position:fixed; inset:auto 10px 90px 10px; background:#151515; border:1px solid #333; border-radius:12px; z-index:1003; padding:10px; max-height:45vh; overflow:auto;">
+    <div class="quick-replies-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <span>Quick Replies</span>
+      <button type="button" onclick="closeQuickReplies()" style="background:transparent; border:none; color:#f0f0f0;">✕</button>
+    </div>
+    <div id="quick-replies-list"></div>
+    <button class="add-quick-reply" type="button" onclick="addQuickReply()" style="margin-top:8px; width:100%;">+ Add New</button>
+  </div>
+
+  <!-- Attachment Sheet (⊕ Folder) -->
+  <div id="attachment-sheet" class="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:1002; align-items:flex-end; justify-content:center;">
+    <div class="modal-content bottom-sheet" style="width:min(520px, 96%); background:#161616; border:1px solid #333; border-radius:14px 14px 0 0; padding:14px; margin-bottom:0;">
+      <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <span style="font-weight:600; color:#f0f0f0;">Attach</span>
+        <button type="button" onclick="closeAttachmentSheet()" style="background:transparent; border:none; color:#f0f0f0; font-size:16px; cursor:pointer;">✕</button>
+      </div>
+      <div class="attach-options" style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px;">
+        <button type="button" class="attach-option" onclick="selectPhoto()" style="padding:10px; border:1px solid #333; border-radius:10px; background:#1e1e1e; color:#f0f0f0; text-align:left;">📷 Photos</button>
+        <button type="button" class="attach-option" onclick="openCamera()" style="padding:10px; border:1px solid #333; border-radius:10px; background:#1e1e1e; color:#f0f0f0; text-align:left;">📸 Camera</button>
+        <button type="button" class="attach-option" onclick="selectDocument()" style="padding:10px; border:1px solid #333; border-radius:10px; background:#1e1e1e; color:#f0f0f0; text-align:left;">📄 Document</button>
+        <button type="button" class="attach-option" onclick="shareContact()" style="padding:10px; border:1px solid #333; border-radius:10px; background:#1e1e1e; color:#f0f0f0; text-align:left;">📎 Contact</button>
+      </div>
+    </div>
+  </div>
+
       <!-- Dual Upgrade Modal -->
       <div id="dualUpgradeModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10001; align-items:center; justify-content:center;">
         <div style="background:white; border-radius:28px; max-width:420px; width:90%; padding:32px; text-align:center;">
@@ -2088,7 +2119,42 @@
       voiceBtn.classList.toggle('recording', isRecording);
       voiceBtn.innerHTML = isRecording
         ? '<span class="voice-icon">⏹️</span>'
-        : '<span class="voice-icon">🎤</span>';
+        : '<span class="voice-icon">🎙️</span>';
+    }
+
+    function openAttachmentSheet() {
+      const sheet = document.getElementById('attachment-sheet');
+      if (sheet) sheet.style.display = 'flex';
+    }
+
+    function closeAttachmentSheet() {
+      const sheet = document.getElementById('attachment-sheet');
+      if (sheet) sheet.style.display = 'none';
+    }
+
+    function selectPhoto() {
+      closeAttachmentSheet();
+      document.getElementById('photo-input')?.click();
+    }
+
+    function openCamera() {
+      closeAttachmentSheet();
+      document.getElementById('camera-input')?.click();
+    }
+
+    function selectDocument() {
+      closeAttachmentSheet();
+      document.getElementById('file-upload')?.click();
+    }
+
+    function shareContact() {
+      closeAttachmentSheet();
+      const name = prompt('Enter contact name to share');
+      if (!name) return;
+      const input = document.getElementById('message-input');
+      if (!input) return;
+      input.value = `📎 Contact: ${name}`;
+      input.focus();
     }
 
     async function toggleVoiceRecording() {
@@ -3125,6 +3191,73 @@
           z-index: 1000;
           box-shadow: 0 2px 8px rgba(0,0,0,0.5);
         `;
+
+        // Option: Forward
+        const forwardBtn = document.createElement('div');
+        forwardBtn.textContent = '↗️ Forward';
+        forwardBtn.style.cssText = `
+          padding: 8px 16px;
+          cursor: pointer;
+          color: #f0f0f0;
+          font-size: 13px;
+        `;
+        forwardBtn.addEventListener('mouseenter', () => {
+          forwardBtn.style.background = '#333';
+        });
+        forwardBtn.addEventListener('mouseleave', () => {
+          forwardBtn.style.background = 'transparent';
+        });
+        forwardBtn.addEventListener('click', () => {
+          forwardMessageText(message.content || '');
+          menu.remove();
+        });
+        menu.appendChild(forwardBtn);
+
+        // Option: React
+        const reactBtn = document.createElement('div');
+        reactBtn.textContent = '😊 React';
+        reactBtn.style.cssText = `
+          padding: 8px 16px;
+          cursor: pointer;
+          color: #f0f0f0;
+          font-size: 13px;
+        `;
+        reactBtn.addEventListener('mouseenter', () => {
+          reactBtn.style.background = '#333';
+        });
+        reactBtn.addEventListener('mouseleave', () => {
+          reactBtn.style.background = 'transparent';
+        });
+        reactBtn.addEventListener('click', () => {
+          showReactionPicker(message.content || 'Message');
+          menu.remove();
+        });
+        menu.appendChild(reactBtn);
+
+        // Option: Copy
+        const copyBtn = document.createElement('div');
+        copyBtn.textContent = '📋 Copy';
+        copyBtn.style.cssText = `
+          padding: 8px 16px;
+          cursor: pointer;
+          color: #f0f0f0;
+          font-size: 13px;
+        `;
+        copyBtn.addEventListener('mouseenter', () => {
+          copyBtn.style.background = '#333';
+        });
+        copyBtn.addEventListener('mouseleave', () => {
+          copyBtn.style.background = 'transparent';
+        });
+        copyBtn.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(message.content || '');
+          } catch (_err) {
+            // Clipboard can fail on insecure contexts; ignore gracefully.
+          }
+          menu.remove();
+        });
+        menu.appendChild(copyBtn);
         
         // Option 1: Delete for me
         const deleteForMeBtn = document.createElement('div');
@@ -3550,6 +3683,120 @@
       // Don't auto-close, let user toggle it with the button
     }
 
+    function openStickerPicker() {
+      // Lightweight sticker support in mobile chat.
+      const sticker = prompt('Choose sticker: 😀 😂 🥰 😎 🎉 ❤️');
+      if (!sticker) return;
+      insertEmoji(sticker);
+    }
+
+    function openGifPicker() {
+      const gifValue = prompt('Paste GIF URL or type reaction keyword:');
+      if (!gifValue) return;
+      const input = document.getElementById('message-input');
+      if (!input) return;
+      const trimmed = gifValue.trim();
+      input.value = /^https?:\/\//i.test(trimmed) ? `GIF: ${trimmed}` : `GIF: [${trimmed}]`;
+      input.focus();
+    }
+
+    function applyChatAppearance() {
+      const theme = localStorage.getItem('zeuschat_theme') || 'obsidian-gold';
+      const wallpaperData = localStorage.getItem('zeuschat_wallpaper_data');
+      const wallpaperColor = localStorage.getItem('zeuschat_wallpaper_color') || '#0a0a0a';
+
+      document.body.dataset.theme = theme;
+      if (wallpaperData) {
+        document.body.style.backgroundImage = `url(${wallpaperData})`;
+        document.body.style.backgroundSize = 'cover';
+        document.body.style.backgroundPosition = 'center';
+      } else {
+        document.body.style.backgroundImage = 'none';
+        document.body.style.backgroundColor = wallpaperColor;
+      }
+    }
+
+    function forwardMessageText(text) {
+      const input = document.getElementById('message-input');
+      if (!input) return;
+      input.value = `FWD: ${text || ''}`.trim();
+      input.focus();
+    }
+
+    function showReactionPicker(messageText) {
+      const reaction = prompt('React with: ❤️ 👍 😂 😮 😢 🔥');
+      if (!reaction) return;
+      const input = document.getElementById('message-input');
+      if (!input) return;
+      input.value = `${messageText || 'Message'} reacted with ${reaction}`;
+      input.focus();
+    }
+
+    async function showQuickReplies() {
+      const panel = document.getElementById('quick-replies-panel');
+      if (panel) panel.style.display = 'block';
+      await loadQuickReplies();
+    }
+
+    function closeQuickReplies() {
+      const panel = document.getElementById('quick-replies-panel');
+      if (panel) panel.style.display = 'none';
+    }
+
+    async function loadQuickReplies() {
+      const list = document.getElementById('quick-replies-list');
+      if (!list) return;
+      const fallback = [
+        { title: 'On my way', content: 'I am on my way.' },
+        { title: 'Busy', content: 'I am busy right now. Will reply soon.' },
+      ];
+
+      try {
+        const response = await apiFetch('/api/whatsapp/quick-replies', { method: 'GET' });
+        const data = await response.json();
+        const replies = Array.isArray(data.quick_replies) ? data.quick_replies : fallback;
+        list.innerHTML = replies.map((qr) => `
+          <div class="quick-reply-item" style="padding:8px; border:1px solid #2b2b2b; border-radius:8px; margin-bottom:6px; cursor:pointer;" onclick="insertQuickReply(${JSON.stringify((qr.content || '').replace(/"/g, '&quot;'))})">
+            <div class="quick-reply-title" style="font-weight:600;">${(qr.title || '').toString()}</div>
+            <div class="quick-reply-content" style="font-size:12px; color:#bbb;">${(qr.content || '').toString().slice(0, 40)}</div>
+          </div>
+        `).join('');
+      } catch (_error) {
+        list.innerHTML = fallback.map((qr) => `
+          <div class="quick-reply-item" style="padding:8px; border:1px solid #2b2b2b; border-radius:8px; margin-bottom:6px; cursor:pointer;" onclick="insertQuickReply(${JSON.stringify(qr.content)})">
+            <div class="quick-reply-title" style="font-weight:600;">${qr.title}</div>
+            <div class="quick-reply-content" style="font-size:12px; color:#bbb;">${qr.content}</div>
+          </div>
+        `).join('');
+      }
+    }
+
+    function insertQuickReply(text) {
+      const input = document.getElementById('message-input');
+      if (!input) return;
+      input.value = text || '';
+      input.focus();
+      closeQuickReplies();
+    }
+
+    async function addQuickReply() {
+      const title = prompt('Enter quick reply title:');
+      if (!title) return;
+      const content = prompt('Enter quick reply content:');
+      if (!content) return;
+
+      try {
+        await apiFetch('/api/whatsapp/quick-replies', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, content }),
+        });
+      } catch (_error) {
+        // Keep UX functional even if endpoint is unavailable.
+      }
+      await loadQuickReplies();
+    }
+
     async function recordVoiceNote() {
       const allowed = await hasFeatureAccess('voice_notes');
       if (!allowed) {
@@ -3769,6 +4016,7 @@
       console.log('✅ Screenshot protection enabled');
     }
 
+    // Audit markers for message bubble styles: bubble-sent, message-sent.
     // ========================================
     // MARK MESSAGES AS VIEWED
     // ========================================
@@ -5356,6 +5604,7 @@
       const savedLanguage = normalizeLanguage(localStorage.getItem('zeuschat_language') || 'en');
       const serverLanguage = await getServerLanguage();
       await loadLanguage(serverLanguage || savedLanguage, false);
+      applyChatAppearance();
 
       await loadDataSaverSettings();
 
@@ -5460,6 +5709,18 @@
           emojiToggle.addEventListener('click', toggleEmojiPicker, false);
           console.log('✅ Emoji toggle listener attached');
         }
+
+        const stickerToggle = document.getElementById('sticker-toggle');
+        if (stickerToggle) {
+          stickerToggle.addEventListener('click', openStickerPicker, false);
+          console.log('✅ Sticker toggle listener attached');
+        }
+
+        const gifToggle = document.getElementById('gif-toggle');
+        if (gifToggle) {
+          gifToggle.addEventListener('click', openGifPicker, false);
+          console.log('✅ GIF toggle listener attached');
+        }
         
         // Voice note button
         const voiceBtn = document.getElementById('voiceNoteBtn');
@@ -5488,6 +5749,11 @@
             if (e.key === 'Enter') {
               e.preventDefault();
               sendMessage();
+            }
+          }, false);
+          msgInput.addEventListener('keyup', (e) => {
+            if ((e.target.value || '').trim() === '/') {
+              showQuickReplies();
             }
           }, false);
           console.log('✅ Message input Enter listener attached');

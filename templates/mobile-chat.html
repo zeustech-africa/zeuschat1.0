@@ -35,6 +35,29 @@
             z-index: -2;
         }
 
+        .chat-background-video {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -3;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        .chat-video-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.35);
+            z-index: -2;
+            pointer-events: none;
+        }
+
         .mobile-header {
             display: flex;
             justify-content: space-between;
@@ -127,7 +150,7 @@
             display: none;
             flex-direction: column;
             height: 100%;
-            background: #0a0a0a;
+            background: transparent;
         }
         .chat-view.active {
             display: flex;
@@ -147,6 +170,7 @@
             font-size: 15px;
             line-height: 1.4;
             word-wrap: break-word;
+            backdrop-filter: blur(5px);
         }
         .message-received {
             background: #2a2a2a;
@@ -165,14 +189,7 @@
             margin-top: 4px;
             text-align: right;
         }
-        .chat-input-area {
-            display: flex;
-            gap: 10px;
-            padding: 12px 16px;
-            padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-            background: #111;
-            border-top: 0.5px solid #222;
-        }
+        /* Old chat-input-area rules removed — replaced by .chat-input-wrapper system below */
         .reply-preview {
             display: none;
             align-items: center;
@@ -191,27 +208,6 @@
             text-overflow: ellipsis;
             white-space: nowrap;
             flex: 1;
-        }
-        .chat-input-area input {
-            flex: 1;
-            padding: 12px;
-            background: #1e1e1e;
-            border: none;
-            border-radius: 24px;
-            color: white;
-            font-size: 16px;
-        }
-        .chat-input-area button {
-            background: #D4AF37;
-            border: none;
-            border-radius: 50%;
-            width: 44px;
-            height: 44px;
-            font-size: 20px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
 
         .bottom-nav {
@@ -647,9 +643,199 @@
             text-align: center; padding: 12px; color: #D4AF37;
             font-size: 12px; display: none;
         }
+
+        /* ============================================
+           SEARCH BAR
+           ============================================ */
+        .search-container {
+            padding: 8px 16px;
+            background: #0a0a0a;
+        }
+        .search-input-wrap {
+            display: flex;
+            align-items: center;
+            background: #1a1a1a;
+            border-radius: 24px;
+            padding: 0 14px;
+            border: 0.5px solid #2a2a2a;
+        }
+        .search-icon { font-size: 16px; color: #666; margin-right: 8px; }
+        .search-input {
+            flex: 1;
+            background: none;
+            border: none;
+            outline: none;
+            color: #fff;
+            font-size: 15px;
+            padding: 10px 0;
+        }
+        .search-input::placeholder { color: #666; }
+        .search-clear {
+            background: none; border: none; color: #666;
+            font-size: 16px; cursor: pointer; padding: 4px;
+            display: none;
+        }
+        .search-clear.visible { display: block; }
+
+        /* ============================================
+           CLEAN CHAT INPUT WRAPPER + TTL PILLS
+           ============================================ */
+        .chat-input-wrapper {
+            background: #111;
+            border-top: 0.5px solid #222;
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        .ttl-pills-bar {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px 0;
+        }
+        .ttl-pill-label { font-size: 12px; color: #888; flex-shrink: 0; }
+        .ttl-pill {
+            background: #1e1e1e;
+            border: 0.5px solid #333;
+            color: #888;
+            font-size: 11px;
+            padding: 3px 10px;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+        .ttl-pill.active {
+            background: rgba(212,175,55,0.15);
+            border-color: #D4AF37;
+            color: #D4AF37;
+            font-weight: 600;
+        }
+        .chat-input-area {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 12px 10px;
+        }
+        .input-icon-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 6px;
+            min-width: 40px;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            color: #D4AF37;
+            flex-shrink: 0;
+        }
+        .input-icon-btn:active { background: rgba(212,175,55,0.1); }
+        .input-text {
+            flex: 1;
+            padding: 10px 14px;
+            background: #1e1e1e;
+            border: none;
+            border-radius: 24px;
+            color: white;
+            font-size: 16px;
+            max-height: 100px;
+            outline: none;
+        }
+        .send-btn-active {
+            background: #D4AF37 !important;
+            border-radius: 50% !important;
+            width: 40px !important;
+            height: 40px !important;
+            font-size: 18px !important;
+        }
+
+        /* ============================================
+           ATTACHMENT BOTTOM SHEET (⊕)
+           ============================================ */
+        .attachment-sheet-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 10010;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .attachment-sheet-overlay.open {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+        .attachment-sheet-overlay.visible { opacity: 1; }
+        .attachment-sheet {
+            background: #1a1a1a;
+            border-top-left-radius: 28px;
+            border-top-right-radius: 28px;
+            padding: 0 0 calc(20px + env(safe-area-inset-bottom, 0px));
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+            max-height: 60vh;
+        }
+        .attachment-sheet-overlay.visible .attachment-sheet {
+            transform: translateY(0);
+        }
+        .attachment-sheet-handle {
+            width: 50px; height: 5px;
+            background: #444; border-radius: 3px;
+            margin: 12px auto 0;
+        }
+        .attachment-sheet-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 20px;
+            border-bottom: 0.5px solid #2a2a2a;
+        }
+        .attachment-sheet-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: #D4AF37;
+        }
+        .attachment-sheet-close {
+            background: none; border: none;
+            color: #888; font-size: 20px; cursor: pointer;
+            padding: 4px 8px;
+        }
+        .attachment-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1px;
+            padding: 16px;
+        }
+        .attachment-option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 16px 8px;
+            background: #222;
+            border-radius: 14px;
+            cursor: pointer;
+            margin: 4px;
+            transition: background 0.2s;
+            min-height: 80px;
+        }
+        .attachment-option:active { background: #2a2a2a; }
+        .attachment-option-icon { font-size: 28px; margin-bottom: 8px; }
+        .attachment-option-label {
+            font-size: 11px;
+            color: #aaa;
+            text-align: center;
+            line-height: 1.3;
+        }
     </style>
 </head>
 <body>
+
+    <!-- 4K Background Video -->
+    <video class="chat-background-video" id="chatBackgroundVideo" autoplay loop muted playsinline preload="metadata">
+        <!-- <source src="/static/videos/chat-bg-4k.mp4" type="video/mp4"> -->
+    </video>
+    <div class="chat-video-overlay"></div>
 
     <!-- Message Context Menu -->
     <div id="msgContextMenu" class="msg-context-menu">
@@ -671,11 +857,18 @@
 
     <div id="contactsView" class="contacts-view">
         <div class="mobile-header">
-            <div class="header-title">Messages</div>
+            <div class="header-title">ZeusChat</div>
             <div class="header-icons">
                 <button onclick="loadContactRequests()" style="position:relative;">📨 <span id="requestsBadge" class="requests-badge"></span></button>
-                <button onclick="window.location.href='/mobile/profile'">👤</button>
-                <button onclick="window.location.href='/mobile/settings'">⚙️</button>
+                <button onclick="window.location.href='/mobile/add-contact'" style="font-size:22px;">⊕</button>
+            </div>
+        </div>
+        <!-- Search Bar -->
+        <div class="search-container">
+            <div class="search-input-wrap">
+                <span class="search-icon">🔍</span>
+                <input id="contactSearchInput" class="search-input" type="text" placeholder="Search contacts" oninput="filterContacts(this.value)" />
+                <button id="searchClearBtn" class="search-clear" onclick="clearContactSearch()">✕</button>
             </div>
         </div>
         <div id="pullIndicator" class="pull-indicator">↻ Pull down to refresh</div>
@@ -683,30 +876,44 @@
         <div id="contactsListContainer">
             <div class="no-contacts">Loading contacts...</div>
         </div>
-        <div style="padding: 16px;">
-            <button onclick="window.location.href='/mobile/add-contact'" style="width:100%; padding:12px; background:#D4AF37; border:none; border-radius:30px; font-weight:bold;">+ New Chat</button>
-        </div>
     </div>
 
     <div id="chatView" class="chat-view">
         <div class="mobile-header">
             <button onclick="closeChat()" style="background:none; border:none; color:#D4AF37; font-size:24px;">←</button>
             <div class="header-title" id="chatHeaderName">Select a contact <span id="userBadge" class="header-badge">👑 PRO</span></div>
-            <button class="ttl-btn" onclick="toggleTtlSelector()" title="Message timer">⏱️</button>
+            <button onclick="openContactInfo()" style="background:none;border:none;color:#888;font-size:20px;padding:6px;">&#8942;</button>
         </div>
         <div id="chatMessagesContainer" class="chat-messages"></div>
         <div id="replyPreview" class="reply-preview">
             <div class="reply-text" id="replyPreviewText">↩️ Replying to...</div>
             <button onclick="clearReplyContext()" style="background:none;border:none;color:#D4AF37;font-size:16px;cursor:pointer;">✕</button>
         </div>
-        <div class="chat-input-area">
-            <button id="attachFileBtn" style="background:none; border:none; font-size:24px; cursor:pointer; padding:4px;">📎</button>
-            <button id="voiceNoteBtn" style="background:none; border:none; font-size:24px; cursor:pointer; padding:4px;">🎤</button>
-            <input type="text" id="messageInput" placeholder="Type a message...">
-            <button id="sendBtn">➤</button>
-            <button id="voiceTranslateBtn" class="voice-translate-btn" title="Speak in your language → English text">🎙️</button>
-            <input type="file" id="fileInput" style="display:none;" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt,.zip">
+        <div class="chat-input-wrapper composer">
+            <!-- TTL Pills: Disappearing messages timer above input -->
+            <div class="ttl-pills-bar">
+                <span class="ttl-pill-label">⏱️ Disappearing:</span>
+                <button class="ttl-pill" data-ttl="0" onclick="setTtlPill(this,0)">Off</button>
+                <button class="ttl-pill" data-ttl="300" onclick="setTtlPill(this,300)">5m</button>
+                <button class="ttl-pill active" data-ttl="3600" onclick="setTtlPill(this,3600)">1h</button>
+                <button class="ttl-pill" data-ttl="86400" onclick="setTtlPill(this,86400)">24h</button>
+                <button class="ttl-pill" data-ttl="604800" onclick="setTtlPill(this,604800)">7d</button>
+            </div>
+            <!-- Clean Input Bar: ⊕ | text | 😊 | 🎙️/📤 -->
+            <div class="chat-input-area">
+                <button class="input-icon-btn" onclick="openAttachmentSheet()" title="Attach">⊕</button>
+                <input type="text" id="messageInput" class="input-text" placeholder="Type a message...">
+                <button class="input-icon-btn" onclick="toggleEmojiPicker()" title="Emoji">😊</button>
+                <button class="input-icon-btn" onclick="openGifPicker()" title="GIF">GIF</button>
+                <button class="input-icon-btn" onclick="openStickerPicker()" title="Sticker">🏷️</button>
+                <button class="input-icon-btn" onclick="showQuickReplies()" title="Quick Replies">⚡</button>
+                <button id="sendBtn" class="input-icon-btn send-btn-active" style="display:none;" title="Send">📤</button>
+                <button id="voiceTranslateBtn" class="voice-translate-btn input-icon-btn" title="Voice-to-text">🎙️</button>
+            </div>
         </div>
+        <!-- Hidden file inputs -->
+        <input type="file" id="fileInput" style="display:none;" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt,.zip">
+        <input type="file" id="cameraInput" style="display:none;" accept="image/*,video/*" capture="environment">
         <div id="voiceRecordingBar" style="display:none; padding:10px 16px; background:#1a1a1a; border-top:0.5px solid #333; align-items:center; gap:10px;">
             <span style="color:#ff4444; font-size:12px;">● Recording</span>
             <span id="voiceTimer" style="color:#aaa; font-size:14px; flex:1;">0:00</span>
@@ -722,11 +929,11 @@
         </button>
         <button class="nav-item" onclick="window.location.href='/mobile/market'">
             <div class="nav-icon">🏪</div>
-            <span>Market</span>
+            <span>Ghost Market</span>
         </button>
         <button class="nav-item" onclick="window.location.href='/mobile/community'">
             <div class="nav-icon">👻</div>
-            <span>Ghost</span>
+            <span>Ghost Community</span>
         </button>
         <button class="nav-item" onclick="window.location.href='/mobile/profile'">
             <div class="nav-icon">👤</div>
@@ -792,8 +999,56 @@
         <button id="clearHistoryBtn" class="history-clear" onclick="clearTranslationHistory()">Clear All History</button>
     </div>
 
-    <!-- History FAB button -->
-    <button id="showHistoryBtn" style="position:fixed; bottom:80px; right:16px; background:#D4AF37; border:none; border-radius:50%; width:48px; height:48px; font-size:20px; cursor:pointer; z-index:100; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 10px rgba(0,0,0,0.3);">📜</button>
+    <!-- ⊕ Attachment Bottom Sheet -->
+    <div id="attachmentSheetOverlay" class="attachment-sheet-overlay" onclick="handleAttachmentOverlayClick(event)">
+        <div class="attachment-sheet" id="attachmentSheet">
+            <div class="attachment-sheet-handle"></div>
+            <div class="attachment-sheet-header">
+                <span class="attachment-sheet-title">Attach</span>
+                <button class="attachment-sheet-close" onclick="closeAttachmentSheet()">✕</button>
+            </div>
+            <div class="attachment-grid">
+                <div class="attachment-option" onclick="handleAttachmentSelect('photos')">
+                    <span class="attachment-option-icon">📷</span>
+                    <span class="attachment-option-label">Photos &amp; Videos</span>
+                </div>
+                <div class="attachment-option" onclick="handleAttachmentSelect('camera')">
+                    <span class="attachment-option-icon">📸</span>
+                    <span class="attachment-option-label">Camera</span>
+                </div>
+                <div class="attachment-option" onclick="handleAttachmentSelect('document')">
+                    <span class="attachment-option-icon">📄</span>
+                    <span class="attachment-option-label">Document</span>
+                </div>
+                <div class="attachment-option" onclick="handleAttachmentSelect('contact')">
+                    <span class="attachment-option-icon">📎</span>
+                    <span class="attachment-option-label">Contact</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="emoji-panel" style="display:none; position:fixed; left:10px; right:10px; bottom:92px; background:#171717; border:1px solid #2c2c2c; border-radius:12px; padding:10px; z-index:10011;">
+        <div style="display:grid; grid-template-columns:repeat(8, 1fr); gap:6px;">
+            <button type="button" onclick="insertEmoji('😀')" style="background:#222;border:none;color:#fff;border-radius:8px;padding:6px;">😀</button>
+            <button type="button" onclick="insertEmoji('😂')" style="background:#222;border:none;color:#fff;border-radius:8px;padding:6px;">😂</button>
+            <button type="button" onclick="insertEmoji('😍')" style="background:#222;border:none;color:#fff;border-radius:8px;padding:6px;">😍</button>
+            <button type="button" onclick="insertEmoji('🔥')" style="background:#222;border:none;color:#fff;border-radius:8px;padding:6px;">🔥</button>
+            <button type="button" onclick="insertEmoji('👍')" style="background:#222;border:none;color:#fff;border-radius:8px;padding:6px;">👍</button>
+            <button type="button" onclick="insertEmoji('🙏')" style="background:#222;border:none;color:#fff;border-radius:8px;padding:6px;">🙏</button>
+            <button type="button" onclick="insertEmoji('🎉')" style="background:#222;border:none;color:#fff;border-radius:8px;padding:6px;">🎉</button>
+            <button type="button" onclick="insertEmoji('❤️')" style="background:#222;border:none;color:#fff;border-radius:8px;padding:6px;">❤️</button>
+        </div>
+    </div>
+
+    <div id="quick-replies-panel" style="display:none; position:fixed; left:10px; right:10px; bottom:92px; background:#171717; border:1px solid #2c2c2c; border-radius:12px; padding:10px; z-index:10011; max-height:45vh; overflow:auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span style="font-weight:600; color:#D4AF37;">Quick Replies</span>
+            <button type="button" onclick="closeQuickReplies()" style="background:none;border:none;color:#aaa;font-size:18px;">✕</button>
+        </div>
+        <div id="quick-replies-list"></div>
+        <button type="button" onclick="addQuickReply()" style="margin-top:8px; width:100%; padding:10px; border-radius:8px; border:1px solid #333; background:#222; color:#fff;">+ Add New</button>
+    </div>
 
     <script>
         let currentChatContact = null;
@@ -806,6 +1061,27 @@
         let statusSocket = null;
 
         let csrfToken = null;
+
+        function initMobileBackgroundVideo() {
+            const video = document.getElementById('chatBackgroundVideo');
+            if (!video) return;
+
+            const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            const lowData = navigator.connection && navigator.connection.saveData;
+            if (reduceMotion || lowData) {
+                video.style.display = 'none';
+                return;
+            }
+
+            const attemptPlay = () => video.play().catch(() => {
+                // Some mobile browsers block autoplay; muted+playsinline still usually succeeds.
+            });
+            if (video.readyState >= 2) {
+                attemptPlay();
+            } else {
+                video.addEventListener('canplay', attemptPlay, { once: true });
+            }
+        }
 
         async function ensureCsrfToken() {
             if (!csrfToken) {
@@ -841,33 +1117,19 @@
 
         // ── Load Contacts ──
         async function loadContacts() {
-            const container = document.getElementById('contactsListContainer');
             try {
                 const response = await apiFetch(`/api/get-contacts?user_pin=${currentUserPin}`);
                 const data = await response.json();
                 if (data.success && data.contacts && data.contacts.length > 0) {
-                    container.innerHTML = data.contacts.map(c => {
-                        const safePin = (c.contact_pin || c.zeus_pin || '').toString().trim();
-                        const safeName = (c.display_name || safePin || 'Unknown').toString();
-                        const safeInitial = safeName.charAt(0).toUpperCase();
-                        const safeLastMessage = (c.last_message || 'Tap to chat').toString();
-
-                        return `
-                        <div class="contact-item" onclick='openChat(${JSON.stringify(safePin)}, ${JSON.stringify(safeName)})'>
-                            <div class="contact-avatar">${c.profile_pic ? '<img src="' + escapeHtml(c.profile_pic) + '" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">' : safeInitial}</div>
-                            <div class="contact-info">
-                                <div class="contact-name">${escapeHtml(safeName)}</div>
-                                <div class="contact-preview">${escapeHtml(safeLastMessage)}</div>
-                            </div>
-                        </div>
-                    `;
-                    }).join('');
+                    allContactsData = data.contacts;
+                    renderContactList(data.contacts);
                 } else {
-                    container.innerHTML = '<div class="no-contacts">No contacts yet.<br>Tap + New Chat to add someone.</div>';
+                    allContactsData = [];
+                    document.getElementById('contactsListContainer').innerHTML = '<div class="no-contacts">No contacts yet.<br>Tap ⊕ to add someone.</div>';
                 }
             } catch (error) {
                 console.error('Error loading contacts:', error);
-                container.innerHTML = '<div class="no-contacts">Error loading contacts.</div>';
+                document.getElementById('contactsListContainer').innerHTML = '<div class="no-contacts">Error loading contacts.</div>';
             }
         }
 
@@ -1187,24 +1449,32 @@
             return div.innerHTML;
         }
 
-        // ── File sharing ──
-        document.getElementById('attachFileBtn')?.addEventListener('click', async () => {
+        // ── File sharing (now triggered from ⊕ attachment sheet) ──
+        // attachFileBtn removed from UI; fileInput and cameraInput triggered directly.
+        async function triggerFileShare(inputId) {
             const canShare = await hasFeature('file_sharing');
-            if (!canShare) {
-                showUpgradePrompt('File sharing');
-                return;
-            }
-            document.getElementById('fileInput').click();
+            if (!canShare) { showUpgradePrompt('File sharing'); return; }
+            document.getElementById(inputId)?.click();
+        }
+        // Camera input shares via same sendFile flow
+        document.getElementById('cameraInput')?.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file || !currentChatContact) return;
+            await uploadFileAsMessage(file);
+            e.target.value = '';
         });
 
         document.getElementById('fileInput')?.addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file || !currentChatContact) return;
+            await uploadFileAsMessage(file);
+            e.target.value = '';
+        });
 
+        async function uploadFileAsMessage(file) {
             const maxSize = 25 * 1024 * 1024; // 25 MB
             if (file.size > maxSize) {
-                alert('File too large. Maximum size is 25 MB.');
-                e.target.value = '';
+                showToast('File too large. Max 25 MB.');
                 return;
             }
 
@@ -1232,11 +1502,10 @@
                 }
             } catch (error) {
                 console.error('File upload error:', error);
-                alert('Network error. File not sent.');
+                showToast('Network error. File not sent.');
                 document.querySelector(`[data-temp-id="${tempId}"]`)?.remove();
             }
-            e.target.value = '';
-        });
+        }
 
         // ── Voice notes ──
         let mediaRecorder = null;
@@ -1244,19 +1513,17 @@
         let voiceTimerInterval = null;
         let voiceSeconds = 0;
 
-        document.getElementById('voiceNoteBtn')?.addEventListener('click', async () => {
+        // Called from ⊕ attachment sheet
+        async function startVoiceNoteRecording() {
             if (mediaRecorder && mediaRecorder.state === 'recording') return;
-            if (!currentChatContact) { alert('Select a contact first.'); return; }
-
+            if (!currentChatContact) { showToast('Open a chat first'); return; }
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 mediaRecorder = new MediaRecorder(stream);
                 audioChunks = [];
                 voiceSeconds = 0;
-
                 mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
                 mediaRecorder.onstop = () => { stream.getTracks().forEach(t => t.stop()); };
-
                 mediaRecorder.start();
                 document.getElementById('voiceRecordingBar').style.display = 'flex';
                 voiceTimerInterval = setInterval(() => {
@@ -1265,10 +1532,13 @@
                     const s = voiceSeconds % 60;
                     document.getElementById('voiceTimer').innerText = `${m}:${s.toString().padStart(2, '0')}`;
                 }, 1000);
+                if (navigator.vibrate) navigator.vibrate(50);
             } catch (err) {
-                alert('Microphone access denied.');
+                showToast('Microphone access denied.');
             }
-        });
+        }
+        // Legacy button reference (kept for voiceRecordingBar cancel/send)
+        document.getElementById('voiceNoteBtn')?.addEventListener('click', startVoiceNoteRecording);
 
         document.getElementById('cancelVoiceBtn')?.addEventListener('click', () => {
             if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
@@ -1714,33 +1984,294 @@
             });
         })();
 
-        // History FAB button
-        document.getElementById('showHistoryBtn')?.addEventListener('click', openHistoryPanel);
+        // ── TTL Pills (inline, above input bar) ──
+        async function setTtlPill(el, val) {
+            // Free users can only use 1h default; others require feature
+            if (val !== 3600 && val !== 0) {
+                const canCustom = await hasFeature('custom_ttl');
+                if (!canCustom) {
+                    showUpgradePrompt('Custom message timers');
+                    return;
+                }
+            }
+            selectedTtl = val;
+            document.querySelectorAll('.ttl-pill').forEach(p => p.classList.remove('active'));
+            if (el) el.classList.add('active');
+            const labels = {0:'Off',300:'5m',3600:'1h',86400:'24h',604800:'7d'};
+            showToast('⏱️ Disappearing: ' + (labels[val] !== undefined ? labels[val] : val + 's'));
+        }
+        // Legacy setTtl kept for any old references
+        function setTtl(val) { setTtlPill(null, val); }
+        function toggleTtlSelector() { /* no-op: replaced by inline pills */ }
 
-        // ── TTL Selector ──
-        async function toggleTtlSelector() {
-            const canCustom = await hasFeature('custom_ttl');
-            if (!canCustom) {
-                showUpgradePrompt('Custom message timers');
+        // ── ⊕ Attachment Sheet ──
+        function openAttachmentSheet() {
+            if (!currentChatContact) { showToast('Open a chat first'); return; }
+            const overlay = document.getElementById('attachmentSheetOverlay');
+            overlay.classList.add('open');
+            requestAnimationFrame(() => overlay.classList.add('visible'));
+        }
+        function closeAttachmentSheet() {
+            const overlay = document.getElementById('attachmentSheetOverlay');
+            overlay.classList.remove('visible');
+            setTimeout(() => overlay.classList.remove('open'), 300);
+        }
+        function handleAttachmentOverlayClick(e) {
+            if (e.target === document.getElementById('attachmentSheetOverlay')) closeAttachmentSheet();
+        }
+        function handleAttachmentSelect(type) {
+            closeAttachmentSheet();
+            setTimeout(() => {
+                switch (type) {
+                    case 'photos':
+                        document.getElementById('fileInput').accept = 'image/*,video/*';
+                        document.getElementById('fileInput').click();
+                        break;
+                    case 'camera':
+                        document.getElementById('cameraInput').click();
+                        break;
+                    case 'document':
+                        document.getElementById('fileInput').accept = '.pdf,.doc,.docx,.txt,.zip,application/*';
+                        document.getElementById('fileInput').click();
+                        break;
+                    case 'contact':
+                        shareContact();
+                        break;
+                }
+            }, 350);
+        }
+
+        function shareContact() {
+            if (!currentChatContact) return;
+
+            const tryNavigatorContacts = navigator.contacts && navigator.contacts.select;
+            if (tryNavigatorContacts) {
+                navigator.contacts
+                    .select(['name', 'tel'], { multiple: false })
+                    .then((contacts) => {
+                        const picked = contacts && contacts[0];
+                        if (!picked) return;
+                        const name = (picked.name && picked.name[0]) || 'Unknown';
+                        const phone = (picked.tel && picked.tel[0]) || '';
+                        const input = document.getElementById('messageInput');
+                        if (input) {
+                            input.value = `📎 Contact: ${name}${phone ? ' - ' + phone : ''}`;
+                            updateSendVoiceToggle();
+                            sendMessage();
+                        }
+                    })
+                    .catch(() => {
+                        // Fall through to prompt-based fallback.
+                        fallbackContactPrompt();
+                    });
                 return;
             }
-            document.getElementById('ttlSelector').classList.toggle('visible');
+
+            fallbackContactPrompt();
         }
-        function setTtl(val) {
-            selectedTtl = val;
-            document.querySelectorAll('.ttl-option').forEach(o => {
-                o.classList.toggle('active', parseInt(o.dataset.ttl) === val);
+
+        function fallbackContactPrompt() {
+            const contactName = (prompt('Enter contact name:') || '').trim();
+            if (!contactName) return;
+            const contactPhone = (prompt('Enter contact phone number:') || '').trim();
+            const input = document.getElementById('messageInput');
+            if (!input) return;
+            input.value = `📎 Contact: ${contactName}${contactPhone ? ' - ' + contactPhone : ''}`;
+            updateSendVoiceToggle();
+            sendMessage();
+        }
+
+        function insertEmoji(emoji) {
+            const input = document.getElementById('messageInput');
+            if (!input) return;
+            input.value += emoji;
+            input.focus();
+            updateSendVoiceToggle();
+        }
+
+        function closeFloatingPickers() {
+            const emojiPanel = document.getElementById('emoji-panel');
+            const quickPanel = document.getElementById('quick-replies-panel');
+            if (emojiPanel) emojiPanel.style.display = 'none';
+            if (quickPanel) quickPanel.style.display = 'none';
+        }
+
+        // ── Emoji Picker ──
+        function toggleEmojiPicker() {
+            const panel = document.getElementById('emoji-panel');
+            if (!panel) return;
+            const nextDisplay = panel.style.display === 'none' ? 'block' : 'none';
+            closeFloatingPickers();
+            panel.style.display = nextDisplay;
+        }
+
+        function openGifPicker() {
+            const gifUrl = prompt('Paste GIF URL or type a reaction word (e.g. celebration):');
+            if (!gifUrl) return;
+            const input = document.getElementById('messageInput');
+            if (!input) return;
+            const trimmed = gifUrl.trim();
+            input.value = /^https?:\/\//i.test(trimmed) ? `GIF: ${trimmed}` : `GIF: [${trimmed}]`;
+            input.focus();
+            updateSendVoiceToggle();
+        }
+
+        function openStickerPicker() {
+            const stickers = ['😀', '😂', '🥰', '😎', '🔥', '🎉', '❤️', '🙏'];
+            const selected = prompt(`Choose sticker: ${stickers.join(' ')}`);
+            if (!selected) return;
+            insertEmoji(selected.trim());
+        }
+
+        async function showQuickReplies() {
+            closeFloatingPickers();
+            const panel = document.getElementById('quick-replies-panel');
+            if (!panel) return;
+            panel.style.display = 'block';
+            await loadQuickReplies();
+        }
+
+        function closeQuickReplies() {
+            const panel = document.getElementById('quick-replies-panel');
+            if (panel) panel.style.display = 'none';
+        }
+
+        async function loadQuickReplies() {
+            const list = document.getElementById('quick-replies-list');
+            if (!list) return;
+            const fallback = [
+                { title: 'On my way', content: 'I am on my way.' },
+                { title: 'Busy', content: 'I am busy right now. Will reply soon.' },
+                { title: 'Thanks', content: 'Thanks, received with thanks.' }
+            ];
+
+            try {
+                const response = await apiFetch('/api/whatsapp/quick-replies', { method: 'GET' });
+                const data = await response.json();
+                const replies = Array.isArray(data.quick_replies) && data.quick_replies.length > 0 ? data.quick_replies : fallback;
+                list.innerHTML = replies.map((qr) => `
+                    <button type="button" style="width:100%; text-align:left; padding:8px; border:1px solid #2b2b2b; border-radius:8px; margin-bottom:6px; background:#1f1f1f; color:#fff;" onclick="insertQuickReply(${JSON.stringify((qr.content || '').toString())})">
+                        <div style="font-weight:600;">${escapeHtml((qr.title || '').toString())}</div>
+                        <div style="font-size:12px; color:#bbb;">${escapeHtml((qr.content || '').toString().slice(0, 80))}</div>
+                    </button>
+                `).join('');
+            } catch (_error) {
+                list.innerHTML = fallback.map((qr) => `
+                    <button type="button" style="width:100%; text-align:left; padding:8px; border:1px solid #2b2b2b; border-radius:8px; margin-bottom:6px; background:#1f1f1f; color:#fff;" onclick="insertQuickReply(${JSON.stringify(qr.content)})">
+                        <div style="font-weight:600;">${escapeHtml(qr.title)}</div>
+                        <div style="font-size:12px; color:#bbb;">${escapeHtml(qr.content)}</div>
+                    </button>
+                `).join('');
+            }
+        }
+
+        function insertQuickReply(text) {
+            const input = document.getElementById('messageInput');
+            if (!input) return;
+            input.value = text || '';
+            input.focus();
+            closeQuickReplies();
+            updateSendVoiceToggle();
+        }
+
+        async function addQuickReply() {
+            const title = (prompt('Enter quick reply title:') || '').trim();
+            if (!title) return;
+            const content = (prompt('Enter quick reply content:') || '').trim();
+            if (!content) return;
+
+            try {
+                await apiFetch('/api/whatsapp/quick-replies', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, content })
+                });
+            } catch (_error) {
+                // Keep UX functional even if API temporarily fails.
+            }
+            await loadQuickReplies();
+        }
+
+        function applyChatAppearance() {
+            const theme = localStorage.getItem('zeuschat_theme') || 'obsidian-gold';
+            const wallpaperData = localStorage.getItem('zeuschat_wallpaper_data');
+            const wallpaperColor = localStorage.getItem('zeuschat_wallpaper_color') || '#0a0a0a';
+
+            document.body.dataset.theme = theme;
+            if (wallpaperData) {
+                document.body.style.backgroundImage = `url(${wallpaperData})`;
+                document.body.style.backgroundSize = 'cover';
+                document.body.style.backgroundPosition = 'center';
+            } else {
+                document.body.style.backgroundImage = 'none';
+                document.body.style.backgroundColor = wallpaperColor;
+            }
+        }
+
+        // ── Contact Info (⋮ menu) ──
+        function openContactInfo() {
+            if (!currentChatContact) return;
+            showToast('Contact: ' + currentChatContact.name);
+        }
+
+        // ── Send/Voice Button Toggle ──
+        function updateSendVoiceToggle() {
+            const val = document.getElementById('messageInput')?.value.trim() || '';
+            const sendBtn = document.getElementById('sendBtn');
+            const voiceBtn = document.getElementById('voiceTranslateBtn');
+            if (sendBtn && voiceBtn) {
+                if (val.length > 0) {
+                    sendBtn.style.display = 'flex';
+                    voiceBtn.style.display = 'none';
+                } else {
+                    sendBtn.style.display = 'none';
+                    voiceBtn.style.display = 'flex';
+                }
+            }
+        }
+
+        // ── Contact Search / Filter ──
+        let allContactsData = [];
+        function filterContacts(query) {
+            const clearBtn = document.getElementById('searchClearBtn');
+            if (clearBtn) clearBtn.classList.toggle('visible', query.length > 0);
+            if (!query.trim()) {
+                renderContactList(allContactsData);
+                return;
+            }
+            const lower = query.toLowerCase();
+            const filtered = allContactsData.filter(c => {
+                const name = (c.display_name || c.contact_pin || c.zeus_pin || '').toLowerCase();
+                const pin = (c.contact_pin || c.zeus_pin || '').toLowerCase();
+                return name.includes(lower) || pin.includes(lower);
             });
-            document.getElementById('ttlSelector').classList.remove('visible');
-            const labels = {5:'5s',30:'30s',300:'5m',3600:'1h',86400:'24h',604800:'7d'};
-            showToast('⏱️ Timer set to ' + (labels[val] || val + 's'));
+            renderContactList(filtered);
         }
-        document.addEventListener('click', (e) => {
-            const sel = document.getElementById('ttlSelector');
-            if (sel && !sel.contains(e.target) && !e.target.closest('.ttl-btn')) sel.classList.remove('visible');
-            const ctx = document.getElementById('msgContextMenu');
-            if (ctx && !ctx.contains(e.target)) closeContextMenu();
-        });
+        function clearContactSearch() {
+            const input = document.getElementById('contactSearchInput');
+            if (input) { input.value = ''; filterContacts(''); input.focus(); }
+        }
+        function renderContactList(contacts) {
+            const container = document.getElementById('contactsListContainer');
+            if (!contacts || contacts.length === 0) {
+                container.innerHTML = '<div class="no-contacts">No contacts found.</div>';
+                return;
+            }
+            container.innerHTML = contacts.map(c => {
+                const safePin = (c.contact_pin || c.zeus_pin || '').toString().trim();
+                const safeName = (c.display_name || 'Unknown Contact').toString();
+                const safeInitial = safeName.charAt(0).toUpperCase();
+                const safeLastMessage = (c.last_message || 'Tap to chat').toString();
+                return `
+                <div class="contact-item" onclick='openChat(${JSON.stringify(safePin)}, ${JSON.stringify(safeName)})'>
+                    <div class="contact-avatar">${c.profile_pic ? '<img src="' + escapeHtml(c.profile_pic) + '" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">' : safeInitial}</div>
+                    <div class="contact-info">
+                        <div class="contact-name">${escapeHtml(safeName)}</div>
+                        <div class="contact-preview">${escapeHtml(safeLastMessage)}</div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
 
         // ── Mark Messages as Viewed ──
         async function markMessagesViewed() {
@@ -1838,7 +2369,7 @@
                         data.requests.map(r => `
                             <div style="display:flex;align-items:center;gap:12px;padding:10px 16px;background:#111;margin:4px 16px;border-radius:12px;">
                                 <div style="width:40px;height:40px;border-radius:50%;background:#2a2a2a;display:flex;align-items:center;justify-content:center;font-size:18px;">${(r.full_name||r.zeus_pin||'?').charAt(0).toUpperCase()}</div>
-                                <div style="flex:1;"><div style="color:#fff;font-size:14px;">${escapeHtml(r.full_name||r.zeus_pin)}</div><div style="color:#888;font-size:11px;">${escapeHtml(r.zeus_pin||'')}</div></div>
+                                <div style="flex:1;"><div style="color:#fff;font-size:14px;">${escapeHtml(r.full_name || 'Contact request')}</div></div>
                                 <button onclick="acceptContact('${r.contact_id||r.request_id}')" style="background:#D4AF37;border:none;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;">Accept</button>
                                 <button onclick="declineContact('${r.contact_id||r.request_id}')" style="background:#333;border:none;border-radius:20px;padding:6px 14px;font-size:12px;color:#aaa;cursor:pointer;">Decline</button>
                             </div>
@@ -1939,6 +2470,8 @@
                 window.location.href = '/mobile/login';
                 return;
             }
+            initMobileBackgroundVideo();
+            applyChatAppearance();
             initRealtimeSocket();
             loadContacts();
             loadUserBadge();
@@ -1946,8 +2479,26 @@
             ensureCsrfToken();
             loadContactRequests();
             document.getElementById('sendBtn').addEventListener('click', sendMessage);
-            document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            const msgInput = document.getElementById('messageInput');
+            msgInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') sendMessage();
+            });
+            msgInput.addEventListener('keyup', (e) => {
+                if ((e.target.value || '').trim() === '/') {
+                    showQuickReplies();
+                }
+            });
+            // Send/voice button toggle based on input content
+            msgInput.addEventListener('input', updateSendVoiceToggle);
+            updateSendVoiceToggle();
+
+            document.addEventListener('click', (event) => {
+                const emojiPanel = document.getElementById('emoji-panel');
+                const quickPanel = document.getElementById('quick-replies-panel');
+                if (!emojiPanel || !quickPanel) return;
+                if (emojiPanel.contains(event.target) || quickPanel.contains(event.target)) return;
+                if (event.target.closest('[title="Emoji"]') || event.target.closest('[title="Quick Replies"]')) return;
+                closeFloatingPickers();
             });
         });
     </script>

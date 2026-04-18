@@ -6,6 +6,7 @@
 def mobile_test_page():
     return send_file('mobile-test.html')
 
+
 # ============================================
 # ZEUSCHAT FLASK APPLICATION
 # ============================================
@@ -95,6 +96,14 @@ def admin_dashboard():
     return render_template('admin/dashboard.html')
 
 # ============================================
+# MOBILE TEST PAGE
+# ============================================
+
+@app.route('/mobile-test.html')
+def mobile_test_page():
+    return send_file('mobile-test.html')
+
+# ============================================
 # MOBILE ROUTES
 # ============================================
 
@@ -146,10 +155,6 @@ def mobile_community():
 @app.route('/mobile-market.html')
 def mobile_market():
     return send_file('mobile-market.html')
-
-@app.route('/mobile-test.html')
-def mobile_test():
-    return send_file('mobile-test.html')
 
 # ============================================
 # STATIC FILE ROUTES

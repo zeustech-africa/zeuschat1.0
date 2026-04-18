@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+        <link rel="stylesheet" href="/static/css/video-background.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Unlock ZeusChat</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+        }
+        .card {
+            background: rgba(17, 17, 17, 0.95);
+            border: 1px solid rgba(212,175,55,0.3);
+            border-radius: 32px;
+            padding: 40px 24px;
+            text-align: center;
+            max-width: 350px;
+            width: 100%;
+        }
+        .logo {
+            width: 70px;
+            height: 70px;
+            margin: 0 auto 20px;
+        }
+        .logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        h2 {
+            color: #D4AF37;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+        input {
+            width: 100%;
+            padding: 16px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(212,175,55,0.3);
+            border-radius: 40px;
+            color: white;
+            font-size: 16px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        button {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #D4AF37 0%, #B8960C 100%);
+            color: #0a0a0a;
+            border: none;
+            border-radius: 40px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .error {
+            color: #ef4444;
+            font-size: 14px;
+            margin-top: 16px;
+            display: none;
+        }
+        .biometric {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(212,175,55,0.2);
+        }
+        .biometric-btn {
+            background: transparent;
+            border: 1px solid #D4AF37;
+            color: #D4AF37;
+            margin-top: 10px;
+        }
+        .fingerprint-icon {
+            font-size: 24px;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+        <!-- 4K Background Video -->
+        <video class="video-background" autoplay loop muted playsinline>
+            <source src="/static/videos/zeuschat-profile.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        <div class="card">
+        <div class="logo">
+            <img src="/zeuschat-icon.png" alt="ZeusChat">
+        </div>
+        <h2>Unlock ZeusChat</h2>
+        <p class="subtitle">Enter your Zeus-PIN to continue</p>
+
+        <input type="text" id="zeusPin" placeholder="Zeus-PIN (e.g., ZT-XXXX-XXXX)" autofocus>
+        <button id="unlockBtn">Unlock →</button>
+
+        <div id="errorMsg" class="error"></div>
+
+        <div class="biometric">
+            <button id="biometricBtn" class="biometric-btn">
+                <span class="fingerprint-icon">🔐</span> Use Biometric (Face ID / Fingerprint)
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function getCsrfToken() {
+            return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        }
+
+        document.getElementById('unlockBtn').addEventListener('click', async function () {
+            const zeusPin = document.getElementById('zeusPin').value.trim().toUpperCase();
+            if (!zeusPin) {
+                showError('Please enter your Zeus-PIN');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/unlock', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': getCsrfToken()
+                    },
+                    body: JSON.stringify({ zeus_pin: zeusPin })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    window.location.href = data.redirect || '/chat.html';
+                } else {
+                    showError(data.error || 'Incorrect Zeus-PIN');
+                }
+            } catch (err) {
+                showError('Unlock failed. Please try again.');
+            }
+        });
+
+        document.getElementById('zeusPin').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                document.getElementById('unlockBtn').click();
+            }
+        });
+
+        function showError(msg) {
+            const errorDiv = document.getElementById('errorMsg');
+            errorDiv.textContent = msg;
+            errorDiv.style.display = 'block';
+            setTimeout(function () {
+                errorDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        if (window.PublicKeyCredential && document.getElementById('biometricBtn')) {
+            document.getElementById('biometricBtn').style.display = 'block';
+            document.getElementById('biometricBtn').addEventListener('click', async function () {
+                try {
+                    const response = await fetch('/api/biometric/request');
+                    const options = await response.json();
+                    if (options.error) {
+                        showError(options.error);
+                        return;
+                    }
+
+                    options.challenge = Uint8Array.from(atob(options.challenge), function (c) { return c.charCodeAt(0); });
+                    if (options.allowCredentials) {
+                        options.allowCredentials.forEach(function (cred) {
+                            cred.id = Uint8Array.from(atob(cred.id), function (c) { return c.charCodeAt(0); });
+                        });
+                    }
+
+                    const credential = await navigator.credentials.get({ publicKey: options });
+
+                    const authResponse = await fetch('/api/biometric/verify', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': getCsrfToken()
+                        },
+                        body: JSON.stringify({
+                            id: credential.id,
+                            response: {
+                                authenticatorData: btoa(String.fromCharCode.apply(null, new Uint8Array(credential.response.authenticatorData))),
+                                clientDataJSON: btoa(String.fromCharCode.apply(null, new Uint8Array(credential.response.clientDataJSON))),
+                                signature: btoa(String.fromCharCode.apply(null, new Uint8Array(credential.response.signature))),
+                                userHandle: credential.response.userHandle ? btoa(String.fromCharCode.apply(null, new Uint8Array(credential.response.userHandle))) : null
+                            }
+                        })
+                    });
+
+                    const result = await authResponse.json();
+                    if (result.success) {
+                        window.location.href = result.redirect || '/chat.html';
+                    } else {
+                        showError(result.error || 'Biometric authentication failed');
+                    }
+                } catch (error) {
+                    showError('Biometric authentication failed');
+                }
+            });
+        } else {
+            const btn = document.getElementById('biometricBtn');
+            if (btn) {
+                btn.remove();
+            }
+        }
+    </script>
+</body>
+</html>

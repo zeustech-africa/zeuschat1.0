@@ -22,8 +22,6 @@ __pycache__/
 # Video files - keep background videos, exclude others
 
 # Ignore all mp4 files by default
-*.mp4
-# Allow tracking of compressed videos in static/videos/ultra/
+
+# Allow ultra-compressed videos (required for background videos)
 !static/videos/ultra/*.mp4
-# Allow tracking of other static/videos mp4s
-!static/videos/*.mp4

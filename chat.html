@@ -1790,12 +1790,9 @@
     </div>
   </div>
 
-      <!-- Dual Upgrade Modal -->
-      <div id="dualUpgradeModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10001; align-items:center; justify-content:center;">
         <div style="background:white; border-radius:28px; max-width:420px; width:90%; padding:32px; text-align:center;">
           <div style="font-size:48px; margin-bottom:16px;">🔒</div>
           <h3 id="dualModalTitle" style="font-size:22px; color:#1e293b;">Feature Locked</h3>
-          <p id="dualModalMessage" style="color:#64748b; margin:16px 0; font-size:14px;">Upgrade to access this feature</p>
 
           <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap;">
             <div style="flex:1; background:#f1f5f9; border-radius:16px; padding:16px; min-width:150px;">
@@ -1826,9 +1823,7 @@
       </style>
 
   <div class="footer">
-    <div onclick="try { console.log('🏪 Ghost Market clicked'); const isLoggedIn = sessionStorage.getItem('user_logged_in') === 'true'; if (!isLoggedIn) { sessionStorage.setItem('return_url', window.location.href); window.location.href = '/login.html'; } else { window.location.href = '/ghost-market'; } } catch(e) { console.error('Error:', e); }">
       <div class="footer-icon">🏪</div>
-      Ghost Market
     </div>
     <div onclick="try { console.log('👻 Ghost Community clicked'); const isLoggedIn = sessionStorage.getItem('user_logged_in') === 'true'; if (!isLoggedIn) { sessionStorage.setItem('return_url', window.location.href); window.location.href = '/login.html'; } else { window.location.href = '/ghost-ultimate'; } } catch(e) { console.error('Error:', e); }">
       <div class="footer-icon">👻</div>
@@ -2213,7 +2208,6 @@
       export_chat_history: 'Export Chat History',
     };
 
-    let currentFeatureForUpgrade = null;
     let currentOneTimePrice = 39;
 
     async function loadUserPlan() {
@@ -2232,7 +2226,6 @@
           planName.innerHTML = 'Teams Plan 👥';
         } else {
           badge.className = 'plan-badge free';
-          planName.innerHTML = 'Free Plan 🔒 <a href="/subscription" class="upgrade-link">Upgrade</a>';
         }
       } catch (error) {
         console.error('Failed to load plan:', error);
@@ -2252,8 +2245,6 @@
       }
     }
 
-    function showDualUpgradeModal(featureKey, featureTitle, featureDescription) {
-      currentFeatureForUpgrade = featureKey;
       const pricing = {
         profile_picture: 29,
         custom_ttl: 39,
@@ -2267,7 +2258,6 @@
       const message = document.getElementById('dualModalMessage');
       const oneTimePrice = document.getElementById('oneTimePrice');
       const oneTimeAmount = document.getElementById('oneTimeAmount');
-      const modal = document.getElementById('dualUpgradeModal');
 
       if (title) title.textContent = featureTitle;
       if (message) message.textContent = featureDescription;
@@ -2276,12 +2266,9 @@
       if (modal) modal.style.display = 'flex';
     }
 
-    function hideUpgradeModal() {
-      const modal = document.getElementById('dualUpgradeModal');
       if (modal) modal.style.display = 'none';
     }
 
-    function showUpgradeModal(featureName) {
       const mapping = {
         custom_ttl: {
           featureKey: 'custom_ttl',
@@ -2307,9 +2294,7 @@
       const cfg = mapping[featureName] || {
         featureKey: 'custom_ttl',
         title: PRO_FEATURES[featureName] || 'Pro Feature',
-        description: 'Upgrade to access this feature',
       };
-      showDualUpgradeModal(cfg.featureKey, cfg.title, cfg.description);
     }
 
     async function hasFeatureAccess(featureName) {
@@ -2325,7 +2310,6 @@
     async function showTTLOptions() {
       const allowed = await hasFeatureAccess('custom_ttl');
       if (!allowed) {
-        showUpgradeModal('custom_ttl');
         return;
       }
       const ttl = document.getElementById('ttl-selector');
@@ -2335,7 +2319,6 @@
     async function checkProFeature(featureKey, featureName, description) {
       const allowed = await hasFeatureAccess(featureKey);
       if (!allowed) {
-        showDualUpgradeModal(featureKey, featureName, description);
         return false;
       }
       return true;
@@ -2346,10 +2329,7 @@
       const oneTimeBtn = document.getElementById('dualOneTimeBtn');
       const cancelBtn = document.getElementById('dualCancelBtn');
       if (subscribeBtn) subscribeBtn.onclick = () => (window.location.href = '/subscription');
-      if (cancelBtn) cancelBtn.onclick = hideUpgradeModal;
 
-      document.getElementById('dualUpgradeModal')?.addEventListener('click', function (e) {
-        if (e.target === this) hideUpgradeModal();
       });
 
       if (oneTimeBtn) {
@@ -2361,7 +2341,6 @@
             file_sharing: '/api/user/request-file-sharing',
             cloud_backup: '/api/user/request-cloud-backup',
           };
-          const endpoint = endpoints[currentFeatureForUpgrade];
           if (!endpoint) {
             window.location.href = '/subscription?mode=oneoff';
             return;
@@ -2376,7 +2355,6 @@
           } catch (_error) {
             // Fall through to subscription if specific endpoint fails.
           }
-          window.location.href = `/subscription?mode=oneoff&feature=${encodeURIComponent(currentFeatureForUpgrade || '')}`;
         };
       }
 
@@ -3334,7 +3312,6 @@
         hasFeatureAccess('file_sharing').then((allowed) => {
           if (!allowed) {
             event.target.value = '';
-            showUpgradeModal('file_sharing');
             return;
           }
           alert(`📎 File selected: ${file.name}\nSize: ${Math.round(file.size / 1024)} KB\n\n⚠️ PIN-to-View is REQUIRED for all files.`);
@@ -3369,7 +3346,6 @@
     async function recordVoiceNote() {
       const allowed = await hasFeatureAccess('voice_notes');
       if (!allowed) {
-        showUpgradeModal('voice_notes');
         return;
       }
       alert("🎤 Voice Note Recording\n\n• Press and hold to record\n• Slide up to cancel\n• PIN-to-View enforced\n• Auto-delete after TTL\n\nComing in final release.");
@@ -6538,7 +6514,6 @@
           banner.innerHTML =
             '\u26a0\ufe0f Your Zeus-PIN expires in <strong>' + data.days_remaining + ' day' +
             (data.days_remaining !== 1 ? 's' : '') + '</strong>. ' +
-            '<a href="/subscription" style="color:#D4AF37;font-weight:bold;">Upgrade to keep it forever</a> or ' +
             '<a href="/payment/extend-pin" style="color:#D4AF37;font-weight:bold;">pay R49 to extend 30 days</a>.';
           banner.style.display = 'block';
         }

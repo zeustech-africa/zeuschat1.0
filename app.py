@@ -8,6 +8,20 @@ import sqlite3
 import os
 
 app = Flask(__name__)
+
+# ============================================
+# LOGIN REQUIRED DECORATOR
+# ============================================
+from functools import wraps
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session and 'admin_id' not in session:
+            return jsonify({'success': False, 'error': 'Authentication required'}), 401
+        return f(*args, **kwargs)
+    return decorated_function
+
 app.secret_key = 'zeuschat_secret_key_2024'
 
 # Database helper
@@ -2805,3 +2819,16 @@ def admin_get_action_logs():
         })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+# ============================================
+# ADMIN REQUIRED DECORATOR
+# ============================================
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'admin_id' not in session:
+            return jsonify({'success': False, 'error': 'Admin access required'}), 403
+        return f(*args, **kwargs)
+    return decorated_function
+

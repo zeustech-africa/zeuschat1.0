@@ -2848,3 +2848,38 @@ def serve_html(filename):
     except:
         return jsonify({'error': 'Page not found'}), 404
 
+
+# ============================================
+# MOBILE APP ROUTES
+# ============================================
+
+@app.route('/mobile-chat.html')
+def mobile_chat():
+    """Serve mobile chat interface"""
+    return send_file('mobile-chat.html')
+
+@app.route('/mobile-chat')
+def mobile_chat_no_ext():
+    """Serve mobile chat interface (no extension)"""
+    return send_file('mobile-chat.html')
+
+@app.route('/mobile-settings.html')
+def mobile_settings():
+    """Serve mobile settings interface"""
+    return send_file('mobile-settings.html')
+
+@app.route('/mobile-profile.html')
+def mobile_profile():
+    """Serve mobile profile interface"""
+    return send_file('mobile-profile.html')
+
+@app.route('/mobile-community.html')
+def mobile_community():
+    """Serve mobile ghost community interface"""
+    return send_file('mobile-community.html')
+
+@app.route('/mobile-market.html')
+def mobile_market():
+    """Serve mobile ghost market interface"""
+    return send_file('mobile-market.html')
+

@@ -1,4 +1,11 @@
 # ============================================
+# MOBILE TEST PAGE ROUTE (for Render 404 diagnosis)
+# ============================================
+
+@app.route('/mobile-test.html')
+def mobile_test_page():
+    return send_file('mobile-test.html')
+# ============================================
 # ZEUSCHAT CLEAN APP.PY
 # Working admin login only
 # ============================================
@@ -7,7 +14,15 @@ from flask import Flask, request, jsonify, session, render_template, redirect, u
 import sqlite3
 import os
 
+
 app = Flask(__name__)
+
+# ============================================
+# MOBILE TEST PAGE ROUTE (for Render 404 diagnosis)
+# ============================================
+@app.route('/mobile-test.html')
+def mobile_test_page():
+    return send_file('mobile-test.html')
 
 # ============================================
 # LOGIN REQUIRED DECORATOR

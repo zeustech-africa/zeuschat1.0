@@ -5,10 +5,147 @@
 @app.route('/mobile-test.html')
 def mobile_test_page():
     return send_file('mobile-test.html')
+
+'''
 # ============================================
-# ZEUSCHAT CLEAN APP.PY
-# Working admin login only
+# ZEUSCHAT FLASK APPLICATION
 # ============================================
+'''
+
+from flask import Flask, request, jsonify, session, render_template, redirect, url_for, send_file
+import sqlite3
+import os
+from functools import wraps
+
+# Initialize Flask app FIRST (before any routes)
+app = Flask(__name__)
+app.secret_key = 'zeuschat_secret_key_2024'
+
+# Database helper
+def get_db():
+    db_path = os.path.join(os.path.dirname(__file__), 'zeuschat_local.db')
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+# ============================================
+# DECORATORS
+# ============================================
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session and 'admin_id' not in session:
+            return jsonify({'success': False, 'error': 'Authentication required'}), 401
+        return f(*args, **kwargs)
+    return decorated_function
+
+# ============================================
+# SIMPLE MOBILE DETECTION
+# ============================================
+
+def is_mobile_device():
+    user_agent = request.headers.get('User-Agent', '').lower()
+    mobile_keywords = ['mobile', 'android', 'iphone', 'ipad', 'ipod', 'blackberry', 'windows phone', 'opera mini', 'iemobile', 'webos', 'kindle', 'silk']
+    for keyword in mobile_keywords:
+        if keyword in user_agent:
+            return True
+    return False
+
+# ============================================
+# BASIC ROUTES
+# ============================================
+
+@app.route('/')
+def index():
+    return send_file('index.html')
+
+@app.route('/test')
+def test():
+    return jsonify({'status': 'ok', 'message': 'Server is running!'})
+
+@app.route('/admin/login')
+def admin_login_page():
+    return render_template('admin/login.html')
+
+@app.route('/admin/dashboard')
+def admin_dashboard():
+    if 'admin_id' not in session:
+        return redirect('/admin/login')
+    return render_template('admin/dashboard.html')
+
+# ============================================
+# MOBILE ROUTES
+# ============================================
+
+@app.route('/mobile')
+@app.route('/mobile/')
+def mobile_home():
+    if os.path.exists('mobile-welcome.html'):
+        return send_file('mobile-welcome.html')
+    return send_file('index.html')
+
+@app.route('/mobile-login.html')
+def mobile_login():
+    return send_file('mobile-login.html')
+
+@app.route('/mobile-register.html')
+def mobile_register():
+    return send_file('mobile-register.html')
+
+@app.route('/mobile-chat.html')
+def mobile_chat():
+    return send_file('mobile-chat.html')
+
+@app.route('/mobile-settings.html')
+def mobile_settings():
+    return send_file('mobile-settings.html')
+
+@app.route('/mobile-profile.html')
+def mobile_profile():
+    return send_file('mobile-profile.html')
+
+@app.route('/mobile-community.html')
+def mobile_community():
+    return send_file('mobile-community.html')
+
+@app.route('/mobile-market.html')
+def mobile_market():
+    return send_file('mobile-market.html')
+
+@app.route('/mobile-test.html')
+def mobile_test():
+    return send_file('mobile-test.html')
+
+# ============================================
+# STATIC FILE ROUTES
+# ============================================
+
+@app.route('/<path:filename>.html')
+def serve_html(filename):
+    try:
+        return send_file(f'{filename}.html')
+    except:
+        return jsonify({'error': 'Page not found'}), 404
+
+# ============================================
+# MAIN ENTRY
+# ============================================
+
+if __name__ == '__main__':
+    print("=" * 50)
+    print("🚀 ZEUSCHAT SERVER STARTING")
+    print("=" * 50)
+    app.run(host='0.0.0.0', port=5000, debug=True)
+
+'''
+# ============================================
+# MOBILE TEST PAGE ROUTE (for Render 404 diagnosis)
+# ============================================
+@app.route('/mobile-test.html')
+def mobile_test_page():
+    return send_file('mobile-test.html')
+'''
 
 from flask import Flask, request, jsonify, session, render_template, redirect, url_for, send_file
 import sqlite3

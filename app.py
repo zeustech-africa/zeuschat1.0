@@ -6,22 +6,26 @@
 def mobile_test_page():
     return send_file('mobile-test.html')
 
-'''
 # ============================================
 # ZEUSCHAT FLASK APPLICATION
 # ============================================
-'''
 
 from flask import Flask, request, jsonify, session, render_template, redirect, url_for, send_file
 import sqlite3
 import os
 from functools import wraps
 
-# Initialize Flask app FIRST (before any routes)
+# ============================================
+# INITIALIZE FLASK APP FIRST
+# ============================================
+
 app = Flask(__name__)
 app.secret_key = 'zeuschat_secret_key_2024'
 
-# Database helper
+# ============================================
+# DATABASE HELPER
+# ============================================
+
 def get_db():
     db_path = os.path.join(os.path.dirname(__file__), 'zeuschat_local.db')
     conn = sqlite3.connect(db_path)
@@ -40,6 +44,14 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'admin_id' not in session:
+            return jsonify({'success': False, 'error': 'Admin access required'}), 403
+        return f(*args, **kwargs)
+    return decorated_function
+
 # ============================================
 # SIMPLE MOBILE DETECTION
 # ============================================
@@ -53,7 +65,7 @@ def is_mobile_device():
     return False
 
 # ============================================
-# BASIC ROUTES
+# BASIC WEB ROUTES
 # ============================================
 
 @app.route('/')
@@ -63,6 +75,14 @@ def index():
 @app.route('/test')
 def test():
     return jsonify({'status': 'ok', 'message': 'Server is running!'})
+
+@app.route('/health')
+def health():
+    return jsonify({'status': 'ok'})
+
+# ============================================
+# ADMIN ROUTES
+# ============================================
 
 @app.route('/admin/login')
 def admin_login_page():
@@ -83,6 +103,8 @@ def admin_dashboard():
 def mobile_home():
     if os.path.exists('mobile-welcome.html'):
         return send_file('mobile-welcome.html')
+    elif os.path.exists('mobile-index.html'):
+        return send_file('mobile-index.html')
     return send_file('index.html')
 
 @app.route('/mobile-login.html')
@@ -92,6 +114,18 @@ def mobile_login():
 @app.route('/mobile-register.html')
 def mobile_register():
     return send_file('mobile-register.html')
+
+@app.route('/mobile-kyc.html')
+def mobile_kyc():
+    return send_file('mobile-kyc.html')
+
+@app.route('/mobile-pending.html')
+def mobile_pending():
+    return send_file('mobile-pending.html')
+
+@app.route('/mobile-unlock.html')
+def mobile_unlock():
+    return send_file('mobile-unlock.html')
 
 @app.route('/mobile-chat.html')
 def mobile_chat():
@@ -129,6 +163,22 @@ def serve_html(filename):
         return jsonify({'error': 'Page not found'}), 404
 
 # ============================================
+# REDIRECT MOBILE USERS
+# ============================================
+
+@app.before_request
+def redirect_mobile_users():
+    path = request.path
+    if path.startswith('/api/') or path.startswith('/static/') or path.startswith('/admin'):
+        return None
+    if path.startswith('/mobile') or path.startswith('/mobile-'):
+        return None
+    if path == '/' or path == '':
+        if is_mobile_device():
+            return redirect('/mobile')
+    return None
+
+# ============================================
 # MAIN ENTRY
 # ============================================
 
@@ -137,15 +187,6 @@ if __name__ == '__main__':
     print("🚀 ZEUSCHAT SERVER STARTING")
     print("=" * 50)
     app.run(host='0.0.0.0', port=5000, debug=True)
-
-'''
-# ============================================
-# MOBILE TEST PAGE ROUTE (for Render 404 diagnosis)
-# ============================================
-@app.route('/mobile-test.html')
-def mobile_test_page():
-    return send_file('mobile-test.html')
-'''
 
 from flask import Flask, request, jsonify, session, render_template, redirect, url_for, send_file
 import sqlite3

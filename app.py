@@ -2883,3 +2883,43 @@ def mobile_market():
     """Serve mobile ghost market interface"""
     return send_file('mobile-market.html')
 
+
+# ============================================
+# SIMPLE MOBILE DETECTION (No external library)
+# ============================================
+
+def is_mobile_device():
+    """Detect mobile device from User-Agent string"""
+    user_agent = request.headers.get('User-Agent', '').lower()
+    
+    mobile_keywords = [
+        'mobile', 'android', 'iphone', 'ipad', 'ipod', 
+        'blackberry', 'windows phone', 'opera mini', 
+        'iemobile', 'webos', 'kindle', 'silk'
+    ]
+    
+    for keyword in mobile_keywords:
+        if keyword in user_agent:
+            return True
+    return False
+
+@app.before_request
+def redirect_to_correct_version():
+    """Redirect mobile users to mobile pages, web users to web pages"""
+    path = request.path
+    
+    # Skip API, static, admin routes
+    if path.startswith('/api/') or path.startswith('/static/') or path.startswith('/admin'):
+        return None
+    
+    # Skip if already on mobile page
+    if path.startswith('/mobile') or path.startswith('/mobile-'):
+        return None
+    
+    # Root path - redirect mobile users to /mobile
+    if path == '/' or path == '':
+        if is_mobile_device():
+            return redirect('/mobile')
+    
+    return None
+

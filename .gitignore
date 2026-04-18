@@ -17,7 +17,13 @@ __pycache__/
 # Virtual environment
 .venv/
 
-# Large video folders (but allow root mp4 files for deployment)
-videos/
-static/videos/
 .secret_key
+
+# Video files - keep background videos, exclude others
+
+# Ignore all mp4 files by default
+*.mp4
+# Allow tracking of compressed videos in static/videos/ultra/
+!static/videos/ultra/*.mp4
+# Allow tracking of other static/videos mp4s
+!static/videos/*.mp4

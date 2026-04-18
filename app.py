@@ -2832,3 +2832,19 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+
+# ============================================
+# STATIC FILE ROUTES
+# ============================================
+
+@app.route('/')
+def index():
+    return send_file('index.html')
+
+@app.route('/<path:filename>.html')
+def serve_html(filename):
+    try:
+        return send_file(f'{filename}.html')
+    except:
+        return jsonify({'error': 'Page not found'}), 404
+

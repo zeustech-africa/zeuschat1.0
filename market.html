@@ -1,3 +1,300 @@
+    <!-- Shipping Section for Seller -->
+    <div id="shipping-section" class="shipping-section" style="display:none;">
+        <h4>📦 Ship Item</h4>
+        <div class="shipping-options">
+            <div class="shipping-method" onclick="selectShippingMethod('pickup')">
+                <span>🏠</span>
+                <strong>Buyer Pickup</strong>
+                <p>Buyer collects from you</p>
+            </div>
+            <div class="shipping-method" onclick="selectShippingMethod('courier')">
+                <span>🚚</span>
+                <strong>Manual Courier</strong>
+                <p>You arrange courier, share tracking</p>
+            </div>
+        </div>
+    
+        <div id="manual-shipping-form" style="display:none;">
+            <div class="form-group">
+                <label>Courier Service</label>
+                <select id="courier-service">
+                    <option value="The Courier Guy">The Courier Guy</option>
+                    <option value="Pudo">Pudo</option>
+                    <option value="Fastway">Fastway</option>
+                    <option value="Aramex">Aramex</option>
+                    <option value="DSV">DSV</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Tracking Number</label>
+                <input type="text" id="tracking-number" placeholder="Enter tracking number">
+                <small>Buyer will use this to track their parcel</small>
+            </div>
+            <div class="form-group">
+                <label>Notes (Optional)</label>
+                <textarea id="shipping-notes" placeholder="Any additional info for the buyer..."></textarea>
+            </div>
+            <button class="btn-primary" onclick="markAsShipped()">✓ Mark as Shipped</button>
+        </div>
+    </div>
+
+    <!-- Tracking Section for Buyer -->
+    <div id="tracking-section" class="tracking-section" style="display:none;">
+        <h4>📦 Tracking Information</h4>
+        <div class="tracking-card">
+            <div class="tracking-status">
+                <div class="status-step completed">📦 Order Placed</div>
+                <div class="status-step" id="status-prepared">📝 Seller Preparing</div>
+                <div class="status-step" id="status-shipped">🚚 In Transit</div>
+                <div class="status-step" id="status-delivered">🏠 Ready for Pickup</div>
+                <div class="status-step" id="status-completed">✅ Completed</div>
+            </div>
+            <div id="tracking-details" class="tracking-details">
+                <p>Tracking will appear here once seller ships the item.</p>
+            </div>
+            <div id="confirm-receipt-section" style="display:none;">
+                <button class="btn-success" onclick="confirmReceipt()">✅ Confirm Item Received</button>
+                <p class="warning">⚠️ Only click after you have received and inspected the item</p>
+            </div>
+        </div>
+    </div>
+
+    <style>
+    .shipping-section, .tracking-section {
+        background: #1a1a1a;
+        border-radius: 12px;
+        padding: 20px;
+        margin: 20px 0;
+    }
+    .shipping-options {
+        display: flex;
+        gap: 20px;
+        margin: 15px 0;
+    }
+    .shipping-method {
+        flex: 1;
+        padding: 15px;
+        background: #2a2a2a;
+        border-radius: 12px;
+        cursor: pointer;
+        text-align: center;
+        transition: all 0.2s;
+    }
+    .shipping-method:hover {
+        background: #34B7F1;
+        transform: translateY(-2px);
+    }
+    .shipping-method.selected {
+        background: #34B7F1;
+        border: 2px solid #fff;
+    }
+    .tracking-card {
+        background: #2a2a2a;
+        border-radius: 12px;
+        padding: 20px;
+    }
+    .tracking-status {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+    .status-step {
+        flex: 1;
+        text-align: center;
+        padding: 10px;
+        color: #667781;
+        position: relative;
+    }
+    .status-step.completed {
+        color: #4CAF50;
+    }
+    .status-step.active {
+        color: #34B7F1;
+        font-weight: bold;
+    }
+    .status-step::after {
+        content: '→';
+        position: absolute;
+        right: -10px;
+        top: 10px;
+        color: #667781;
+    }
+    .status-step:last-child::after {
+        content: '';
+    }
+    .tracking-details {
+        background: #1a1a1a;
+        padding: 15px;
+        border-radius: 8px;
+        margin: 15px 0;
+    }
+    .btn-success {
+        background: #4CAF50;
+        color: white;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 30px;
+        cursor: pointer;
+        font-weight: bold;
+        width: 100%;
+    }
+    .warning {
+        color: #FF9800;
+        font-size: 12px;
+        margin-top: 10px;
+        text-align: center;
+    }
+    </style>
+
+    <script>
+    let currentTransactionId = null;
+    let selectedShippingMethod = null;
+
+    function selectShippingMethod(method) {
+        selectedShippingMethod = method;
+        document.querySelectorAll('.shipping-method').forEach(el => el.classList.remove('selected'));
+        event.currentTarget.classList.add('selected');
+    
+        if (method === 'courier') {
+            document.getElementById('manual-shipping-form').style.display = 'block';
+        } else {
+            document.getElementById('manual-shipping-form').style.display = 'none';
+            // Buyer pickup - no shipping needed
+            markAsPickup();
+        }
+    }
+
+    async function markAsShipped() {
+        const courierService = document.getElementById('courier-service').value;
+        const trackingNumber = document.getElementById('tracking-number').value;
+        const shippingNotes = document.getElementById('shipping-notes').value;
+    
+        if (!trackingNumber) {
+            alert('Please enter a tracking number');
+            return;
+        }
+    
+        try {
+            const response = await fetch('/api/shipping/mark-shipped', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    transaction_id: currentTransactionId,
+                    courier_service: courierService,
+                    tracking_number: trackingNumber,
+                    notes: shippingNotes
+                })
+            });
+        
+            const data = await response.json();
+        
+            if (data.success) {
+                alert('Item marked as shipped! Buyer will be notified.');
+                location.reload();
+            } else {
+                alert(data.error || 'Failed to mark as shipped');
+            }
+        } catch (error) {
+            alert('Network error. Please try again.');
+        }
+    }
+
+    async function markAsPickup() {
+        try {
+            const response = await fetch('/api/shipping/mark-pickup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    transaction_id: currentTransactionId
+                })
+            });
+        
+            const data = await response.json();
+        
+            if (data.success) {
+                alert('Buyer will collect from you. Please coordinate directly.');
+                location.reload();
+            }
+        } catch (error) {
+            alert('Network error');
+        }
+    }
+
+    async function confirmReceipt() {
+        if (!confirm('Have you received and inspected the item? This action will release funds to the seller.')) {
+            return;
+        }
+    
+        try {
+            const response = await fetch('/api/shipping/confirm-receipt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    transaction_id: currentTransactionId
+                })
+            });
+        
+            const data = await response.json();
+        
+            if (data.success) {
+                alert('Thank you for confirming! Funds have been released to the seller.');
+                location.reload();
+            } else {
+                alert(data.error || 'Failed to confirm receipt');
+            }
+        } catch (error) {
+            alert('Network error. Please try again.');
+        }
+    }
+
+    async function loadTrackingInfo(transactionId) {
+        currentTransactionId = transactionId;
+    
+        try {
+            const response = await fetch(`/api/shipping/tracking/${transactionId}`);
+            const data = await response.json();
+        
+            if (data.success && data.shipping_info) {
+                const info = data.shipping_info;
+            
+                // Update status steps
+                if (info.status === 'preparing') {
+                    document.getElementById('status-prepared').classList.add('active');
+                } else if (info.status === 'shipped') {
+                    document.getElementById('status-prepared').classList.add('completed');
+                    document.getElementById('status-shipped').classList.add('active');
+                } else if (info.status === 'delivered') {
+                    document.getElementById('status-prepared').classList.add('completed');
+                    document.getElementById('status-shipped').classList.add('completed');
+                    document.getElementById('status-delivered').classList.add('active');
+                } else if (info.status === 'completed') {
+                    document.getElementById('status-prepared').classList.add('completed');
+                    document.getElementById('status-shipped').classList.add('completed');
+                    document.getElementById('status-delivered').classList.add('completed');
+                    document.getElementById('status-completed').classList.add('active');
+                }
+            
+                // Show tracking details
+                document.getElementById('tracking-details').innerHTML = `
+                    <p><strong>Courier:</strong> ${info.courier_service || 'Not specified'}</p>
+                    <p><strong>Tracking Number:</strong> ${info.tracking_number || 'Not available'}</p>
+                    ${info.tracking_url ? `<p><a href="${info.tracking_url}" target="_blank">Track your parcel →</a></p>` : ''}
+                    <p><strong>Status:</strong> ${info.status_text}</p>
+                    <p><strong>Last Updated:</strong> ${new Date(info.updated_at).toLocaleString()}</p>
+                `;
+            
+                // Show confirm receipt button if delivered but not completed
+                if (info.status === 'delivered' && !info.is_completed) {
+                    document.getElementById('confirm-receipt-section').style.display = 'block';
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load tracking:', error);
+        }
+    }
+    </script>
     <div class="listing-grid">
         <div class="listing-card">
             <div class="rating-container">

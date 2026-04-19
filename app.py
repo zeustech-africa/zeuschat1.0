@@ -1,4 +1,193 @@
 # ============================================
+# MANUAL SHIPPING SYSTEM API
+# ============================================
+
+@app.route('/api/shipping/mark-shipped', methods=['POST'])
+@login_required
+def mark_item_shipped():
+    """Seller marks item as shipped with tracking number"""
+    try:
+        user_id = session.get('user_id')
+        data = request.get_json()
+        
+        transaction_id = data.get('transaction_id')
+        courier_service = data.get('courier_service')
+        tracking_number = data.get('tracking_number')
+        notes = data.get('notes', '')
+        
+        if not transaction_id or not tracking_number:
+            return jsonify({'success': False, 'error': 'Missing transaction_id or tracking_number'}), 400
+        
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # Verify user is the seller
+        cursor.execute('SELECT seller_id FROM escrow_transactions WHERE id = ?', (transaction_id,))
+        tx = cursor.fetchone()
+        
+        if not tx or tx['seller_id'] != user_id:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+        
+        # Create tracking URL based on courier service
+        tracking_url = None
+        if courier_service == 'The Courier Guy':
+            tracking_url = f'https://thecourierguy.co.za/track/{tracking_number}'
+        elif courier_service == 'Pudo':
+            tracking_url = f'https://pudo.co.za/track/{tracking_number}'
+        elif courier_service == 'Fastway':
+            tracking_url = f'https://fastway.co.za/track/{tracking_number}'
+        elif courier_service == 'Aramex':
+            tracking_url = f'https://aramex.co.za/track/{tracking_number}'
+        
+        # Update shipping info
+        cursor.execute('''
+            UPDATE escrow_transactions 
+            SET shipping_status = 'shipped',
+                courier_service = ?,
+                tracking_number = ?,
+                tracking_url = ?,
+                shipping_notes = ?,
+                shipped_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''', (courier_service, tracking_number, tracking_url, notes, transaction_id))
+        
+        # Create notification for buyer
+        cursor.execute('''
+            INSERT INTO notifications (user_id, message, type)
+            VALUES (?, ?, 'shipping')
+        ''', (tx['seller_id'], f'Your item has been shipped! Tracking: {tracking_number}',))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Item marked as shipped'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/shipping/mark-pickup', methods=['POST'])
+@login_required
+def mark_pickup_arranged():
+    """Seller arranges buyer pickup"""
+    try:
+        user_id = session.get('user_id')
+        data = request.get_json()
+        transaction_id = data.get('transaction_id')
+        
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT buyer_id FROM escrow_transactions WHERE id = ? AND seller_id = ?', (transaction_id, user_id))
+        if not cursor.fetchone():
+            conn.close()
+            return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+        
+        cursor.execute('''
+            UPDATE escrow_transactions 
+            SET shipping_status = 'pickup_arranged'
+            WHERE id = ?
+        ''', (transaction_id,))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Pickup arrangement noted'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/shipping/tracking/<int:transaction_id>', methods=['GET'])
+@login_required
+def get_tracking_info(transaction_id):
+    """Get tracking information for a transaction"""
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT shipping_status, courier_service, tracking_number, tracking_url, 
+                   shipping_notes, shipped_at, delivered_at
+            FROM escrow_transactions 
+            WHERE id = ?
+        ''', (transaction_id,))
+        
+        shipping = cursor.fetchone()
+        
+        # Check if buyer has confirmed receipt
+        cursor.execute('SELECT buyer_confirmed FROM escrow_transactions WHERE id = ?', (transaction_id,))
+        tx = cursor.fetchone()
+        
+        conn.close()
+        
+        status_text = {
+            'pending': 'Awaiting shipping',
+            'pickup_arranged': 'Pickup arranged with seller',
+            'shipped': 'Item in transit',
+            'delivered': 'Ready for pickup',
+            'completed': 'Transaction complete'
+        }
+        
+        return jsonify({
+            'success': True,
+            'shipping_info': {
+                'status': shipping['shipping_status'] if shipping else 'pending',
+                'status_text': status_text.get(shipping['shipping_status'], 'Processing') if shipping else 'Processing',
+                'courier_service': shipping['courier_service'] if shipping else None,
+                'tracking_number': shipping['tracking_number'] if shipping else None,
+                'tracking_url': shipping['tracking_url'] if shipping else None,
+                'notes': shipping['shipping_notes'] if shipping else None,
+                'shipped_at': shipping['shipped_at'] if shipping else None,
+                'delivered_at': shipping['delivered_at'] if shipping else None,
+                'is_completed': tx['buyer_confirmed'] == 1 if tx else False
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/shipping/confirm-receipt', methods=['POST'])
+@login_required
+def confirm_item_receipt():
+    """Buyer confirms item received - releases funds to seller"""
+    try:
+        user_id = session.get('user_id')
+        data = request.get_json()
+        transaction_id = data.get('transaction_id')
+        
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # Verify user is the buyer
+        cursor.execute('SELECT buyer_id, seller_id, amount FROM escrow_transactions WHERE id = ?', (transaction_id,))
+        tx = cursor.fetchone()
+        
+        if not tx or tx['buyer_id'] != user_id:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+        
+        # Mark as completed and release funds
+        cursor.execute('''
+            UPDATE escrow_transactions 
+            SET buyer_confirmed = 1, 
+                status = 'completed', 
+                completed_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''', (transaction_id,))
+        
+        # Add funds to seller's wallet
+        cursor.execute('''
+            INSERT INTO seller_wallets (user_id, balance, total_earned)
+            VALUES (?, ?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET
+                balance = balance + ?,
+                total_earned = total_earned + ?
+        ''', (tx['seller_id'], tx['amount'], tx['amount'], tx['amount'], tx['amount']))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Funds released to seller'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+# ============================================
 # SELLER RATINGS API
 # ============================================
 

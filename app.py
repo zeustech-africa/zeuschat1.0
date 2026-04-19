@@ -86,13 +86,7 @@ def admin_dashboard():
         return redirect('/admin/login')
     return render_template('admin/dashboard.html')
 
-# ============================================
-# MOBILE TEST PAGE
-# ============================================
 
-@app.route('/mobile-test.html')
-def mobile_test_page():
-    return send_file('mobile-test.html')
 
 # ============================================
 # MOBILE ROUTES
@@ -368,13 +362,7 @@ if __name__ == '__main__':
     print("🚀 ZEUSCHAT SERVER STARTING")
     print("=" * 50)
     app.run(host='0.0.0.0', port=5000, debug=True)
-# ============================================
-# MOBILE TEST PAGE ROUTE (for Render 404 diagnosis)
-# ============================================
 
-@app.route('/mobile-test.html')
-def mobile_test_page():
-    return send_file('mobile-test.html')
 
 
 # ============================================
@@ -466,12 +454,7 @@ def admin_dashboard():
     return render_template('admin/dashboard.html')
 
 # ============================================
-# MOBILE TEST PAGE
-# ============================================
 
-@app.route('/mobile-test.html')
-def mobile_test_page():
-    return send_file('mobile-test.html')
 
 # ============================================
 # MOBILE ROUTES
@@ -3417,9 +3400,7 @@ def serve_html(filename):
         return jsonify({'error': 'Page not found'}), 404
 
 
-# ============================================
-# MOBILE APP ROUTES
-# ============================================
+
 
 @app.route('/mobile-chat.html')
 def mobile_chat():

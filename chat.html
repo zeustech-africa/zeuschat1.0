@@ -1,3 +1,6 @@
+      <div class="safety-warning" style="background: #FF9800; color: #000; padding: 8px; text-align: center; font-size: 12px;">
+        ⚠️ Keep all transactions on Ghost Market. Never share personal contact info.
+      </div>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1036,6 +1039,22 @@
     <span class="badge-count">0</span>
     <span>Pending Requests</span>
   </div>
+</div>
+<!-- Attachment Sheet (⊕ Folder) -->
+<div id="attachment-sheet" class="modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:1002; align-items:flex-end; justify-content:center;">
+  <div class="modal-content bottom-sheet" style="width:min(520px, 96%); background:#161616; border:1px solid #333; border-radius:14px 14px 0 0; padding:14px; margin-bottom:0;">
+    <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <span style="font-weight:600; color:#f0f0f0;">Attach</span>
+      <button type="button" onclick="closeAttachmentSheet()" style="background:transparent; border:none; color:#f0f0f0; font-size:16px; cursor:pointer;">✕</button>
+    </div>
+    <div class="attach-options" style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px;">
+      <button type="button" class="attach-option" onclick="selectPhoto()" style="padding:10px; border:1px solid #333; border-radius:10px; background:#1e1e1e; color:#f0f0f0; text-align:left;">📷 Photos</button>
+      <button type="button" class="attach-option" onclick="openCamera()" style="padding:10px; border:1px solid #333; border-radius:10px; background:#1e1e1e; color:#f0f0f0; text-align:left;">📸 Camera</button>
+      <button type="button" class="attach-option" onclick="selectDocument()" style="padding:10px; border:1px solid #333; border-radius:10px; background:#1e1e1e; color:#f0f0f0; text-align:left;">📄 Document</button>
+      <button type="button" class="attach-option" onclick="shareContact()" style="padding:10px; border:1px solid #333; border-radius:10px; background:#1e1e1e; color:#f0f0f0; text-align:left;">📎 Contact</button>
+    </div>
+  </div>
+</div>
 
   <audio id="notification-audio" src="/static/notification.wav?v=2.0" preload="auto"></audio>
   <div id="audio-unlock-banner">Click anywhere to enable sound notifications</div>
@@ -1161,6 +1180,7 @@
               </div>
           </div>
           <div class="input-bar" id="input-bar-container" style="display: flex;">
+                          <button class="attach-button" onclick="openAttachmentSheet()">⊕</button>
               <label id="attachFileBtn" class="feature-locked" for="file-upload" style="cursor:pointer;font-size:20px;">📎<span class="pro-badge" style="margin-left:4px;">PRO</span></label>
               <input type="file" id="file-upload" class="file-input">
               <span id="emoji-toggle" style="font-size:20px;cursor:pointer;">😊</span>

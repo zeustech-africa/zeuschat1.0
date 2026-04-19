@@ -1,4 +1,120 @@
 # ============================================
+# SHOP API ENDPOINTS (Yaga-style)
+# ============================================
+
+@app.route('/api/market/shop/<int:seller_id>', methods=['GET'])
+def get_shop_page(seller_id):
+    """Get seller shop information and listings"""
+    try:
+        user_id = session.get('user_id') if session.get('user_id') else None
+        
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # Get shop info
+        cursor.execute('''
+            SELECT u.zeus_pin, u.full_name, 
+                   (SELECT COUNT(*) FROM ghost_market_listings WHERE seller_id = ? AND status = 'active') as item_count,
+                   COALESCE(AVG(r.rating), 0) as avg_rating,
+                   COUNT(DISTINCT r.id) as rating_count,
+                   (SELECT COUNT(*) FROM shop_followers WHERE seller_id = ?) as followers
+            FROM users u
+            LEFT JOIN ghost_market_listings l ON l.seller_id = u.id
+            LEFT JOIN ratings r ON r.listing_id = l.id
+            WHERE u.id = ?
+            GROUP BY u.id
+        ''', (seller_id, seller_id, seller_id))
+        shop = cursor.fetchone()
+        
+        if not shop:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Shop not found'}), 404
+        
+        # Get shop listings
+        cursor.execute('''
+            SELECT id, title, price, images, 
+                   COALESCE(AVG(r.rating), 0) as rating,
+                   COUNT(DISTINCT r.id) as rating_count
+            FROM ghost_market_listings l
+            LEFT JOIN ratings r ON r.listing_id = l.id
+            WHERE l.seller_id = ? AND l.status = 'active'
+            GROUP BY l.id
+            ORDER BY l.created_at DESC
+        ''', (seller_id,))
+        listings = [dict(row) for row in cursor.fetchall()]
+        
+        # Parse images JSON
+        for listing in listings:
+            if listing.get('images'):
+                import json
+                try:
+                    listing['images'] = json.loads(listing['images'])
+                except:
+                    listing['images'] = [listing['images']] if listing['images'] else []
+            else:
+                listing['images'] = []
+        
+        # Check if user follows this shop
+        is_following = False
+        if user_id:
+            cursor.execute('SELECT id FROM shop_followers WHERE user_id = ? AND seller_id = ?', (user_id, seller_id))
+            is_following = cursor.fetchone() is not None
+        
+        conn.close()
+        
+        # Mask seller name for anonymity (show only first 3 chars)
+        masked_name = shop['full_name'][:3] + '***' if shop['full_name'] else shop['zeus_pin'][:3] + '***'
+        
+        return jsonify({
+            'success': True,
+            'shop': {
+                'id': seller_id,
+                'name': masked_name,
+                'item_count': shop['item_count'] or 0,
+                'rating': float(shop['avg_rating'] or 0),
+                'rating_count': shop['rating_count'] or 0,
+                'followers': shop['followers'] or 0,
+                'is_following': is_following
+            },
+            'listings': listings
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/market/shop/<int:seller_id>/follow', methods=['POST'])
+@login_required
+def follow_shop(seller_id):
+    """Follow or unfollow a shop"""
+    try:
+        user_id = session.get('user_id')
+        
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT id FROM shop_followers WHERE user_id = ? AND seller_id = ?', (user_id, seller_id))
+        existing = cursor.fetchone()
+        
+        if existing:
+            # Unfollow
+            cursor.execute('DELETE FROM shop_followers WHERE user_id = ? AND seller_id = ?', (user_id, seller_id))
+            action = 'unfollowed'
+        else:
+            # Follow
+            cursor.execute('INSERT INTO shop_followers (user_id, seller_id) VALUES (?, ?)', (user_id, seller_id))
+            action = 'followed'
+        
+        conn.commit()
+        
+        # Get new follower count
+        cursor.execute('SELECT COUNT(*) as count FROM shop_followers WHERE seller_id = ?', (seller_id,))
+        new_count = cursor.fetchone()['count']
+        
+        conn.close()
+        
+        return jsonify({'success': True, 'action': action, 'new_followers': new_count})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+# ============================================
 # MANUAL SHIPPING SYSTEM API
 # ============================================
 

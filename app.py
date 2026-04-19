@@ -1,4 +1,292 @@
 # ============================================
+# SELLER RATINGS API
+# ============================================
+
+@app.route('/api/market/rating', methods=['POST'])
+@login_required
+def submit_rating():
+    """Submit a rating for a completed transaction"""
+    try:
+        user_id = session.get('user_id')
+        data = request.get_json()
+        listing_id = data.get('listing_id')
+        rating = data.get('rating')
+        review = data.get('review', '')
+        if not listing_id or not rating:
+            return jsonify({'success': False, 'error': 'Missing required fields'}), 400
+        if rating < 1 or rating > 5:
+            return jsonify({'success': False, 'error': 'Rating must be between 1 and 5'}), 400
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute('SELECT id FROM ratings WHERE listing_id = ? AND user_id = ?', (listing_id, user_id))
+        if cursor.fetchone():
+            conn.close()
+            return jsonify({'success': False, 'error': 'You have already rated this transaction'}), 400
+        cursor.execute('''
+            INSERT INTO ratings (listing_id, user_id, rating, review)
+            VALUES (?, ?, ?, ?)
+        ''', (listing_id, user_id, rating, review))
+        cursor.execute('''
+            UPDATE ghost_market_listings 
+            SET avg_rating = (SELECT AVG(rating) FROM ratings WHERE listing_id = ?)
+            WHERE id = ?
+        ''', (listing_id, listing_id))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'message': 'Rating submitted successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/market/seller/<int:seller_id>/ratings', methods=['GET'])
+def get_seller_ratings(seller_id):
+    """Get all ratings for a seller"""
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT AVG(r.rating) as avg_rating, COUNT(r.id) as total_ratings
+            FROM ratings r
+            JOIN ghost_market_listings l ON l.id = r.listing_id
+            WHERE l.seller_id = ?
+        ''', (seller_id,))
+        stats = cursor.fetchone()
+        cursor.execute('''
+            SELECT r.rating, r.review, r.created_at, u.zeus_pin as reviewer_pin
+            FROM ratings r
+            JOIN ghost_market_listings l ON l.id = r.listing_id
+            JOIN users u ON u.id = r.user_id
+            WHERE l.seller_id = ?
+            ORDER BY r.created_at DESC
+            LIMIT 20
+        ''', (seller_id,))
+        reviews = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        return jsonify({
+            'success': True,
+            'average_rating': round(stats['avg_rating'] or 0, 1),
+            'total_ratings': stats['total_ratings'] or 0,
+            'reviews': reviews
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ============================================
+# COURIER GUY SYSTEM API
+# ============================================
+
+@app.route('/api/courier/boxes', methods=['GET'])
+@login_required
+def get_courier_boxes():
+    """Get available courier drop-off boxes"""
+    try:
+        boxes = [
+            {'id': 1, 'name': 'Mall of Africa', 'address': 'Midrand', 'available': True},
+            {'id': 2, 'name': 'Sandton City', 'address': 'Sandton', 'available': True},
+            {'id': 3, 'name': 'Centurion Mall', 'address': 'Centurion', 'available': True},
+            {'id': 4, 'name': 'Menlyn Park', 'address': 'Pretoria', 'available': True},
+            {'id': 5, 'name': 'Canal Walk', 'address': 'Cape Town', 'available': False}
+        ]
+        return jsonify({'success': True, 'boxes': boxes})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/courier/select-box', methods=['POST'])
+@login_required
+def select_courier_box():
+    """Select a courier box for shipping"""
+    try:
+        user_id = session.get('user_id')
+        data = request.get_json()
+        transaction_id = data.get('transaction_id')
+        box_id = data.get('box_id')
+        if not transaction_id or not box_id:
+            return jsonify({'success': False, 'error': 'Missing transaction_id or box_id'}), 400
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO courier_transactions (escrow_id, box_id, status)
+            VALUES (?, ?, 'selected')
+        ''', (transaction_id, box_id))
+        cursor.execute('''
+            UPDATE escrow_transactions 
+            SET courier_status = 'box_selected'
+            WHERE id = ?
+        ''', (transaction_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'message': 'Courier box selected'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/courier/tracking/<int:transaction_id>', methods=['GET'])
+@login_required
+def get_courier_tracking(transaction_id):
+    """Get courier tracking information"""
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT ct.tracking_number, ct.status, ct.updated_at,
+                   ct.picked_up_at, ct.delivered_at
+            FROM courier_transactions ct
+            WHERE ct.escrow_id = ?
+        ''', (transaction_id,))
+        tracking = cursor.fetchone()
+        conn.close()
+        if tracking:
+            return jsonify({
+                'success': True,
+                'tracking_number': tracking['tracking_number'],
+                'status': tracking['status'],
+                'updated_at': tracking['updated_at'],
+                'picked_up_at': tracking['picked_up_at'],
+                'delivered_at': tracking['delivered_at']
+            })
+        else:
+            return jsonify({'success': True, 'tracking_number': None, 'status': 'not_shipped'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/courier/webhook/pickup', methods=['POST'])
+def courier_webhook_pickup():
+    """Webhook for courier pickup notification"""
+    try:
+        data = request.get_json()
+        transaction_id = data.get('transaction_id')
+        tracking_number = data.get('tracking_number')
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE courier_transactions 
+            SET tracking_number = ?, status = 'in_transit', picked_up_at = CURRENT_TIMESTAMP
+            WHERE escrow_id = ?
+        ''', (tracking_number, transaction_id))
+        cursor.execute('''
+            UPDATE escrow_transactions 
+            SET courier_status = 'in_transit'
+            WHERE id = ?
+        ''', (transaction_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/courier/webhook/delivered', methods=['POST'])
+def courier_webhook_delivered():
+    """Webhook for courier delivery notification"""
+    try:
+        data = request.get_json()
+        transaction_id = data.get('transaction_id')
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE courier_transactions 
+            SET status = 'delivered', delivered_at = CURRENT_TIMESTAMP
+            WHERE escrow_id = ?
+        ''', (transaction_id,))
+        cursor.execute('''
+            UPDATE escrow_transactions 
+            SET courier_status = 'delivered'
+            WHERE id = ?
+        ''', (transaction_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ============================================
+# ADMIN NOTIFICATION API
+# ============================================
+
+@app.route('/api/admin/notify', methods=['POST'])
+@admin_required
+def admin_notify_user():
+    """Send notification to a user"""
+    try:
+        admin_id = session.get('admin_id')
+        data = request.get_json()
+        user_id = data.get('user_id')
+        message = data.get('message')
+        notification_type = data.get('type', 'admin')
+        if not user_id or not message:
+            return jsonify({'success': False, 'error': 'Missing user_id or message'}), 400
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO notifications (user_id, message, type, created_by)
+            VALUES (?, ?, ?, ?)
+        ''', (user_id, message, notification_type, admin_id))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'message': 'Notification sent'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/alerts', methods=['GET'])
+@admin_required
+def get_admin_alerts():
+    """Get pending admin alerts"""
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT * FROM admin_alerts 
+            WHERE status = 'pending' 
+            ORDER BY created_at DESC 
+            LIMIT 50
+        ''')
+        alerts = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        return jsonify({'success': True, 'alerts': alerts})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/alert/resolve', methods=['POST'])
+@admin_required
+def resolve_admin_alert():
+    """Resolve an admin alert"""
+    try:
+        admin_id = session.get('admin_id')
+        data = request.get_json()
+        alert_id = data.get('alert_id')
+        if not alert_id:
+            return jsonify({'success': False, 'error': 'Missing alert_id'}), 400
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE admin_alerts 
+            SET status = 'resolved', resolved_at = CURRENT_TIMESTAMP, resolved_by = ?
+            WHERE id = ?
+        ''', (admin_id, alert_id))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/admin/create-alert', methods=['POST'])
+@admin_required
+def create_admin_alert():
+    """Create a new admin alert"""
+    try:
+        data = request.get_json()
+        alert_type = data.get('alert_type')
+        message = data.get('message')
+        reference_id = data.get('reference_id')
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO admin_alerts (alert_type, message, reference_id)
+            VALUES (?, ?, ?)
+        ''', (alert_type, message, reference_id))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+# ============================================
 # ZEUSCHAT FLASK APPLICATION
 # ============================================
 

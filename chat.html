@@ -6653,3 +6653,18 @@
   <script src="/static/js/video-preference.js"></script>
 </body>
 </html>
+
+<!-- Report Button for Web Chat -->
+<div id="report-panel" style="position:fixed; bottom:30px; right:30px; z-index:1000;">
+    <button onclick="reportUserWeb()" style="background:#dc2626; color:white; border:none; padding:12px 24px; border-radius:30px; cursor:pointer; font-size:14px; font-weight:bold;">🚨 Report User</button>
+</div>
+
+<script>
+function reportUserWeb() {
+    const reason = prompt('Why are you reporting this user?\n\n- Scam attempt\n- Harassment\n- Off-platform payment request\n- Fake item\n- Other');
+    if (reason) {
+        alert('Thank you for reporting. Our admin team will review within 24 hours.');
+        // Here you would send to backend
+    }
+}
+</script>

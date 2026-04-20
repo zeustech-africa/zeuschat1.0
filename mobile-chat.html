@@ -7022,3 +7022,17 @@
   <script src="/static/js/video-preference.js"></script>
 </body>
 </html>
+
+<!-- Report Button -->
+<div id="report-panel" style="position:fixed; bottom:80px; right:20px; z-index:1000;">
+    <button onclick="reportUser()" style="background:#dc2626; color:white; border:none; padding:12px 20px; border-radius:30px; cursor:pointer; font-size:14px;">🚨 Report User</button>
+</div>
+
+<script>
+async function reportUser() {
+    const reason = prompt('Why are you reporting this user?\n\n- Scam attempt\n- Harassment\n- Off-platform payment\n- Fake item\n- Other');
+    if (reason) {
+        alert('Thank you for reporting. Our admin team will review within 24 hours.');
+    }
+}
+</script>

@@ -1112,3 +1112,34 @@ function submitListing() {
     </div>
 </body>
 </html>
+
+<!-- Safety Tips Modal -->
+<div id="safety-tips-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:2000; display:flex; align-items:center; justify-content:center;">
+    <div style="background:#1a1a1a; border-radius:20px; max-width:500px; width:90%; padding:20px;">
+        <h3 style="color:#34B7F1; margin-bottom:15px;">🛡️ Ghost Market Safety Tips</h3>
+        <div style="margin:15px 0; padding:10px; background:#2a2a2a; border-radius:10px;">
+            <strong>💰 Never pay outside Ghost Market</strong>
+            <p style="color:#667781; font-size:12px;">All payments must go through our escrow system.</p>
+        </div>
+        <div style="margin:15px 0; padding:10px; background:#2a2a2a; border-radius:10px;">
+            <strong>💬 Keep conversations here</strong>
+            <p style="color:#667781; font-size:12px;">Never share phone numbers or email addresses.</p>
+        </div>
+        <div style="margin:15px 0; padding:10px; background:#2a2a2a; border-radius:10px;">
+            <strong>🔍 Check seller ratings</strong>
+            <p style="color:#667781; font-size:12px;">Always review seller history before buying.</p>
+        </div>
+        <div style="margin:15px 0; padding:10px; background:#2a2a2a; border-radius:10px;">
+            <strong>🚨 Report suspicious activity</strong>
+            <p style="color:#667781; font-size:12px;">Use the report button if something feels wrong.</p>
+        </div>
+        <button onclick="document.getElementById('safety-tips-modal').style.display='none'" style="background:#34B7F1; color:white; border:none; padding:10px 20px; border-radius:30px; width:100%; cursor:pointer;">I Understand</button>
+    </div>
+</div>
+
+<script>
+if (!localStorage.getItem('safetyTipsShown')) {
+    document.getElementById('safety-tips-modal').style.display = 'flex';
+    localStorage.setItem('safetyTipsShown', 'true');
+}
+</script>

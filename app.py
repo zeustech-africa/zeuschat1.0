@@ -4065,3 +4065,382 @@ def redirect_to_correct_version():
     
     return None
 
+
+# ============================================
+# INQUIRE TO SELLER API
+# ============================================
+
+@app.route('/api/market/inquire', methods=['POST'])
+@login_required
+def market_inquire():
+    """Buyer sends message to seller about a listing"""
+    try:
+        buyer_id = session.get('user_id')
+        data = request.get_json()
+        
+        listing_id = data.get('listing_id')
+        message = data.get('message', '').strip()
+        
+        if not listing_id or not message:
+            return jsonify({'success': False, 'error': 'Listing ID and message required'}), 400
+        
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # Get listing and seller info
+        cursor.execute('''
+            SELECT l.id, l.title, l.seller_id, u.zeus_pin as seller_pin
+            FROM ghost_market_listings l
+            JOIN users u ON u.id = l.seller_id
+            WHERE l.id = ? AND l.status = 'active'
+        ''', (listing_id,))
+        listing = cursor.fetchone()
+        
+        if not listing:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Listing not found'}), 404
+        
+        if listing['seller_id'] == buyer_id:
+            conn.close()
+            return jsonify({'success': False, 'error': 'You cannot inquire about your own listing'}), 400
+        
+        # Create inquiry record
+        cursor.execute('''
+            INSERT INTO ghost_market_inquiries (listing_id, buyer_id, seller_id, message)
+            VALUES (?, ?, ?, ?)
+        ''', (listing_id, buyer_id, listing['seller_id'], message))
+        
+        # Create notification for seller
+        cursor.execute('''
+            INSERT INTO notifications (user_id, message, type)
+            VALUES (?, ?, 'market_inquiry')
+        ''', (listing['seller_id'], f'Someone is interested in your listing: {listing["title"]}'))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Message sent to seller'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================
+# CONTENT SCANNING SYSTEM
+# Auto-scan posts, comments, listings for violations
+# ============================================
+
+import re
+
+# List of prohibited words/phrases (expand as needed)
+PROHIBITED_PATTERNS = [
+    r'\bhate\b.*\b(?:speech|crime)\b',
+    r'\bviolence\b',
+    r'\bkill\b.*\b(?:someone|people|them)\b',
+    r'\b(?:nazi|kkk|white\s*power|black\s*power)\b',
+    r'\b(?:rape|sexual\s*assault)\b',
+    r'\b(?:drugs|cocaine|heroin|meth)\b',
+    r'\b(?:scam|fraud|fake)\b',
+    r'\b(?:weapon|gun|knife|bomb)\b',
+    r'\b(?:terror|terrorist)\b',
+   r'\b(?:pedophile|child\s*abuse)\b',
+]
+
+# Prohibited content types for images/videos (simplified)
+PROHIBITED_CONTENT_TYPES = [
+    'nudity', 'gore', 'violence', 'weapons'
+]
+
+def scan_text_content(text):
+    """Scan text for prohibited content"""
+    if not text:
+        return {'is_clean': True, 'violations': []}
+    
+    violations = []
+    text_lower = text.lower()
+    
+    for pattern in PROHIBITED_PATTERNS:
+        if re.search(pattern, text_lower, re.IGNORECASE):
+            violations.append(pattern)
+    
+    return {
+        'is_clean': len(violations) == 0,
+        'violations': violations,
+        'score': len(violations) * 10  # Higher score = more severe
+    }
+
+def scan_post_content(post_data):
+    """Scan entire post content"""
+    violations = []
+    total_score = 0
+    
+    # Scan title
+    title_result = scan_text_content(post_data.get('title', ''))
+    if not title_result['is_clean']:
+        violations.extend([{'field': 'title', 'violation': v} for v in title_result['violations']])
+        total_score += title_result['score']
+    
+    # Scan content/text
+    content_result = scan_text_content(post_data.get('content', ''))
+    if not content_result['is_clean']:
+        violations.extend([{'field': 'content', 'violation': v} for v in content_result['violations']])
+        total_score += content_result['score']
+    
+    # Check media type (if applicable)
+    media_type = post_data.get('media_type', '')
+    if media_type in PROHIBITED_CONTENT_TYPES:
+        violations.append({'field': 'media', 'violation': f'Prohibited media type: {media_type}'})
+        total_score += 50
+    
+    return {
+        'is_clean': total_score == 0,
+        'violations': violations,
+        'score': total_score,
+        'requires_admin_review': total_score >= 30
+    }
+
+def scan_comment(comment_text):
+    """Scan comment for prohibited content"""
+    result = scan_text_content(comment_text)
+    return {
+        'is_clean': result['is_clean'],
+        'violations': result['violations'],
+        'requires_admin_review': result['score'] >= 20
+    }
+
+def scan_listing(listing_data):
+    """Scan marketplace listing for violations"""
+    violations = []
+    total_score = 0
+    
+    # Scan title
+    title_result = scan_text_content(listing_data.get('title', ''))
+    if not title_result['is_clean']:
+        violations.extend([{'field': 'title', 'violation': v} for v in title_result['violations']])
+        total_score += title_result['score']
+    
+    # Scan description
+    desc_result = scan_text_content(listing_data.get('description', ''))
+    if not desc_result['is_clean']:
+        violations.extend([{'field': 'description', 'violation': v} for v in desc_result['violations']])
+        total_score += desc_result['score']
+    
+    # Check for prohibited items
+    prohibited_items = ['weapons', 'drugs', 'counterfeit', 'stolen']
+    for item in prohibited_items:
+        if item in listing_data.get('title', '').lower() or item in listing_data.get('description', '').lower():
+            violations.append({'field': 'listing', 'violation': f'Prohibited item: {item}'})
+            total_score += 50
+    
+    return {
+        'is_clean': total_score == 0,
+        'violations': violations,
+        'score': total_score,
+        'requires_admin_review': total_score >= 30
+    }
+
+# ============================================
+# AUTO-SCAN ON CONTENT CREATION
+# ============================================
+
+def auto_scan_and_flag_post(post_id, post_data):
+    """Automatically scan post and flag if violations found"""
+    scan_result = scan_post_content(post_data)
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    if not scan_result['is_clean']:
+        # Flag the post for admin review
+        cursor.execute('''
+            UPDATE ghost_posts 
+            SET status = 'flagged', 
+                admin_notes = ?,
+                flag_reason = ?,
+                flag_score = ?
+            WHERE id = ?
+        ''', (
+            f"Auto-flagged: {len(scan_result['violations'])} violations",
+            str(scan_result['violations']),
+            scan_result['score'],
+            post_id
+        ))
+        
+        # Create admin alert
+        cursor.execute('''
+            INSERT INTO admin_alerts (alert_type, message, reference_id, status)
+            VALUES ('flagged_post', ?, ?, 'pending')
+        ''', (f"Post {post_id} was auto-flagged for content violations", post_id))
+        
+        conn.commit()
+        conn.close()
+        return {'flagged': True, 'reason': scan_result['violations']}
+    
+    conn.commit()
+    conn.close()
+    return {'flagged': False}
+
+def auto_scan_and_flag_comment(comment_id, comment_text, post_id):
+    """Automatically scan comment and flag if violations found"""
+    scan_result = scan_comment(comment_text)
+    
+    if not scan_result['is_clean']:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            UPDATE ghost_comments 
+            SET status = 'flagged', 
+                flag_reason = ?,
+                admin_notes = 'Auto-flagged for content violation'
+            WHERE id = ?
+        ''', (str(scan_result['violations']), comment_id))
+        
+        cursor.execute('''
+            INSERT INTO admin_alerts (alert_type, message, reference_id, status)
+            VALUES ('flagged_comment', ?, ?, 'pending')
+        ''', (f"Comment {comment_id} on post {post_id} was auto-flagged", comment_id))
+        
+        conn.commit()
+        conn.close()
+        return {'flagged': True, 'reason': scan_result['violations']}
+    
+    return {'flagged': False}
+
+def auto_scan_and_flag_listing(listing_id, listing_data):
+    """Automatically scan marketplace listing and flag if violations found"""
+    scan_result = scan_listing(listing_data)
+    
+    if not scan_result['is_clean']:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            UPDATE ghost_market_listings 
+            SET status = 'flagged',
+                admin_notes = ?,
+                flag_reason = ?,
+                flag_score = ?
+            WHERE id = ?
+        ''', (
+            f"Auto-flagged: {len(scan_result['violations'])} violations",
+            str(scan_result['violations']),
+            scan_result['score'],
+            listing_id
+        ))
+        
+        cursor.execute('''
+            INSERT INTO admin_alerts (alert_type, message, reference_id, status)
+            VALUES ('flagged_listing', ?, ?, 'pending')
+        ''', (f"Listing {listing_id} was auto-flagged for policy violations", listing_id))
+        
+        conn.commit()
+        conn.close()
+        return {'flagged': True, 'reason': scan_result['violations']}
+    
+    conn.commit()
+    conn.close()
+    return {'flagged': False}
+
+
+# ============================================
+# ADMIN NOTIFICATION FOR FLAGGED CONTENT
+# ============================================
+
+def notify_admin_flagged_content(content_type, content_id, reason):
+    """Send notification to admin about flagged content"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        INSERT INTO admin_alerts (alert_type, message, reference_id, status)
+        VALUES (?, ?, ?, 'pending')
+    ''', (f'flagged_{content_type}', f'Content {content_id} flagged: {reason}', content_id))
+    
+    conn.commit()
+    conn.close()
+
+# ============================================
+# MODIFIED CREATE POST WITH AUTO-SCAN
+# ============================================
+
+# Note: Integrate this into your existing create_post function
+# Add this line after creating a post:
+# auto_scan_and_flag_post(post_id, post_data)
+
+
+# ============================================
+# ANTI-SCAM DETECTION SYSTEM
+# ============================================
+
+# Keywords that trigger scam warnings
+SCAM_KEYWORDS = [
+    'paypal', 'cashapp', 'venmo', 'bank transfer', 'wire transfer',
+    'gift card', 'itunes card', 'google play card',
+    'shipping company', 'courier service', 'third party shipping',
+    'deposit', 'holding fee', 'verification fee',
+    'western union', 'money gram',
+    'whatsapp me', 'call me', 'text me', 'email me'
+]
+
+OFF_PLATFORM_KEYWORDS = [
+    'email', 'gmail', 'yahoo', 'outlook',
+    'phone', 'cell', 'mobile', 'whatsapp', 'telegram'
+]
+
+def detect_scam_keywords(message):
+    """Detect scam keywords in messages"""
+    message_lower = message.lower()
+    detected = []
+    
+    for keyword in SCAM_KEYWORDS:
+        if keyword in message_lower:
+            detected.append(keyword)
+    
+    return detected
+
+def detect_off_platform_attempt(message):
+    """Detect attempts to take conversation off-platform"""
+    message_lower = message.lower()
+    detected = []
+    
+    for keyword in OFF_PLATFORM_KEYWORDS:
+        if keyword in message_lower:
+            detected.append(keyword)
+    
+    return detected
+
+@app.route('/api/market/check-message-safety', methods=['POST'])
+@login_required
+def check_message_safety():
+    """Check message for scam indicators before sending"""
+    try:
+        data = request.get_json()
+        message = data.get('message', '')
+        
+        scam_words = detect_scam_keywords(message)
+        off_platform_words = detect_off_platform_attempt(message)
+        
+        warnings = []
+        
+        if scam_words:
+            warnings.append({
+                'type': 'scam',
+                'message': 'This message contains words commonly used in scams. Never send money outside Ghost Market.',
+                'keywords': scam_words
+            })
+        
+        if off_platform_words:
+            warnings.append({
+                'type': 'off_platform',
+                'message': 'Keep all conversations on Ghost Market for your safety. Never share personal contact info.',
+                'keywords': off_platform_words
+            })
+        
+        return jsonify({
+            'success': True,
+            'is_safe': len(warnings) == 0,
+            'warnings': warnings
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+

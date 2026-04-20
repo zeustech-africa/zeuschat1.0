@@ -358,7 +358,24 @@
             }).join('');
         }
 
-        function saveListing(listingId) {
+function inquireListing(listingId) {
+    const message = prompt("Send a message to the seller about this item:");
+    if (message) {
+        fetch("/api/market/inquire", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ listing_id: listingId, message: message })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert("Message sent to seller! They will contact you soon.");
+            } else {
+                alert("Error: " + data.error);
+            }
+        });
+    }
+}n        function saveListing(listingId) {
             sessionStorage.setItem('saved_listing_' + listingId, '1');
             alert('Listing saved ✅');
         }
@@ -524,3 +541,318 @@
     </div>
 </body>
 </html>
+
+<!-- Create Listing Modal -->
+<div id="create-listing-modal" style="display:none;">
+    <div class="modal-content">
+        <h3>Create New Listing</h3>
+        <input type="text" id="listing-title" placeholder="Title">
+        <textarea id="listing-description" placeholder="Description"></textarea>
+        <input type="number" id="listing-price" placeholder="Price">
+        <select id="listing-category">
+            <option value="electronics">Electronics</option>
+            <option value="fashion">Fashion</option>
+            <option value="home">Home</option>
+            <option value="vehicles">Vehicles</option>
+            <option value="other">Other</option>
+        </select>
+        <button onclick="submitListing()">Submit Listing</button>
+        <button onclick="closeCreateListing()">Cancel</button>
+    </div>
+</div>
+
+<script>
+function openCreateListing() {
+    document.getElementById('create-listing-modal').style.display = 'block';
+}
+
+function closeCreateListing() {
+    document.getElementById('create-listing-modal').style.display = 'none';
+}
+
+function submitListing() {
+    const listingData = {
+        title: document.getElementById('listing-title').value,
+        description: document.getElementById('listing-description').value,
+        price: document.getElementById('listing-price').value,
+        category: document.getElementById('listing-category').value
+    };
+    
+    fetch('/api/market/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(listingData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Listing submitted for admin approval!');
+            closeCreateListing();
+        } else {
+            alert('Error creating listing');
+        }
+    });
+}
+</script>
+
+<!-- Shipping Section for Seller -->
+<div id="shipping-section" class="shipping-section" style="display:none;">
+    <h4>📦 Ship Item</h4>
+    <div class="shipping-options">
+        <div class="shipping-method" onclick="selectShippingMethod('pickup')">
+            <span>🏠</span>
+            <strong>Buyer Pickup</strong>
+            <p>Buyer collects from you</p>
+        </div>
+        <div class="shipping-method" onclick="selectShippingMethod('courier')">
+            <span>🚚</span>
+            <strong>Manual Courier</strong>
+            <p>You arrange courier, share tracking</p>
+        </div>
+    </div>
+    
+    <div id="manual-shipping-form" style="display:none;">
+        <div class="form-group">
+            <label>Courier Service</label>
+            <select id="courier-service">
+                <option value="The Courier Guy">The Courier Guy</option>
+                <option value="Pudo">Pudo</option>
+                <option value="Fastway">Fastway</option>
+                <option value="Aramex">Aramex</option>
+                <option value="DSV">DSV</option>
+                <option value="Other">Other</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Tracking Number</label>
+            <input type="text" id="tracking-number" placeholder="Enter tracking number">
+            <small>Buyer will use this to track their parcel</small>
+        </div>
+        <div class="form-group">
+            <label>Notes (Optional)</label>
+            <textarea id="shipping-notes" placeholder="Any additional info for the buyer..."></textarea>
+        </div>
+        <button class="btn-primary" onclick="markAsShipped()">✓ Mark as Shipped</button>
+    </div>
+</div>
+
+<!-- Tracking Section for Buyer -->
+<div id="tracking-section" class="tracking-section" style="display:none;">
+    <h4>📦 Tracking Information</h4>
+    <div class="tracking-card">
+        <div class="tracking-status">
+            <div class="status-step completed">📦 Order Placed</div>
+            <div class="status-step" id="status-prepared">📝 Seller Preparing</div>
+            <div class="status-step" id="status-shipped">🚚 In Transit</div>
+            <div class="status-step" id="status-delivered">🏠 Ready for Pickup</div>
+            <div class="status-step" id="status-completed">✅ Completed</div>
+        </div>
+        <div id="tracking-details" class="tracking-details">
+            <p>Tracking will appear here once seller ships the item.</p>
+        </div>
+        <div id="confirm-receipt-section" style="display:none;">
+            <button class="btn-success" onclick="confirmReceipt()">✅ Confirm Item Received</button>
+            <p class="warning">⚠️ Only click after you have received and inspected the item</p>
+        </div>
+    </div>
+</div>
+
+<style>
+.shipping-section, .tracking-section {
+    background: #1a1a1a;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px 0;
+}
+.shipping-options {
+    display: flex;
+    gap: 20px;
+    margin: 15px 0;
+}
+.shipping-method {
+    flex: 1;
+    padding: 15px;
+    background: #2a2a2a;
+    border-radius: 12px;
+    cursor: pointer;
+    text-align: center;
+}
+.shipping-method.selected {
+    background: #34B7F1;
+}
+.tracking-card {
+    background: #2a2a2a;
+    border-radius: 12px;
+    padding: 20px;
+}
+.tracking-status {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+.status-step {
+    flex: 1;
+    text-align: center;
+    padding: 10px;
+    color: #667781;
+}
+.status-step.completed {
+    color: #4CAF50;
+}
+.status-step.active {
+    color: #34B7F1;
+}
+.btn-success {
+    background: #4CAF50;
+    color: white;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+    width: 100%;
+}
+.warning {
+    color: #FF9800;
+    font-size: 12px;
+    margin-top: 10px;
+    text-align: center;
+}
+</style>
+
+<script>
+let currentTransactionId = null;
+let selectedShippingMethod = null;
+
+function selectShippingMethod(method) {
+    selectedShippingMethod = method;
+    document.querySelectorAll('.shipping-method').forEach(el => el.classList.remove('selected'));
+    event.currentTarget.classList.add('selected');
+    
+    if (method === 'courier') {
+        document.getElementById('manual-shipping-form').style.display = 'block';
+    } else {
+        document.getElementById('manual-shipping-form').style.display = 'none';
+    }
+}
+
+async function markAsShipped() {
+    const courierService = document.getElementById('courier-service').value;
+    const trackingNumber = document.getElementById('tracking-number').value;
+    
+    if (!trackingNumber) {
+        alert('Please enter a tracking number');
+        return;
+    }
+    
+    const response = await fetch('/api/shipping/mark-shipped', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            transaction_id: currentTransactionId,
+            courier_service: courierService,
+            tracking_number: trackingNumber
+        })
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+        alert('Item marked as shipped! Buyer will be notified.');
+        location.reload();
+    } else {
+        alert(data.error || 'Failed to mark as shipped');
+    }
+}
+
+async function confirmReceipt() {
+    if (!confirm('Have you received and inspected the item? This will release funds to the seller.')) return;
+    
+    const response = await fetch('/api/shipping/confirm-receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transaction_id: currentTransactionId })
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+        alert('Thank you! Funds have been released to the seller.');
+        location.reload();
+    } else {
+        alert(data.error || 'Failed to confirm receipt');
+    }
+}
+</script>
+
+<!-- Marketplace Feed -->
+<div class="marketplace-feed">
+    <div class="listing-grid" id="listing-grid">
+        <!-- Listings will be loaded here -->
+    </div>
+</div>
+
+<script>
+// Load marketplace listings
+async function loadMarketplaceListings() {
+    const response = await fetch('/api/market/listings');
+    const data = await response.json();
+    const grid = document.getElementById('listing-grid');
+    if (data.listings && data.listings.length > 0) {
+        grid.innerHTML = data.listings.map(listing => `
+            <div class="listing-card">
+                <img src="${listing.images?.[0] || '/static/images/placeholder.jpg'}" alt="${listing.title}">
+                <h3>${listing.title}</h3>
+                <p class="price">R${listing.price}</p>
+                <button class="save-btn" onclick="saveListing(${listing.id})">🔖 Save</button>
+                <button class="inquire-btn" onclick="inquireListing(${listing.id})">💬 Inquire</button>
+            </div>
+        `).join('');
+    } else {
+        grid.innerHTML = '<p>No listings found</p>';
+    }
+}
+
+// Call this when page loads
+document.addEventListener('DOMContentLoaded', loadMarketplaceListings);
+</script>
+
+<style>
+.listing-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+    padding: 20px;
+}
+.listing-card {
+    background: #1a1a1a;
+    border-radius: 12px;
+    overflow: hidden;
+    padding: 15px;
+}
+.listing-card img {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+.listing-card h3 {
+    margin: 10px 0 5px;
+    font-size: 16px;
+}
+.price {
+    color: #34B7F1;
+    font-weight: bold;
+    margin: 5px 0;
+}
+.save-btn, .inquire-btn {
+    background: #2a2a2a;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 20px;
+    margin: 5px 5px 0 0;
+    cursor: pointer;
+}
+.save-btn:hover, .inquire-btn:hover {
+    background: #34B7F1;
+    color: white;
+}
+</style>

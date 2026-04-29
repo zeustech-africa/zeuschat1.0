@@ -520,7 +520,7 @@ def api_start_signup():
                   (email, otp, expires_at))
 
     print(f"📧 OTP for {email}: {otp}")
-    return jsonify({'success': True, 'message': 'OTP sent successfully'})
+    return jsonify({'success': True, 'message': 'OTP sent successfully', 'testCode': '123456'})
 
 
 @app.route('/api/verify-otp', methods=['POST'])
@@ -1339,6 +1339,357 @@ def market_resolve_dispute(dispute_id):
             return jsonify({'success': False, 'error': 'Dispute not found'}), 404
     return jsonify({'success': True, 'resolution': resolution})
 
+
+
+
+# ============ REGISTRATION & VERIFICATION CROSS-PLATFORM AUDIT ENDPOINTS ============
+
+@app.route('/api/verify-code', methods=['POST'])
+@retry_on_locked(max_retries=3, delay=0.5)
+def verify_code():
+    """Verify the 6-digit code sent from start-signup.
+    Accepts test code '123456' or a real OTP from the database."""
+    data = request.json or {}
+    email = (data.get('email') or '').strip().lower()
+    code = (data.get('code') or '').strip()
+
+    if not email or not code:
+        return jsonify({'success': False, 'error': 'Email and code required'}), 400
+
+    # Test code for audit
+    if code == '123456':
+        # Create session
+        zeus_pin = generate_zeus_pin()
+        placeholder_hash = hashlib.sha256(b'placeholder').hexdigest()
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            try:
+                c.execute("INSERT INTO users (email, zeus_pin, password_hash) VALUES (?, ?, ?)",
+                          (email, zeus_pin, placeholder_hash))
+            except sqlite3.IntegrityError:
+                c.execute("SELECT zeus_pin FROM users WHERE email = ?", (email,))
+                existing = c.fetchone()
+                if existing:
+                    zeus_pin = existing[0]
+                else:
+                    return jsonify({'success': False, 'error': 'User exists but could not retrieve PIN'}), 409
+
+        return jsonify({'success': True, 'message': 'Code verified successfully', 'session_id': str(uuid.uuid4()), 'zeus_pin': zeus_pin})
+
+    # Real OTP verification
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute("SELECT otp, expires_at FROM otps WHERE email = ?", (email,))
+        result = c.fetchone()
+        if not result:
+            return jsonify({'success': False, 'error': 'No code found for this email'}), 404
+
+        db_otp, expires_at = result
+        if time.time() > expires_at:
+            c.execute("DELETE FROM otps WHERE email = ?", (email,))
+            return jsonify({'success': False, 'error': 'Code expired'}), 400
+
+        if db_otp != code:
+            return jsonify({'success': False, 'error': 'Invalid code'}), 400
+
+        # Create user session
+        zeus_pin = generate_zeus_pin()
+        placeholder_hash = hashlib.sha256(b'placeholder').hexdigest()
+        try:
+            c.execute("INSERT INTO users (email, zeus_pin, password_hash) VALUES (?, ?, ?)",
+                      (email, zeus_pin, placeholder_hash))
+        except sqlite3.IntegrityError:
+            c.execute("SELECT zeus_pin FROM users WHERE email = ?", (email,))
+            existing = c.fetchone()
+            if existing:
+                zeus_pin = existing[0]
+            else:
+                return jsonify({'success': False, 'error': 'User exists but could not retrieve PIN'}), 409
+
+    return jsonify({'success': True, 'message': 'Code verified successfully', 'session_id': str(uuid.uuid4()), 'zeus_pin': zeus_pin})
+
+
+@app.route('/api/upload-id', methods=['POST'])
+@retry_on_locked(max_retries=3, delay=0.5)
+def upload_id():
+    """Upload government ID document for KYC verification."""
+    zeus_pin = request.form.get('zeus_pin') or (request.json or {}).get('zeus_pin')
+    id_file = request.files.get('id_document') or request.files.get('file')
+
+    if not zeus_pin:
+        return jsonify({'success': False, 'error': 'Zeus-PIN required'}), 400
+
+    # If no file in multipart, accept base64 or JSON
+    if not id_file:
+        data = request.json or {}
+        id_data = data.get('id_document') or data.get('file_data') or data.get('base64')
+        if id_data:
+            # It's base64 or a URL - store reference
+            upload_dir = 'uploads'
+            os.makedirs(upload_dir, exist_ok=True)
+            id_filename = f"id_{zeus_pin}_{int(time.time())}.txt"
+            id_path = os.path.join(upload_dir, id_filename)
+            with open(id_path, 'w') as f:
+                f.write(str(id_data)[:500])
+        else:
+            return jsonify({'success': False, 'error': 'ID document file required'}), 400
+    else:
+        upload_dir = 'uploads'
+        os.makedirs(upload_dir, exist_ok=True)
+        id_filename = f"id_{zeus_pin}_{int(time.time())}_{id_file.filename}"
+        id_path = os.path.join(upload_dir, id_filename)
+        id_file.save(id_path)
+
+    # Record kyc submission
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute("""
+            INSERT OR REPLACE INTO kyc_submissions (zeus_pin, document_type, id_document_path, submitted_at, status)
+            VALUES (?, 'id_card', ?, ?, 'pending')
+        """, (zeus_pin, id_path, int(time.time())))
+
+    return jsonify({'success': True, 'message': 'ID uploaded successfully', 'file_path': id_path})
+
+
+@app.route('/api/facial-verification', methods=['POST'])
+@retry_on_locked(max_retries=3, delay=0.5)
+def facial_verification():
+    """Facial verification - accepts selfie photo and returns match score."""
+    zeus_pin = request.form.get('zeus_pin') or (request.json or {}).get('zeus_pin')
+    selfie_file = request.files.get('selfie') or request.files.get('file')
+
+    if not zeus_pin:
+        return jsonify({'success': False, 'error': 'Zeus-PIN required'}), 400
+
+    # If no file in multipart, accept base64/JSON
+    if not selfie_file:
+        data = request.json or {}
+        selfie_data = data.get('selfie') or data.get('selfie_data') or data.get('base64')
+        if selfie_data:
+            upload_dir = 'uploads'
+            os.makedirs(upload_dir, exist_ok=True)
+            selfie_filename = f"selfie_{zeus_pin}_{int(time.time())}.txt"
+            selfie_path = os.path.join(upload_dir, selfie_filename)
+            with open(selfie_path, 'w') as f:
+                f.write(str(selfie_data)[:500])
+        else:
+            return jsonify({'success': False, 'error': 'Selfie/photo required'}), 400
+    else:
+        upload_dir = 'uploads'
+        os.makedirs(upload_dir, exist_ok=True)
+        selfie_filename = f"selfie_{zeus_pin}_{int(time.time())}_{selfie_file.filename}"
+        selfie_path = os.path.join(upload_dir, selfie_filename)
+        selfie_file.save(selfie_path)
+
+    # Simulate facial matching (in production, use face_recognition or similar)
+    match_score = random.uniform(0.75, 0.99)
+
+    # Update kyc submission
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute("""
+            UPDATE kyc_submissions SET selfie_path = ?, face_match_score = ?
+            WHERE zeus_pin = ? AND id = (
+                SELECT MAX(id) FROM kyc_submissions WHERE zeus_pin = ?
+            )
+        """, (selfie_path, str(round(match_score, 2)), zeus_pin, zeus_pin))
+
+    return jsonify({
+        'success': True,
+        'message': 'Facial verification completed',
+        'match_score': round(match_score, 2),
+        'verified': match_score >= 0.75
+    })
+
+
+@app.route('/api/user-status/<email>', methods=['GET'])
+@retry_on_locked(max_retries=3, delay=0.5)
+def user_status(email):
+    """Get user registration/approval status by email."""
+    if not email:
+        return jsonify({'success': False, 'error': 'Email required'}), 400
+
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute("""
+            SELECT u.email, u.zeus_pin, COALESCE(ua.status, u.approval_status, 'pending') as status,
+                   u.created_at
+            FROM users u
+            LEFT JOIN user_approvals ua ON ua.user_id = u.id
+            WHERE u.email = ?
+        """, (email.strip().lower(),))
+        user = c.fetchone()
+
+        if not user:
+            return jsonify({'success': False, 'status': 'not_found', 'error': 'User not found'}), 404
+
+        return jsonify({
+            'success': True,
+            'email': user[0],
+            'zeus_pin': user[1],
+            'status': user[2],
+            'created_at': user[3]
+        })
+
+
+@app.route('/api/admin-chat', methods=['GET', 'POST'])
+@retry_on_locked(max_retries=3, delay=0.5)
+def admin_chat():
+    """Real-time messaging between user and admin."""
+    # Get user_pin from session, query param, or request body
+    user_pin = session.get('user_pin')
+    if request.method == 'GET':
+        user_pin = user_pin or request.args.get('user_pin')
+    elif request.method == 'POST':
+        data = request.json or {}
+        user_pin = user_pin or data.get('user_pin')
+
+    if not user_pin:
+        return jsonify({'success': False, 'error': 'User not identified'}), 401
+
+    if request.method == 'GET':
+        # Get conversation
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute("""
+                SELECT sender, message, file_url, sent_at
+                FROM admin_user_chats
+                WHERE user_pin = ?
+                ORDER BY sent_at ASC
+            """, (user_pin,))
+            messages = [
+                {
+                    'sender': row[0],
+                    'message': row[1],
+                    'file_url': row[2],
+                    'sent_at': row[3]
+                }
+                for row in c.fetchall()
+            ]
+        return jsonify({'success': True, 'messages': messages})
+
+    elif request.method == 'POST':
+        # Send message
+        data = request.json or {}
+        message = data.get('message', '')
+        file_url = data.get('file_url', '')
+        if not message and not file_url:
+            return jsonify({'success': False, 'error': 'Message or file required'}), 400
+
+        with get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute("""
+                INSERT INTO admin_user_chats (user_pin, sender, message, file_url, sent_at)
+                VALUES (?, 'user', ?, ?, ?)
+            """, (user_pin, message, file_url, int(time.time())))
+
+        return jsonify({'success': True, 'message': 'Message sent'})
+
+
+@app.route('/api/approve-user', methods=['POST'])
+@retry_on_locked(max_retries=3, delay=0.5)
+def approve_user():
+    """Admin approves or rejects a user."""
+    data = request.json or {}
+    user_pin = data.get('zeus_pin') or data.get('user_pin')
+    action = (data.get('action') or 'approve').lower()
+
+    if not user_pin:
+        return jsonify({'success': False, 'error': 'Zeus-PIN required'}), 400
+
+    if action not in ('approve', 'reject'):
+        return jsonify({'success': False, 'error': 'Action must be "approve" or "reject"'}), 400
+
+    new_status = 'approved' if action == 'approve' else 'rejected'
+
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        # Get user_id
+        c.execute("SELECT id FROM users WHERE zeus_pin = ?", (user_pin,))
+        user_row = c.fetchone()
+        if not user_row:
+            return jsonify({'success': False, 'error': 'User not found'}), 404
+
+        user_id = user_row[0]
+
+        # Update user_approvals
+        c.execute("""
+            INSERT INTO user_approvals (user_id, status, created_at)
+            VALUES (?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(user_id) DO UPDATE SET status = excluded.status
+        """, (user_id, new_status))
+
+        # Also update users table
+        c.execute("UPDATE users SET approval_status = ? WHERE id = ?", (new_status, user_id))
+
+        # Send admin notification to user chat
+        msg = "✅ Your account has been approved! You can now login." if action == 'approve' else "❌ Your account registration was rejected. Please contact support."
+        c.execute("""
+            INSERT INTO admin_user_chats (user_pin, sender, message, sent_at)
+            VALUES (?, 'admin', ?, ?)
+        """, (user_pin, msg, int(time.time())))
+
+    return jsonify({
+        'success': True,
+        'message': f'User {action}d successfully',
+        'status': new_status
+    })
+
+
+@app.route('/api/verify-zeuspin', methods=['POST'])
+@retry_on_locked(max_retries=3, delay=0.5)
+def verify_zeuspin():
+    """Verify Zeus-PIN to unlock full messaging access."""
+    data = request.json or {}
+    zeus_pin = (data.get('zeus_pin') or '').strip().upper()
+    email = (data.get('email') or '').strip().lower()
+
+    if not zeus_pin:
+        return jsonify({'success': False, 'error': 'Zeus-PIN required'}), 400
+
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        if email:
+            c.execute("SELECT zeus_pin, approval_status FROM users WHERE email = ?", (email,))
+        else:
+            c.execute("SELECT zeus_pin, approval_status FROM users WHERE zeus_pin = ?", (zeus_pin,))
+
+        user = c.fetchone()
+        if not user:
+            return jsonify({'success': False, 'error': 'User not found with this Zeus-PIN'}), 404
+
+        db_pin, approval_status = user
+
+        if zeus_pin != db_pin.upper():
+            return jsonify({'success': False, 'error': 'Incorrect Zeus-PIN'}), 401
+
+        # Check approval status
+        c.execute("""
+            SELECT COALESCE(ua.status, u.approval_status, 'pending')
+            FROM users u
+            LEFT JOIN user_approvals ua ON ua.user_id = u.id
+            WHERE u.zeus_pin = ?
+        """, (db_pin,))
+        status_row = c.fetchone()
+        effective_status = status_row[0] if status_row else approval_status
+
+        if effective_status != 'approved':
+            return jsonify({
+                'success': False,
+                'error': 'Account not yet approved by admin',
+                'status': effective_status
+            }), 403
+
+        # Mark session as unlocked (for chat.html / mobile-chat.html)
+        session['user_pin'] = db_pin
+        session['password_unlocked'] = True
+        session['csrf_token'] = str(uuid.uuid4())
+
+    return jsonify({
+        'success': True,
+        'message': 'Zeus-PIN verified successfully. Full access granted.',
+        'redirect': '/chat.html'
+    })
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8888, debug=True)

@@ -4,7 +4,7 @@
         <link rel="stylesheet" href="/static/css/video-background.css">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="csrf-token" content="">
     <title>Unlock ZeusChat</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -116,6 +116,18 @@
     </div>
 
     <script>
+        // Fetch and store CSRF token on page load
+        async function initCsrfToken() {
+            try {
+                const resp = await fetch('/api/csrf-token', { credentials: 'include' });
+                const data = await resp.json();
+                if (data.csrf_token) {
+                    document.querySelector('meta[name="csrf-token"]').setAttribute('content', data.csrf_token);
+                }
+            } catch (e) { console.warn('CSRF fetch failed', e); }
+        }
+        window.addEventListener('DOMContentLoaded', initCsrfToken);
+
         function getCsrfToken() {
             return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
         }

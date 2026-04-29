@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="stylesheet" href="/static/css/video-background.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <title>Verify Code — ZeusChat</title>
+  <link rel="stylesheet" href="/static/premium.css">
+  <link rel="stylesheet" href="/static/mobile.css">
+</head>
+<body>
+
+  <!-- 4K Background Video -->
+  <video class="video-background" autoplay loop muted playsinline>
+    <source src="/static/videos/ultra/register.mp4" type="video/mp4">
+  </video>
+
+  <div class="premium-container">
+    <div class="premium-two-col">
+      <div class="premium-form-col">
+        <div class="premium-card">
+          <div class="premium-logo">
+            <span class="premium-logo-icon">🛡️</span>
+            <h1>ZEUSCHAT</h1>
+            <div class="premium-tagline">VERIFY YOUR CODE</div>
+          </div>
+
+          <div style="font-size: 15px; font-weight: 600; margin-bottom: 6px;">Enter verification code</div>
+          <div style="font-size: 13px; color: rgba(255,255,255,0.5); margin-bottom: 24px;">
+            We sent a code to <span id="emailDisplay" style="color: #D4AF37;"></span>
+          </div>
+
+          <div class="premium-input-group">
+            <label class="premium-label">Verification Code</label>
+            <input type="text" id="code" class="premium-input"
+              placeholder="000000" maxlength="6" autocomplete="off" value="123456"
+              style="text-align: center; letter-spacing: 8px; font-size: 22px; font-weight: 600;">
+          </div>
+
+          <button class="premium-btn" id="verifyBtn" onclick="verifyCode()">Verify & Continue →</button>
+          <div class="premium-error" id="errorMsg"></div>
+
+          <div class="premium-note">
+            <strong style="color: #D4AF37;">Test Mode:</strong><br />
+            Use code <strong>123456</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="premium-side-col">
+        <div class="premium-side-card">
+          <div class="ghost-town-card">
+            <span class="ghost-town-icon">🔑</span>
+            <div class="ghost-town-title">YOUR ZEUS-PIN</div>
+            <div class="ghost-town-quote">
+              "Your identity is your PIN. Guard it well."
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="floating-ghost" style="top: 10%; left: 5%;">👻</div>
+  <div class="floating-ghost" style="bottom: 15%; right: 8%;">👻</div>
+
+  <script>
+    const API_BASE = window.location.origin;
+    const pendingEmail = localStorage.getItem('pending_email');
+    if (!pendingEmail) {
+      alert('Session expired. Please start over.');
+      window.location.href = 'emailinput.html';
+    }
+    document.getElementById('emailDisplay').textContent = pendingEmail;
+
+    document.getElementById('code').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') verifyCode();
+    });
+
+    async function verifyCode() {
+      const codeInput = document.getElementById('code');
+      const verifyBtn = document.getElementById('verifyBtn');
+      const errorMsg = document.getElementById('errorMsg');
+
+      if (verifyBtn.disabled) return;
+      verifyBtn.disabled = true;
+      verifyBtn.textContent = 'Verifying...';
+      errorMsg.style.display = 'none';
+
+      const email = localStorage.getItem('pending_email');
+      const code = codeInput.value.trim();
+
+      if (!code || code.length !== 6 || !/^\d+$/.test(code)) {
+        errorMsg.textContent = 'Please enter a valid 6-digit code.';
+        errorMsg.style.display = 'block';
+        verifyBtn.disabled = false;
+        verifyBtn.textContent = 'Verify & Continue →';
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/api/verify-code`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ email, code })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Code verification failed');
+        }
+
+        localStorage.setItem('registration_email', email);
+        localStorage.setItem('my_zeus_pin', result.zeus_pin);
+        localStorage.removeItem('pending_email');
+
+        window.location.href = 'kyc-upload.html';
+
+      } catch (error) {
+        console.error('❌ Code verification error:', error);
+        errorMsg.textContent = 'Error: ' + (error.message || 'Verification failed.');
+        errorMsg.style.display = 'block';
+        verifyBtn.disabled = false;
+        verifyBtn.textContent = 'Verify & Continue →';
+      }
+    }
+  </script>
+  <script src="/static/premium.js"></script>
+</body>
+</html>

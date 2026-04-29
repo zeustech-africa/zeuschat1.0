@@ -226,7 +226,7 @@
 
           if (data.approved === false || data.approved === undefined) {
             localStorage.setItem('temp_zeus_pin', zeusPin);
-            window.location.href = '/kyc-upload?pin=' + encodeURIComponent(zeusPin);
+            window.location.href = '/kyc-upload.html?pin=' + encodeURIComponent(zeusPin);
           } else {
             window.location.href = '/chat.html';
           }

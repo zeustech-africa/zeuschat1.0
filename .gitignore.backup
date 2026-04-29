@@ -1,0 +1,29 @@
+# Database files (local development only)
+zeuschat.db
+zeuschat.db-wal
+zeuschat.db-shm
+
+# Environment files
+backend/.env
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Logs
+*.log
+
+# Virtual environment
+.venv/
+
+.secret_key
+
+# Video files - keep background videos, exclude others
+
+# Ignore all mp4 files by default
+*.mp4
+# Allow tracking of compressed videos in static/videos/ultra/
+!static/videos/ultra/*.mp4
+# Allow tracking of other static/videos mp4s
+!static/videos/*.mp4

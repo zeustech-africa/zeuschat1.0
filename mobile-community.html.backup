@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+        <link rel="stylesheet" href="/static/css/video-background.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Ghost Community - ZeusChat</title>
+    <link rel="stylesheet" href="/static/ghost.css">
+    <link rel="stylesheet" href="/static/mobile.css">
+</head>
+<body>
+        <!-- 4K Background Video -->
+        <video class="video-background" autoplay loop muted playsinline>
+            <source src="/static/videos/zeuschat-chatpage.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        <div class="feed-tabs" style="display:flex; gap:8px; padding:12px; position:sticky; top:0; z-index:10; background:#0f0f0f;">
+        <button class="feed-tab active" onclick="loadFeed('foryou')">For You</button>
+        <button class="feed-tab" onclick="loadFeed('following')">Following</button>
+        <button class="feed-tab" onclick="loadFeed('trending')">Trending</button>
+    </div>
+
+    <div class="feed-container" id="feedContainer">
+        <div id="postsLoader" style="text-align: center; padding: 40px; color: #D4AF37;">Loading...</div>
+    </div>
+
+    <div class="engagement-buttons" style="display:flex; gap:8px; padding:10px 12px; justify-content:center;">
+        <button class="like-button" onclick="likePost(0)">❤️ Like</button>
+        <button class="comment-button" onclick="commentOnPost(0)">💬 Comment</button>
+        <button class="share-button" onclick="sharePost(0)">↗️ Share</button>
+    </div>
+
+    <a class="wallet-link" href="/creator-wallet">Creator Wallet</a>
+
+    <div class="create-post-btn" id="createPostBtn">
+        <span style="font-size: 28px;">+</span>
+    </div>
+
+    <div class="mobile-bottom-nav mobile-only">
+        <button class="nav-item nav-item-mobile" data-page="chat">
+            <span class="nav-icon">💬</span>
+            <span>Chats</span>
+        </button>
+        <button class="nav-item nav-item-mobile" data-page="market">
+            <span class="nav-icon">🏪</span>
+            <span>Market</span>
+        </button>
+        <button class="nav-item nav-item-mobile active" data-page="community">
+            <span class="nav-icon">👻</span>
+            <span>Ghost</span>
+        </button>
+        <button class="nav-item nav-item-mobile" data-page="profile">
+            <span class="nav-icon">👤</span>
+            <span>Profile</span>
+        </button>
+        <button class="nav-item nav-item-mobile" data-page="settings">
+            <span class="nav-icon">⚙️</span>
+            <span>Settings</span>
+        </button>
+    </div>
+
+    <div id="createPostModal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <h2 style="color:#D4AF37;">Create Ghost Post</h2>
+
+            <div class="form-group">
+                <label>Title/Caption *</label>
+                <input type="text" id="postTitle" placeholder="Enter title...">
+            </div>
+
+            <div class="form-group">
+                <label>Content (optional)</label>
+                <textarea id="postContent" rows="4" placeholder="Write your story..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Media</label>
+                <input type="file" id="postMedia" accept="image/*,video/*">
+            </div>
+
+            <div class="form-group">
+                <label>💰 Monetization</label>
+                <div style="display:flex; gap:16px; margin-bottom:12px;">
+                    <label><input type="radio" name="paidType" value="free" checked> Free Post</label>
+                    <label><input type="radio" name="paidType" value="paid"> Paid Post</label>
+                </div>
+            </div>
+
+            <div class="form-group hidden" id="priceGroup">
+                <label>Price (R)</label>
+                <select id="postPrice">
+                    <option value="5">R5</option>
+                    <option value="10">R10</option>
+                    <option value="20">R20</option>
+                    <option value="50">R50</option>
+                    <option value="100">R100</option>
+                </select>
+            </div>
+
+            <div class="form-group hidden" id="previewGroup">
+                <label>Preview Text (what free users see)</label>
+                <textarea id="previewText" rows="2" placeholder="This post contains exclusive content..."></textarea>
+            </div>
+
+            <div style="display:flex; gap:12px; margin-top:20px;">
+                <button id="cancelPostBtn" class="secondary-action" style="flex:1;">Cancel</button>
+                <button id="submitPostBtn" class="primary-action" style="flex:2;">Post →</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="payModal" class="modal-overlay hidden">
+        <div class="pay-modal-card">
+            <div style="font-size:48px; margin-bottom:16px;">🔒</div>
+            <h3 id="payModalTitle" style="color:#D4AF37;">Locked Content</h3>
+            <p id="payModalPrice" style="margin:16px 0;">Price: R20</p>
+            <button id="confirmPayBtn" class="primary-action" style="width:100%;">Pay to Unlock →</button>
+            <button id="cancelPayBtn" class="secondary-action" style="width:100%; margin-top:12px;">Cancel</button>
+        </div>
+    </div>
+
+    <script src="/static/ghost.js"></script>
+    <script>
+            function loadFeed(type) {
+                document.querySelectorAll('.feed-tab').forEach(function (btn) {
+                    btn.classList.toggle('active', btn.textContent.replace(/\s+/g, '').toLowerCase() === type);
+                });
+                const loader = document.getElementById('postsLoader');
+                if (loader) {
+                    loader.textContent = 'Loading ' + (type === 'foryou' ? 'For You' : type.charAt(0).toUpperCase() + type.slice(1)) + ' feed...';
+                }
+            }
+
+            function likePost(_postId) {}
+            function commentOnPost(_postId) {}
+            function sharePost(_postId) {}
+
+      (function initMobileNavOverride() {
+        const pages = {
+          chat: '/mobile-chat.html',
+          market: '/mobile-market.html',
+          community: '/mobile-community.html',
+          profile: '/mobile-profile.html',
+          settings: '/mobile-settings.html'
+        };
+
+        document.querySelectorAll('.mobile-bottom-nav .nav-item').forEach(function (item) {
+          item.addEventListener('click', function () {
+            const page = item.dataset.page;
+            if (pages[page]) {
+              window.location.href = pages[page];
+            }
+          });
+        });
+      })();
+    </script>
+</body>
+</html>

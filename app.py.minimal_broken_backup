@@ -1,0 +1,236 @@
+# ============================================
+# ZEUSCHAT FLASK APPLICATION - CLEAN VERSION
+# ============================================
+
+from flask import Flask, request, jsonify, session, render_template, redirect, url_for, send_file
+import sqlite3
+import os
+import random
+from functools import wraps
+
+# ============================================
+# FLASK APP INITIALIZATION
+# ============================================
+
+app = Flask(__name__)
+app.secret_key = 'zeuschat_secret_key_2024'
+
+# ============================================
+# DATABASE HELPER
+# ============================================
+
+def get_db():
+    db_path = os.path.join(os.path.dirname(__file__), 'zeuschat_local.db')
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+# ============================================
+# DECORATORS
+# ============================================
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session and 'admin_id' not in session:
+            return jsonify({'success': False, 'error': 'Authentication required'}), 401
+        return f(*args, **kwargs)
+    return decorated_function
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'admin_id' not in session:
+            return jsonify({'success': False, 'error': 'Admin access required'}), 403
+        return f(*args, **kwargs)
+    return decorated_function
+
+# ============================================
+# MOBILE DEVICE DETECTION
+# ============================================
+
+def is_mobile_device():
+    user_agent = request.headers.get('User-Agent', '').lower()
+    keywords = ['mobile', 'android', 'iphone', 'ipad', 'ipod', 'blackberry', 'windows phone', 'opera mini', 'iemobile', 'webos', 'kindle', 'silk']
+    for keyword in keywords:
+        if keyword in user_agent:
+            return True
+    return False
+
+# ============================================
+# BASIC WEB ROUTES
+# ============================================
+
+@app.route('/')
+def index():
+    return send_file('index.html')
+
+@app.route('/test')
+def test():
+    return jsonify({'status': 'ok', 'message': 'Server is running!'})
+
+@app.route('/health')
+def health():
+    return jsonify({'status': 'ok'})
+
+@app.route('/<path:filename>.html')
+def serve_html(filename):
+    try:
+        return send_file(f'{filename}.html')
+    except:
+        return jsonify({'error': 'Page not found'}), 404
+
+# ============================================
+# ADMIN ROUTES
+# ============================================
+
+@app.route('/admin/login')
+def admin_login_page():
+    return render_template('admin/login.html')
+
+@app.route('/admin/dashboard')
+def admin_dashboard():
+    if 'admin_id' not in session:
+        return redirect('/admin/login')
+    return render_template('admin/dashboard.html')
+
+@app.route('/admin/api/login', methods=['POST'])
+def admin_api_login():
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        password = data.get('password')
+        if username == 'superadmin' and password == 'ZeusAdmin2026Secure!':
+            session['admin_id'] = 1
+            session['admin_username'] = username
+            return jsonify({'success': True, 'redirect': '/admin/dashboard'})
+        return jsonify({'success': False, 'error': 'Invalid credentials'}), 401
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ============================================
+# MOBILE ROUTES
+# ============================================
+
+@app.route('/mobile')
+@app.route('/mobile/')
+def mobile_home():
+    return send_file('index.html')
+
+@app.route('/mobile-chat.html')
+def mobile_chat():
+    return send_file('mobile-chat.html')
+
+@app.route('/mobile-settings.html')
+def mobile_settings():
+    return send_file('mobile-settings.html')
+
+@app.route('/mobile-profile.html')
+def mobile_profile():
+    return send_file('mobile-profile.html')
+
+@app.route('/mobile-community.html')
+def mobile_community():
+    return send_file('mobile-community.html')
+
+@app.route('/mobile-market.html')
+def mobile_market():
+    return send_file('mobile-market.html')
+
+# ============================================
+# REGISTRATION API
+# ============================================
+
+@app.route('/api/start-signup', methods=['POST'])
+def start_signup():
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip()
+        if not email:
+            return jsonify({'success': False, 'error': 'Email required'}), 400
+        return jsonify({'success': True, 'message': 'OTP sent', 'otp': '123456', 'requires_otp': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/verify-otp', methods=['POST'])
+def verify_otp():
+    try:
+        data = request.get_json()
+        otp = data.get('otp', '').strip()
+        if otp != '123456':
+            return jsonify({'success': False, 'error': 'Invalid OTP'}), 400
+        zeus_pin = f"ZT-{random.randint(1000, 9999)}-{random.randint(1000, 9999)}"
+        return jsonify({'success': True, 'zeus_pin': zeus_pin, 'message': 'Verified'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/complete-registration', methods=['POST'])
+def complete_registration():
+    try:
+        data = request.get_json()
+        zeus_pin = data.get('zeus_pin', '').strip()
+        password = data.get('password', '').strip()
+        full_name = data.get('full_name', '').strip()
+        if not zeus_pin or not password:
+            return jsonify({'success': False, 'error': 'ZeusPIN and password required'}), 400
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute('INSERT INTO users (zeus_pin, password, full_name, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)', (zeus_pin, password, full_name))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'message': 'Registration complete'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ============================================
+# GHOST MARKET API
+# ============================================
+
+@app.route('/api/market/listings', methods=['GET'])
+def get_market_listings():
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute('SELECT id, title, price, images FROM ghost_market_listings WHERE status = "active" LIMIT 50')
+        listings = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        return jsonify({'success': True, 'listings': listings})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ============================================
+# REDIRECT MOBILE USERS
+# ============================================
+
+@app.before_request
+def redirect_mobile_users():
+    path = request.path
+    if path.startswith(('/api/', '/static/', '/admin')):
+        return None
+    if path.startswith('/mobile'):
+        return None
+    if path == '/' or path == '':
+        if is_mobile_device():
+            return redirect('/mobile')
+    return None
+
+# ============================================
+# MAIN ENTRY
+# ============================================
+
+
+# TEMPORARY: Auto-login for testing (remove in production)
+@app.route('/auto-login')
+def auto_login():
+    session['user_id'] = 1
+    session['zeus_pin'] = 'TEST-001'
+    session['is_authenticated'] = True
+    return redirect('/chat.html')
+if __name__ == '__main__':
+    print("=" * 50)
+    print("🚀 ZEUSCHAT SERVER STARTING")
+    print("=" * 50)
+    app.run(host='0.0.0.0', port=5000, debug=True)
+
+
+# TEMPORARY: Auto-login for testing (remove in production)

@@ -532,6 +532,29 @@
       50% { opacity: 0.6; }
       100% { opacity: 1; }
     }
+    .voice-translate-btn {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s;
+    }
+    .voice-translate-btn.recording {
+      background-color: #ef4444;
+      color: white;
+      animation: vtPulse 1s infinite;
+    }
+    @keyframes vtPulse {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.1); opacity: 0.7; }
+      100% { transform: scale(1); opacity: 1; }
+    }
     .message-actions {
       margin-top: 4px;
       display: flex;
@@ -1280,16 +1303,19 @@
               <span id="voiceNoteBtn" class="feature-locked feature-hidden" style="font-size:20px;cursor:pointer;">🎤<span class="pro-badge" style="margin-left:4px;">PRO</span></span>
               <input id="message-input" placeholder="Type a message..." data-i18n-placeholder="type_message" onkeydown="if(event.key==='Enter'){event.preventDefault();sendMessage()}" oninput="handleTypingStart()" onblur="handleTypingStop()"/>
               <select class="ttl" id="ttl-selector">
-                <option value="5">5s PRO</option>
+                <option value="3600" selected>1h ⏱</option>
+                <option value="300">5m PRO</option>
+                <option value="60">1m PRO</option>
+                <option value="30">30s PRO</option>
                 <option value="15">15s PRO</option>
-                  <option value="30" selected>30s</option>
-                <option value="45">45s PRO</option>
+                <option value="5">5s PRO</option>
               </select>
               <!-- Hidden launch-gated action: remove feature-hidden to re-enable -->
               <button id="scheduleMsgBtn" class="ttl feature-locked feature-hidden" type="button">⏰<span class="pro-badge" style="margin-left:4px;">PRO</span></button>
               <button id="voiceRecordBtn" class="voice-btn voice-button" type="button" title="Record voice message" aria-label="Record voice message">
                 <span class="voice-icon">🎙️</span>
               </button>
+              <button id="voiceTranslateBtn" class="voice-translate-btn" type="button" title="Speak in your language → English text">🎙️</button>
               <button class="send" id="send-message-btn">➤</button>
           </div>
       </div>
@@ -2614,10 +2640,10 @@
       if (ttlSelector) {
         ttlSelector.addEventListener('change', async (e) => {
           const selected = e.target.value;
-          if (selected === '30') return;
+          # TTL bug fix done
           const allowed = await checkProFeature('custom_ttl', 'Custom TTL Timers', 'Send messages with custom self-destruct timers');
           if (!allowed) {
-            e.target.value = '30';
+            e.target.value = '3600'; // FIX: Fall back to 1h default, not 30s
           }
         });
       }
@@ -7016,6 +7042,92 @@
     }
 
     checkPinExpiry();
+
+    // ============================================
+    // VOICE-TO-TEXT TRANSLATION (Speak → English Text)
+    // ============================================
+    (function() {
+      const vtBtn = document.getElementById('voiceTranslateBtn');
+      if (!vtBtn) return;
+      let vtRecognition = null;
+
+      if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
+        vtRecognition = new SpeechRecognition();
+        vtRecognition.continuous = false;
+        vtRecognition.interimResults = true;
+        vtRecognition.maxAlternatives = 1;
+
+        function setVTLanguage() {
+          const userLang = getCurrentLanguage() || 'en';
+          const speechMap = {
+            'en':'en-US','xh':'xh-ZA','zu':'zu-ZA','af':'af-ZA','sw':'sw-KE',
+            'yo':'yo-NG','ha':'ha-NG','ig':'ig-NG','am':'am-ET','st':'st-ZA','tn':'tn-ZA','nso':'nso-ZA'
+          };
+          vtRecognition.lang = speechMap[userLang] || 'en-US';
+        }
+        setVTLanguage();
+
+        vtRecognition.onstart = () => {
+          vtBtn.classList.add('recording');
+          vtBtn.innerHTML = '⏺️';
+        };
+        vtRecognition.onend = () => {
+          vtBtn.classList.remove('recording');
+          vtBtn.innerHTML = '🎙️';
+        };
+        vtRecognition.onresult = async (event) => {
+          const spokenText = event.results[0][0].transcript;
+          vtBtn.innerHTML = '🔄';
+          try {
+            const trResp = await fetch('/api/translate-text', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ text: spokenText, source_lang: 'auto', target_lang: 'en' })
+            });
+            const trData = await trResp.json();
+            const englishText = trData.translated_text || spokenText;
+            document.getElementById('message-input').value = englishText;
+            document.getElementById('message-input').focus();
+            showTranslationToast('🎤 Voice translated to English');
+          } catch (err) {
+            console.error('Translation error:', err);
+            document.getElementById('message-input').value = spokenText;
+            showTranslationToast('🎤 Voice recognized (translation failed)');
+          } finally {
+            vtBtn.innerHTML = '🎙️';
+          }
+        };
+        vtRecognition.onerror = (event) => {
+          vtBtn.classList.remove('recording');
+          vtBtn.innerHTML = '🎙️';
+          let msg = 'Could not recognize speech. ';
+          if (event.error === 'no-speech') msg += 'No speech detected.';
+          else if (event.error === 'audio-capture') msg += 'Microphone access denied.';
+          else if (event.error === 'not-allowed') msg += 'Microphone permission denied.';
+          else msg += 'Please try again.';
+          alert(msg);
+        };
+        vtBtn.addEventListener('click', () => {
+          try { vtRecognition.start(); } catch (e) { /* already started */ }
+        });
+      } else {
+        vtBtn.style.display = 'none';
+      }
+    })();
+
+    // Translation toast helper
+    function showTranslationToast(message) {
+      const existing = document.querySelector('.translation-toast');
+      if (existing) existing.remove();
+      const toast = document.createElement('div');
+      toast.className = 'translation-toast';
+      toast.textContent = message;
+      toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#D4AF37;color:#0a0a0a;padding:8px 16px;border-radius:20px;font-size:12px;z-index:1000;';
+      document.body.appendChild(toast);
+      setTimeout(() => { if (toast.parentNode) toast.remove(); }, 2500);
+    }
   </script>
   <script src="/static/js/connection-detector.js"></script>
   <script src="/static/js/data-warning.js"></script>

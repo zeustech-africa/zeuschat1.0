@@ -2390,6 +2390,12 @@ def approve_kyc(kyc_id):
                     (user_id, admin_id, approval_note),
                 )
 
+            # Also sync users.approval_status so mobile login/status checks stay consistent
+            cursor.execute(
+                "UPDATE users SET approval_status = 'approved' WHERE id = ?",
+                (user_id,),
+            )
+
             approval_message = (
                 '✅ Your ZeusChat account has been APPROVED!\n\n'
                 f'Your Zeus-PIN {result["zeus_pin"]} is now active and ready to use.\n\n'

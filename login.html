@@ -342,16 +342,15 @@
           sessionStorage.removeItem('return_url');
 
           if (result.approved === true) {
-            console.log('6. Approved user, redirecting to /dashboard...');
-            alert('✅ Welcome back! Your chats, contacts, and settings are restored.');
-            window.location.href = '/dashboard';
+            console.log('6. Approved user, redirecting to /unlock.html...');
+            window.location.href = '/unlock.html';
           } else if (result.approved === false) {
-            console.log('6. Account pending approval, redirecting to /pending-approval...');
+            console.log('6. Account pending approval, redirecting to /pending.html...');
             alert('⏳ Your account is pending admin approval.');
-            window.location.href = '/pending-approval';
+            window.location.href = '/pending.html';
           } else {
-            console.log('6. Approval flag missing, using safe fallback redirect to /pending-approval...');
-            window.location.href = '/pending-approval';
+            console.log('6. Approval flag missing, using safe fallback redirect to /pending.html...');
+            window.location.href = '/pending.html';
           }
         } else {
           alert(result.error || 'Login failed');

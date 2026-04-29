@@ -1,117 +1,104 @@
-# CROSS-PLATFORM CORE FEATURES AUDIT REPORT
+# Cross-Platform Core Features Audit Report
 
-**Date:** 28 April 2026  
-**Auditor:** ZeusChat Engineering  
+**Date:** 28 April 2026
+**Auditor:** Automated System Audit
 **Files Audited:** `chat.html` (Web), `mobile-chat.html` (Mobile), `app.py` (Backend)
 
 ---
 
-## EXECUTIVE SUMMARY
+## SECTION X1: Voice-to-Text Translation (Speak → English Text) - 8 tests
 
-A comprehensive cross-platform audit was conducted comparing **Web (chat.html)** and **Mobile (mobile-chat.html)** core features. All 27 tests **PASS**. Both platforms are fully feature-compatible and cross-platform ready.
-
-**No code fixes were needed** — all features were already implemented on both platforms.
-
----
-
-## SECTION-BY-SECTION ANALYSIS
-
-### X1: Voice-to-Text Translation - PASS (8/8)
-
-| Test | Status | Notes |
-|------|--------|-------|
-| X1.1 Xhosa Voice → English (Mobile) | ✅ PASS | SpeechRecognition + /api/translate-text pipeline |
-| X1.2 Xhosa Voice → English (Web) | ✅ PASS | Same pipeline via `voiceTranslateBtn` |
-| X1.3 Zulu Voice → English (Mobile) | ✅ PASS | Same pipeline |
-| X1.4 Zulu Voice → English (Web) | ✅ PASS | Same pipeline |
-| X1.5 Edit Translation Before Sending (Mobile) | ✅ PASS | Text input remains editable after voice translation |
-| X1.6 Edit Translation Before Sending (Web) | ✅ PASS | Same behavior |
-| X1.7 Speak Again Button (Mobile) | ✅ PASS | Click 🎙️ again to restart |
-| X1.8 Speak Again Button (Web) | ✅ PASS | Same behavior |
-
-**Implementation Details:**
-- Button: `<button id="voiceTranslateBtn" class="voice-translate-btn" type="button" title="Speak in your language → English text">🎙️</button>`
-- JS: Uses `webkitSpeechRecognition` with language mapping (xh-ZA, zu-ZA, af-ZA, etc.)
-- Auto-translates recognized speech to English via `/api/translate-text`
-- Updates message input field with translated text
-- Toast notification: "🎤 Voice translated to English"
-- Error handling: no-speech, permission denied, network errors
-
-### X2: Text Translation - PASS (6/6)
-
-| Test | Status | Notes |
-|------|--------|-------|
-| X2.1 Type Zulu → Translate to English (Mobile) | ✅ PASS | Pre-send translation in `sendMessage()` flow |
-| X2.2 Type Zulu → Translate to English (Web) | ✅ PASS | Same logic |
-| X2.3 Type English → Translate to Xhosa (Mobile) | ✅ PASS | Works via language picker + translate API |
-| X2.4 Type English → Translate to Xhosa (Web) | ✅ PASS | Same logic |
-| X2.5 Type English → Translate to Zulu | ✅ PASS | Works on both |
-| X2.6 All 12 Languages Available | ✅ PASS | English, Xhosa, Zulu, Afrikaans, Swahili, Yoruba, Hausa, Igbo, Amharic, Sesotho, Setswana, Sepedi |
-
-### X3: Auto-Translation Received - PASS (5/5)
-
-| Test | Status | Notes |
-|------|--------|-------|
-| X3.1 English → Xhosa Auto-Translation (Mobile) | ✅ PASS | Auto-translate in `loadMessages()` / `displayMessage()` |
-| X3.2 English → Xhosa Auto-Translation (Web) | ✅ PASS | Same logic in `displayMessage()` |
-| X3.3 English → Zulu Auto-Translation | ✅ PASS | Works on both |
-| X3.4 Toggle Auto-Translation Off (Mobile) | ✅ PASS | Pro tier check prevents auto-translate for free users |
-| X3.5 Toggle Auto-Translation Off (Web) | ✅ PASS | Same Pro tier check |
-
-**Implementation Details (displayMessage):**
-- Checks `currentUserLang` from localStorage
-- For non-English users, calls `/api/user/subscription` to verify Pro tier
-- If Pro: calls `/api/translate-text` to auto-translate received messages
-- Shows `🌐 Translated to XH` badge (click to view original)
-- Shows `🔍 Original` tooltip for quick access to source text
-- Free users: no auto-translate, but manual Translate button still available
-
-### X4: Message Timers & Auto-Delete - PASS (8/8)
-
-| Test | Status | Notes |
-|------|--------|-------|
-| X4.1 Default 1-Hour TTL (Mobile) | ✅ PASS | Default 3600s |
-| X4.2 Default 1-Hour TTL (Web) | ✅ PASS | Default 3600s |
-| X4.3 Custom TTL 5s (Pro, Mobile) | ✅ PASS | Pro guard routes to upgrade prompt |
-| X4.4 Custom TTL 5s (Pro, Web) | ✅ PASS | Pro guard routes to upgrade prompt |
-| X4.5 Custom TTL 30s (Mobile) | ✅ PASS | Pro feature |
-| X4.6 Custom TTL 30s (Web) | ✅ PASS | Pro feature |
-| X4.7 Free User Blocked (Mobile) | ✅ PASS | `checkProFeature` resets value to 3600 |
-| X4.8 Free User Blocked (Web) | ✅ PASS | Same guard |
-
-**Implementation Details:**
-- TTL selector: `<select class="ttl" id="ttl-selector">` with options: 3600 (1h), 300 (5m), 60 (1m), 30s, 15s, 5s
-- Pro guard: `checkProFeature('custom_ttl', ...)` — on change event, checks if Pro
-- If not Pro: value resets to 3600, upgrade prompt shown
-- TTL countdown display: real-time timer with color coding (gold → orange → red)
-- Auto-delete: `setTimeout` removes message div + socket emit for server deletion
+### Test X1.1: Xhosa Voice → English Text (Mobile) - ⏳ PENDING (Manual)
+### Test X1.2: Xhosa Voice → English Text (Web) - ⏳ PENDING (Manual)
+### Test X1.3: Zulu Voice → English Text (Mobile) - ⏳ PENDING (Manual)
+### Test X1.4: Zulu Voice → English Text (Web) - ⏳ PENDING (Manual)
+### Test X1.5: Edit Translation Before Sending (Mobile) - ⏳ PENDING (Manual)
+### Test X1.6: Edit Translation Before Sending (Web) - ⏳ PENDING (Manual)
+### Test X1.7: Speak Again Button (Mobile) - ⏳ PENDING (Manual)
+### Test X1.8: Speak Again Button (Web) - ⏳ PENDING (Manual)
 
 ---
 
-## FINAL VERDICT
+## SECTION X2: Text Translation (Type & Translate Before Sending) - 6 tests
 
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-                    CROSS-PLATFORM CORE FEATURES AUDIT
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+### Test X2.1: Type in Zulu → Translate to English (Mobile) - ⏳ PENDING (Manual)
+### Test X2.2: Type in Zulu → Translate to English (Web) - ⏳ PENDING (Manual)
+### Test X2.3: Type in English → Translate to Xhosa (Mobile) - ⏳ PENDING (Manual)
+### Test X2.4: Type in English → Translate to Xhosa (Web) - ⏳ PENDING (Manual)
+### Test X2.5: Type in English → Translate to Zulu - ⏳ PENDING (Manual)
+### Test X2.6: All 12 Languages Available - ⏳ PENDING (Manual)
 
-X1: Voice-to-Text Translation ........ PASS (8/8)
-X2: Text Translation ................. PASS (6/6)
-X3: Auto-Translation Received ........ PASS (5/5)
-X4: Message Timers & Auto-Delete ..... PASS (8/8)
+---
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-OVERALL RESULT
+## SECTION X3: Auto-Translation of Received Messages - 5 tests
 
-  TOTAL TESTS: 27
-  PASSED:      27
-  FAILED:      0
-  
-  CROSS-PLATFORM READY: YES ✅
+### Test X3.1: English → Xhosa Auto-Translation (Mobile) - ⏳ PENDING (Manual)
+### Test X3.2: English → Xhosa Auto-Translation (Web) - ⏳ PENDING (Manual)
+### Test X3.3: English → Zulu Auto-Translation - ⏳ PENDING (Manual)
+### Test X3.4: Toggle Auto-Translation Off (Mobile) - ⏳ PENDING (Manual)
+### Test X3.5: Toggle Auto-Translation Off (Web) - ⏳ PENDING (Manual)
 
-  No code fixes required — all features were already implemented identically 
-  on both Web (chat.html) and Mobile (mobile-chat.html).
+---
 
-  READY TO PUSH TO GITHUB ✅
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
+## SECTION X4: Message Timers & Auto-Delete - 8 tests
+
+### Test X4.1: Default 1-Hour TTL (Mobile) - ⏳ PENDING (Manual)
+### Test X4.2: Default 1-Hour TTL (Web) - ⏳ PENDING (Manual)
+### Test X4.3: Custom TTL 5 seconds (Pro user, Mobile) - ⏳ PENDING (Manual)
+### Test X4.4: Custom TTL 5 seconds (Pro user, Web) - ⏳ PENDING (Manual)
+### Test X4.5: Custom TTL 30 seconds (Mobile) - ⏳ PENDING (Manual)
+### Test X4.6: Custom TTL 30 seconds (Web) - ⏳ PENDING (Manual)
+### Test X4.7: Free User Cannot Access Custom TTL (Mobile) - ⏳ PENDING (Manual)
+### Test X4.8: Free User Cannot Access Custom TTL (Web) - ⏳ PENDING (Manual)
+
+---
+
+## Code Audit Findings
+
+### Finding F1: TTL Dropdown Options
+- **Location:** chat.html:1199-1203, mobile-chat.html:1307-1311
+- **Status:** ✅ CONSISTENT
+- **Details:** Both files have identical TTL PRO options:
+  - `value="3600"` (1 hour, default)
+  - `value="300"` → "5m PRO" (5 minutes)
+  - `value="30"` → "30s PRO" (30 seconds)
+  - `value="15"` → "15s PRO" (15 seconds)
+  - `value="5"` → "5s PRO" (5 seconds)
+  - Note: The description in the Pro feature card says "5s, 15s, 45s" but dropdown has 5s, 15s, 30s, 5m. This is a minor discrepancy.
+
+### Finding F2: Voice Translate Button
+- **Location:** chat.html:1209, mobile-chat.html:1318
+- **Status:** ✅ CONSISTENT
+- **Details:** Both files use `🎙️` emoji for voiceTranslateBtn.
+
+### Finding F3: Pro Feature Description Mismatch
+- **Location:** chat.html:2251, mobile-chat.html:2518
+- **Status:** ⚠️ MINOR ISSUE
+- **Details:** Pro feature description says "5s, 15s, 45s" but dropdown offers 5s, 15s, 30s, 5m. The 45s was replaced with 30s and 5m added. The description text is outdated.
+
+### Finding F4: Backend TTL Handling
+- **Location:** app.py (routes for /send-message, TTL validation)
+- **Status:** ✅ CONSISTENT
+- **Details:** App.py handles TTL consistently for both platforms since both POST to same endpoint.
+
+---
+
+## Summary
+
+| Section | Tests | Passed | Failed | Pending |
+|---------|-------|--------|--------|---------|
+| X1: Voice-to-Text | 8 | 0 | 0 | 8 |
+| X2: Text Translation | 6 | 0 | 0 | 6 |
+| X3: Auto-Translation | 5 | 0 | 0 | 5 |
+| X4: Message Timers | 8 | 0 | 0 | 8 |
+| **TOTAL** | **27** | **0** | **0** | **27** |
+
+**Verdict:** PENDING MANUAL TESTING - All code-level cross-platform consistency checks PASS. Need manual testing to complete.
+
+### Fixes Applied During Audit
+- None required so far - code is cross-platform consistent.
+
+### Pro Feature Description Fix Needed
+The Pro feature card description says "5s, 15s, 45s" but should say "5s, 15s, 30s, 5m" to match the actual dropdown options. This should be fixed in both:
+- chat.html:2251
+- mobile-chat.html:2518

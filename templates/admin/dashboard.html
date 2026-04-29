@@ -1,22 +1,412 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Admin Dashboard</title>
-    <style>
-        body { font-family: Arial; padding: 20px; background: #1a1a1a; color: white; }
-        .container { max-width: 800px; margin: 0 auto; background: #2a2a2a; padding: 20px; border-radius: 10px; }
-        h1 { color: #34B7F1; }
-        .success { color: #4CAF50; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZeusChat Admin — Control Room</title>
+  <link rel="stylesheet" href="/static/admin.css">
+  <style>
+    /* Extra tab styles not in admin.css */
+    .kyc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+    .kyc-card { background: #fff; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    .kyc-card-body { padding: 14px; }
+    .kyc-imgs { display: flex; gap: 8px; margin: 10px 0; }
+    .kyc-imgs img { width: 50%; max-height: 140px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); cursor: pointer; }
+    .kyc-actions { display: flex; gap: 8px; padding: 10px 14px; background: #f7f9fd; border-top: 1px solid var(--border); }
+    .market-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+    .market-card { background: #fff; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    .market-card img { width: 100%; height: 160px; object-fit: cover; }
+    .market-card-body { padding: 12px; }
+    .market-card-actions { display: flex; gap: 8px; padding: 10px 12px; background: #f7f9fd; border-top: 1px solid var(--border); }
+    .log-row { font-size: 12px; }
+    .page-title { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .page-sub { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+    .tab-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+    .tab-actions { display: flex; gap: 8px; }
+    select { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: #fff; }
+    input[type="text"] { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: #fff; }
+    .message-box { display: flex; flex-direction: column; gap: 8px; }
+    .message-box textarea { resize: vertical; min-height: 60px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; }
+    .empty-state { text-align: center; padding: 40px 20px; color: var(--muted); }
+    .pill { border-radius: 999px; padding: 3px 10px; font-size: 11px; display: inline-block; }
+    .pill-ok { background: #edf7ee; color: #2e7d32; border: 1px solid #c8e6c9; }
+    .pill-bad { background: #fff1f1; color: #c62828; border: 1px solid #f2c5c5; }
+    .pill-warn { background: #fff6eb; color: #ef6c00; border: 1px solid #ffd8a8; }
+    .pill-muted { background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>ZeusChat Admin Dashboard</h1>
-        <p class="success">✅ You are logged in!</p>
-        <p>Welcome to the Admin Control Room.</p>
-        <p>Session ID: {{ session.get('admin_id', 'None') }}</p>
-        <p>Username: {{ session.get('admin_username', 'None') }}</p>
-        <a href="/admin/login" style="color: #34B7F1;">Logout</a>
-    </div>
+<div class="admin-shell">
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar">
+    <h2>⚡ ZeusChat</h2>
+    <div class="meta" id="admin-role">Loading…</div>
+
+    <button class="nav-item active" data-tab="overview">📊 Overview</button>
+    <button class="nav-item" data-tab="users">👥 Users</button>
+    <button class="nav-item" data-tab="kyc">🛡️ KYC Review</button>
+    <button class="nav-item" data-tab="ghostMarket">🏪 Ghost Market</button>
+    <button class="nav-item" data-tab="ghostCommunity">👻 Ghost Community</button>
+    <button class="nav-item" data-tab="payments">💳 Payments</button>
+    <button class="nav-item" data-tab="messages">💬 Messages</button>
+    <button class="nav-item" data-tab="auditLogs">📋 Audit Logs</button>
+    <hr style="border-color:rgba(255,255,255,0.1); margin:12px 0;">
+    <button class="nav-item" onclick="window.location.href='/admin/zeuswatch'">🔭 ZeusWatch ↗</button>
+    <button class="nav-item" id="logout-btn">🚪 Logout</button>
+  </aside>
+
+  <!-- ===== MAIN CONTENT ===== -->
+  <main class="main">
+
+    <!-- ── OVERVIEW ── -->
+    <section data-tab-target="overview">
+      <div class="page-title">Control Room Overview</div>
+      <div class="page-sub">Real-time platform stats. Auto-refreshes every 30 seconds.</div>
+
+      <div class="stats">
+        <div class="stat"><div class="n" id="stat-pending">–</div><div class="l">Pending Approvals</div></div>
+        <div class="stat"><div class="n" id="stat-active">–</div><div class="l">Active Users</div></div>
+        <div class="stat"><div class="n" id="stat-payments">–</div><div class="l">Pending Payments</div></div>
+        <div class="stat"><div class="n" id="stat-revenue">–</div><div class="l">Revenue Today</div></div>
+      </div>
+
+      <div class="card">
+        <div style="font-weight:700; margin-bottom:10px;">Recent Activity</div>
+        <table>
+          <thead><tr><th>Action</th><th>Admin</th><th>User</th><th>Time</th></tr></thead>
+          <tbody id="activity-body"><tr><td colspan="4">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── USERS ── -->
+    <section data-tab-target="users" class="hidden">
+      <div class="tab-header">
+        <div>
+          <div class="page-title">User Management</div>
+          <div class="page-sub">Search, filter and moderate all registered users.</div>
+        </div>
+        <div class="tab-actions">
+          <button class="btn muted" onclick="loadUsers()">↺ Refresh</button>
+        </div>
+      </div>
+      <div class="filter-row" style="margin-bottom:12px;">
+        <select id="filter-status">
+          <option value="">All Statuses</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="suspended">Suspended</option>
+          <option value="banned">Banned</option>
+        </select>
+        <input type="text" id="filter-search" placeholder="Search name / email / PIN…" style="flex:1; min-width:160px;">
+      </div>
+      <div class="card" style="padding:0; overflow:auto;">
+        <table>
+          <thead><tr><th>PIN</th><th>Name</th><th>Email</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead>
+          <tbody id="users-body"><tr><td colspan="6">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── KYC REVIEW ── -->
+    <section data-tab-target="kyc" class="hidden">
+      <div class="tab-header">
+        <div>
+          <div class="page-title">KYC Review</div>
+          <div class="page-sub">Review ID documents and selfies. Approve or reject each submission.</div>
+        </div>
+        <div class="tab-actions">
+          <button class="btn muted" onclick="loadKyc()">↺ Refresh</button>
+        </div>
+      </div>
+      <div id="kyc-container"><div class="empty-state">Loading…</div></div>
+    </section>
+
+    <!-- ── GHOST MARKET ── -->
+    <section data-tab-target="ghostMarket" class="hidden">
+      <div class="tab-header">
+        <div>
+          <div class="page-title">Ghost Market Moderation</div>
+          <div class="page-sub">Approve, reject or delete pending marketplace listings.</div>
+        </div>
+        <div class="tab-actions">
+          <button class="btn muted" onclick="loadGhostMarket()">↺ Refresh</button>
+        </div>
+      </div>
+      <div id="market-container"><div class="empty-state">Loading…</div></div>
+    </section>
+
+    <!-- ── GHOST COMMUNITY ── -->
+    <section data-tab-target="ghostCommunity" class="hidden">
+      <div class="tab-header">
+        <div>
+          <div class="page-title">Ghost Community Moderation</div>
+          <div class="page-sub">Approve, reject or delete pending community posts.</div>
+        </div>
+        <div class="tab-actions">
+          <button class="btn muted" onclick="loadGhostCommunity()">↺ Refresh</button>
+        </div>
+      </div>
+      <div id="community-container"><div class="empty-state">Loading…</div></div>
+    </section>
+
+    <!-- ── PAYMENTS ── -->
+    <section data-tab-target="payments" class="hidden">
+      <div class="tab-header">
+        <div>
+          <div class="page-title">Payments &amp; Approvals</div>
+          <div class="page-sub">Review and action pending one-off payments.</div>
+        </div>
+        <div class="tab-actions">
+          <button class="btn muted" onclick="loadPayments()">↺ Refresh</button>
+        </div>
+      </div>
+      <div class="card" style="padding:0; overflow:auto;">
+        <table>
+          <thead><tr><th>ID</th><th>User</th><th>Type</th><th>Amount</th><th>Date</th><th>Actions</th></tr></thead>
+          <tbody id="payments-body"><tr><td colspan="6">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── MESSAGES ── -->
+    <section data-tab-target="messages" class="hidden">
+      <div class="page-title">Admin Messaging</div>
+      <div class="page-sub">Chat with individual users from their pending / support queue.</div>
+      <div class="messaging" style="margin-top:12px;">
+        <div class="user-list" id="message-users"><div class="user-item">Loading…</div></div>
+        <div class="chat">
+          <div style="font-weight:600; padding: 4px 0;" id="chat-target">Select a user to start chatting</div>
+          <div class="chat-log" id="chat-log"><div class="empty-state">No conversation selected.</div></div>
+          <div class="message-box">
+            <textarea id="chat-input" placeholder="Type your message…" rows="2"></textarea>
+            <button class="btn ok" id="chat-send">Send Message</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── AUDIT LOGS ── -->
+    <section data-tab-target="auditLogs" class="hidden">
+      <div class="tab-header">
+        <div>
+          <div class="page-title">Audit Logs</div>
+          <div class="page-sub">Admin actions log. All actions are immutably recorded.</div>
+        </div>
+        <div class="tab-actions">
+          <button class="btn muted" onclick="loadAuditLogs()">↺ Refresh</button>
+          <button class="btn ok" onclick="exportAuditLogs()">⬇ Export CSV</button>
+        </div>
+      </div>
+      <div class="filter-row" style="margin-bottom:12px;">
+        <select id="audit-action-filter" onchange="loadAuditLogs()">
+          <option value="">All Actions</option>
+          <option value="login">Login</option>
+          <option value="approve">Approve</option>
+          <option value="reject">Reject</option>
+          <option value="suspend">Suspend</option>
+          <option value="ban">Ban</option>
+          <option value="kyc_approve">KYC Approve</option>
+          <option value="kyc_reject">KYC Reject</option>
+        </select>
+      </div>
+      <div class="card" style="padding:0; overflow:auto;">
+        <table>
+          <thead><tr><th>Time</th><th>Admin</th><th>Action</th><th>Target</th><th>Details</th></tr></thead>
+          <tbody id="audit-body"><tr><td colspan="5">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="/static/admin.js"></script>
+<script>
+/* ============================================================
+   EXTRA TAB LOGIC (KYC, Ghost Market, Ghost Community, Audit)
+   These supplement static/admin.js which handles the base tabs.
+   ============================================================ */
+
+function esc(t) {
+  const d = document.createElement('div');
+  d.textContent = String(t ?? '');
+  return d.innerHTML;
+}
+
+function pill(status) {
+  const s = (status || 'unknown').toLowerCase();
+  const cls = { pending: 'pill-warn', approved: 'pill-ok', rejected: 'pill-bad', active: 'pill-ok', suspended: 'pill-bad', banned: 'pill-bad' }[s] || 'pill-muted';
+  return `<span class="pill ${cls}">${esc(status)}</span>`;
+}
+
+/* ── KYC ── */
+async function loadKyc() {
+  const box = document.getElementById('kyc-container');
+  box.innerHTML = '<div class="empty-state">Loading…</div>';
+  try {
+    const r = await fetch('/admin/api/kyc/pending');
+    const d = await r.json();
+    const items = d.pending || d.kyc_submissions || [];
+    if (!items.length) { box.innerHTML = '<div class="empty-state">✅ No pending KYC submissions.</div>'; return; }
+    box.innerHTML = `<div class="kyc-grid">${items.map(k => `
+      <div class="kyc-card">
+        <div class="kyc-card-body">
+          <strong>${esc(k.full_name || k.zeus_pin || 'Unknown')}</strong>
+          <div style="font-size:12px;color:var(--muted)">${esc(k.email || '')} · ${esc(k.zeus_pin || '')}</div>
+          <div style="font-size:12px; margin-top:4px;">Doc type: ${esc(k.document_type || 'N/A')} · Submitted: ${k.submitted_at ? new Date(k.submitted_at * 1000).toLocaleString() : 'N/A'}</div>
+          <div class="kyc-imgs">
+            ${k.id_document_path ? `<img src="/uploads/${esc(k.id_document_path.split('/').pop())}" onerror="this.style.display='none'" onclick="window.open(this.src)" title="Click to view ID">` : `<div style="width:50%;background:#f3f4f6;border-radius:8px;display:flex;align-items:center;justify-content:center;min-height:80px;font-size:11px;color:var(--muted)">No ID doc</div>`}
+            ${k.selfie_path ? `<img src="/uploads/${esc(k.selfie_path.split('/').pop())}" onerror="this.style.display='none'" onclick="window.open(this.src)" title="Click to view Selfie">` : `<div style="width:50%;background:#f3f4f6;border-radius:8px;display:flex;align-items:center;justify-content:center;min-height:80px;font-size:11px;color:var(--muted)">No selfie</div>`}
+          </div>
+        </div>
+        <div class="kyc-actions">
+          <button class="btn ok" onclick="approveKyc(${k.id})">✅ Approve</button>
+          <button class="btn no" onclick="rejectKyc(${k.id})">❌ Reject</button>
+        </div>
+      </div>
+    `).join('')}</div>`;
+  } catch(e) { box.innerHTML = `<div class="empty-state" style="color:red">Error: ${esc(e.message)}</div>`; }
+}
+
+async function approveKyc(id) {
+  const r = await fetch(`/admin/api/kyc/${id}/approve`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+  if (r.ok) { await loadStats(); await loadKyc(); }
+  else { const d = await r.json(); alert('Error: ' + (d.error || 'Failed')); }
+}
+
+async function rejectKyc(id) {
+  const reason = prompt('Rejection reason:');
+  if (!reason) return;
+  const r = await fetch(`/admin/api/kyc/${id}/reject`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason }) });
+  if (r.ok) { await loadStats(); await loadKyc(); }
+  else { const d = await r.json(); alert('Error: ' + (d.error || 'Failed')); }
+}
+
+/* ── GHOST MARKET ── */
+async function loadGhostMarket() {
+  const box = document.getElementById('market-container');
+  box.innerHTML = '<div class="empty-state">Loading…</div>';
+  try {
+    const r = await fetch('/admin/api/ghost-market/pending-items');
+    const d = await r.json();
+    const items = d.items || d.pending_items || [];
+    if (!items.length) { box.innerHTML = '<div class="empty-state">✅ No pending market items.</div>'; return; }
+    box.innerHTML = `<div class="market-grid">${items.map(item => `
+      <div class="market-card">
+        ${item.image_url ? `<img src="${esc(item.image_url)}" onerror="this.style.display='none'">` : `<div style="height:80px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px">No image</div>`}
+        <div class="market-card-body">
+          <strong>${esc(item.title || 'Untitled')}</strong>
+          <div style="font-size:12px;color:var(--muted)">${esc(item.seller_name || '')} · ${esc(item.category || '')}</div>
+          <div style="margin-top:6px; font-weight:600">${esc(item.currency || 'R')} ${esc(item.price || 0)}</div>
+        </div>
+        <div class="market-card-actions">
+          <button class="btn ok" onclick="approveMarketItem(${item.id})">✅ Approve</button>
+          <button class="btn no" onclick="rejectMarketItem(${item.id})">❌ Reject</button>
+          <button class="btn muted" onclick="deleteMarketItem(${item.id})">🗑 Delete</button>
+        </div>
+      </div>
+    `).join('')}</div>`;
+  } catch(e) { box.innerHTML = `<div class="empty-state" style="color:red">Error: ${esc(e.message)}</div>`; }
+}
+
+async function approveMarketItem(id) {
+  const r = await fetch(`/admin/api/ghost-market/items/${id}/approve`, { method: 'PUT' });
+  if (r.ok) loadGhostMarket(); else { const d = await r.json(); alert(d.error || 'Failed'); }
+}
+async function rejectMarketItem(id) {
+  const reason = prompt('Rejection reason:');
+  if (!reason) return;
+  const r = await fetch(`/admin/api/ghost-market/items/${id}/reject`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason }) });
+  if (r.ok) loadGhostMarket(); else { const d = await r.json(); alert(d.error || 'Failed'); }
+}
+async function deleteMarketItem(id) {
+  if (!confirm('Delete this item permanently?')) return;
+  const r = await fetch(`/admin/api/ghost-market/items/${id}/delete`, { method: 'DELETE' });
+  if (r.ok) loadGhostMarket(); else { const d = await r.json(); alert(d.error || 'Failed'); }
+}
+
+/* ── GHOST COMMUNITY ── */
+async function loadGhostCommunity() {
+  const box = document.getElementById('community-container');
+  box.innerHTML = '<div class="empty-state">Loading…</div>';
+  try {
+    const r = await fetch('/admin/api/ghost/pending');
+    const d = await r.json();
+    const posts = d.posts || d.pending_posts || [];
+    if (!posts.length) { box.innerHTML = '<div class="empty-state">✅ No pending community posts.</div>'; return; }
+    box.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px;">${posts.map(p => `
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">
+          <div>
+            <strong>${esc(p.author_name || p.zeus_pin || 'Ghost')}</strong>
+            <span style="font-size:11px;color:var(--muted);margin-left:8px;">${p.created_at ? new Date(p.created_at * 1000).toLocaleString() : ''}</span>
+          </div>
+          ${pill(p.status || 'pending')}
+        </div>
+        <p style="margin:8px 0; font-size:14px;">${esc(p.content || p.text || '')}</p>
+        <div style="display:flex;gap:8px;">
+          <button class="btn ok" onclick="approvePost(${p.id})">✅ Approve</button>
+          <button class="btn no" onclick="rejectPost(${p.id})">❌ Reject</button>
+          <button class="btn muted" onclick="deletePost(${p.id})">🗑 Delete</button>
+        </div>
+      </div>
+    `).join('')}</div>`;
+  } catch(e) { box.innerHTML = `<div class="empty-state" style="color:red">Error: ${esc(e.message)}</div>`; }
+}
+
+async function approvePost(id) {
+  const r = await fetch(`/admin/api/ghost/posts/${id}/approve`, { method: 'PUT' });
+  if (r.ok) loadGhostCommunity(); else { const d = await r.json(); alert(d.error || 'Failed'); }
+}
+async function rejectPost(id) {
+  const reason = prompt('Rejection reason:');
+  if (!reason) return;
+  const r = await fetch(`/admin/api/ghost/posts/${id}/reject`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason }) });
+  if (r.ok) loadGhostCommunity(); else { const d = await r.json(); alert(d.error || 'Failed'); }
+}
+async function deletePost(id) {
+  if (!confirm('Delete this post permanently?')) return;
+  const r = await fetch(`/admin/api/ghost/posts/${id}/delete`, { method: 'DELETE' });
+  if (r.ok) loadGhostCommunity(); else { const d = await r.json(); alert(d.error || 'Failed'); }
+}
+
+/* ── AUDIT LOGS ── */
+async function loadAuditLogs() {
+  const tbody = document.getElementById('audit-body');
+  tbody.innerHTML = '<tr><td colspan="5">Loading…</td></tr>';
+  const action = document.getElementById('audit-action-filter').value;
+  try {
+    const r = await fetch(`/admin/api/audit/logs?action=${encodeURIComponent(action)}&limit=100`);
+    const d = await r.json();
+    const logs = d.logs || [];
+    if (!logs.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted)">No logs found.</td></tr>'; return; }
+    tbody.innerHTML = logs.map(l => `
+      <tr class="log-row">
+        <td>${l.timestamp ? new Date(l.timestamp).toLocaleString() : (l.created_at || 'N/A')}</td>
+        <td>${esc(l.admin_username || l.admin || '-')}</td>
+        <td>${esc(l.action || '-')}</td>
+        <td>${esc(l.target_user || l.target || '-')}</td>
+        <td>${esc(l.details || l.detail || '')}</td>
+      </tr>`).join('');
+  } catch(e) { tbody.innerHTML = `<tr><td colspan="5" style="color:red">${esc(e.message)}</td></tr>`; }
+}
+
+function exportAuditLogs() {
+  const action = document.getElementById('audit-action-filter').value;
+  window.open(`/admin/api/audit/logs/export?action=${encodeURIComponent(action)}&format=csv`);
+}
+
+/* ── HOOK EXTRA TABS INTO showTab (from admin.js) ── */
+const _origShowTab = window.showTab;
+window.showTab = function(tab) {
+  _origShowTab(tab);
+  if (tab === 'kyc') loadKyc();
+  if (tab === 'ghostMarket') loadGhostMarket();
+  if (tab === 'ghostCommunity') loadGhostCommunity();
+  if (tab === 'auditLogs') loadAuditLogs();
+};
+</script>
 </body>
 </html>

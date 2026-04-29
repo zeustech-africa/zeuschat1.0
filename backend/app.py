@@ -84,6 +84,16 @@ def init_db():
             viewed BOOLEAN DEFAULT 0
         )''')
 
+        # Admin-User chat table
+        c.execute('''CREATE TABLE IF NOT EXISTS admin_user_chats (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_pin TEXT NOT NULL,
+            sender TEXT NOT NULL, -- 'admin' or 'user'
+            message TEXT NOT NULL,
+            file_url TEXT,
+            sent_at INTEGER NOT NULL
+        )''')
+
 init_db()
 
 def generate_zeus_pin():
@@ -338,3 +348,50 @@ def mark_viewed():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8888, debug=True)
+
+
+# ============ ADMIN-USER CHAT ENDPOINTS ============
+
+@app.route('/api/help/send', methods=['POST'])
+@retry_on_locked(max_retries=3, delay=0.5)
+def user_send_help_message():
+    data = request.json
+    user_pin = data.get('user_pin')
+    message = data.get('message')
+    file_url = data.get('file_url')  # Optional, for file attachments
+    if not user_pin or not message:
+        return jsonify({'error': 'User pin and message required'}), 400
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute("INSERT INTO admin_user_chats (user_pin, sender, message, file_url, sent_at) VALUES (?, 'user', ?, ?, ?)",
+                  (user_pin, message, file_url, int(time.time())))
+    return jsonify({'success': True})
+
+@app.route('/api/help/admin-reply', methods=['POST'])
+@retry_on_locked(max_retries=3, delay=0.5)
+def admin_reply_help_message():
+    data = request.json
+    user_pin = data.get('user_pin')
+    message = data.get('message')
+    file_url = data.get('file_url')  # Optional
+    if not user_pin or not message:
+        return jsonify({'error': 'User pin and message required'}), 400
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute("INSERT INTO admin_user_chats (user_pin, sender, message, file_url, sent_at) VALUES (?, 'admin', ?, ?, ?)",
+                  (user_pin, message, file_url, int(time.time())))
+    return jsonify({'success': True})
+
+@app.route('/api/help/conversation', methods=['GET'])
+def get_help_conversation():
+    user_pin = request.args.get('user_pin')
+    if not user_pin:
+        return jsonify({'error': 'User pin required'}), 400
+    with get_db_connection() as conn:
+        c = conn.cursor()
+        c.execute("SELECT sender, message, file_url, sent_at FROM admin_user_chats WHERE user_pin = ? ORDER BY sent_at ASC", (user_pin,))
+        messages = [
+            {'sender': row[0], 'message': row[1], 'file_url': row[2], 'sent_at': row[3]}
+            for row in c.fetchall()
+        ]
+    return jsonify({'conversation': messages})
